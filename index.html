@@ -431,6 +431,148 @@ if (window.self !== window.top) {
     .cartao, .kpi { break-inside: avoid; }
     .tabela-caixa { max-height: none; }
   }
+
+  /* =======================================================================
+     REFINAMENTO VISUAL
+     Densidade e hierarquia no padrao de painel executivo: numero herói
+     grande com tracking fechado, rotulo micro em caixa alta, tinta de grade
+     discreta, borda de 1px e sombra quase imperceptivel. O grafico nunca
+     estica sem limite - acima de certa largura ele para de crescer, que e o
+     que impede a sensacao de "esticado".
+     ======================================================================= */
+  body {
+    font-family: -apple-system, "Segoe UI Variable Text", "Segoe UI", Inter,
+                 system-ui, Roboto, "Helvetica Neue", sans-serif;
+    font-feature-settings: "cv05", "ss01";
+  }
+
+  .conteudo > .tela { max-width: 1680px; }
+
+  /* --- cartoes --- */
+  .cartao, .kpi {
+    background: linear-gradient(180deg, rgba(255,255,255,0.022) 0%, rgba(255,255,255,0) 42%), var(--bg2);
+    border-color: #1b2740;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -16px rgba(0,0,0,0.9);
+    transition: border-color .15s;
+  }
+  .cartao:hover, .kpi:hover { border-color: #26365a; }
+  .cartao { padding: 1.15rem 1.25rem 1.25rem; }
+  .kpi { padding: 1.05rem 1.1rem 1.1rem; }
+
+  .cartao-titulo { font-size: 0.86rem; letter-spacing: -0.01em; }
+  .cartao-sub { font-size: 0.715rem; line-height: 1.5; margin-bottom: 1.05rem; }
+
+  /* --- numero heroi --- */
+  .kpi-rotulo {
+    font-size: 0.625rem; letter-spacing: 0.1em; color: #6b7a93;
+    margin-bottom: 0.55rem;
+  }
+  .kpi-valor {
+    font-size: 1.95rem; letter-spacing: -0.035em; font-weight: 650;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+  .kpi-valor.sm { font-size: 1.5rem; letter-spacing: -0.03em; }
+  .kpi-nota { font-size: 0.685rem; color: #6b7a93; margin-top: 0.4rem; }
+  .delta { margin-top: 0.45rem; }
+
+  /* --- titulo de secao com fio --- */
+  .secao-titulo {
+    font-size: 0.645rem; letter-spacing: 0.14em; color: #6b7a93;
+    margin: 2.15rem 0 0.85rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid #16213a;
+  }
+  .secao-titulo.primeiro { margin-top: 0; }
+
+  /* --- grafico: tinta discreta e largura com teto --- */
+  :root { --grade: rgba(148,163,184,0.085); }
+  .viz { margin: 0 auto; max-width: 820px; }
+  .viz .eixo { fill: #6b7a93; font-size: 10.5px; letter-spacing: 0.01em; }
+  .viz .rotulo-dado { fill: #cdd7e6; font-size: 10.5px; font-weight: 600; }
+  .viz .ponto { stroke: var(--bg2); stroke-width: 2.5; }
+  .banda:hover .crosshair { opacity: .5; }
+  .banda:hover .alvo { fill: rgba(148,163,184,0.05); }
+
+  /* --- legenda --- */
+  .legenda { gap: 0.45rem 1.1rem; margin-top: 0.9rem; }
+  .legenda-item { font-size: 0.705rem; color: #94a3b8; }
+  .legenda-marca { width: 9px; height: 9px; border-radius: 2.5px; }
+
+  /* --- tabela --- */
+  table.dados { font-size: 0.775rem; }
+  table.dados thead th {
+    background: #192132; color: #8695ad; font-size: 0.625rem; letter-spacing: 0.085em;
+    padding: 0.62rem 0.8rem; border-bottom-color: #1b2740;
+  }
+  table.dados tbody td { padding: 0.56rem 0.8rem; border-bottom-color: #172238; }
+  table.dados tbody tr:hover td { background: rgba(38,54,90,0.32); }
+  table.dados tfoot td { background: #192132; border-top-color: #1b2740; }
+  .tabela-caixa { border-color: #1b2740; }
+
+  /* --- botoes --- */
+  .btn-acao {
+    border-radius: 7px; font-size: 0.735rem; padding: 0.46rem 0.78rem;
+    letter-spacing: 0.005em;
+  }
+  .btn-acao.primario { box-shadow: 0 1px 10px -2px rgba(37,99,235,0.5); }
+  .nav-item { font-size: 0.835rem; }
+
+  /* --- selos e avisos --- */
+  .selo { font-size: 0.655rem; letter-spacing: 0.015em; }
+  .aviso { font-size: 0.775rem; border-radius: 9px; }
+
+  /* =======================================================================
+     MOBILE
+     Abaixo de 640px a tabela deixa de ser tabela: cada registro vira um
+     cartao com rotulo a esquerda e valor a direita. Uma tabela de 14 colunas
+     com rolagem horizontal e ilegivel no telefone, e esconder colunas
+     esconderia dado - entao a linha vira bloco.
+     ======================================================================= */
+  .btn-filtros { display: none; }
+
+  @media (max-width: 1000px) {
+    .btn-filtros { display: inline-flex; }
+    .filtros { display: none; }
+    .filtros.aberto { display: flex; }
+    .topo { padding-bottom: 0.1rem; }
+    .viz { max-width: 100%; }
+  }
+
+  @media (max-width: 640px) {
+    .tela { padding: 1rem 0.85rem 3.5rem; }
+    .secao-titulo { margin: 1.6rem 0 0.7rem; }
+    .cartao { padding: 0.95rem 1rem 1.05rem; }
+    .kpi-valor { font-size: 1.62rem; }
+    .kpi-valor.sm { font-size: 1.3rem; }
+
+    .tabela-caixa { max-height: none; border: none; overflow: visible; background: transparent; }
+    table.dados, table.dados tbody, table.dados tr, table.dados td { display: block; width: 100%; }
+    table.dados thead, table.dados tfoot { display: none; }
+    table.dados tbody tr {
+      background: var(--bg2); border: 1px solid #1b2740; border-radius: 10px;
+      margin-bottom: 0.55rem; padding: 0.15rem 0.85rem 0.3rem;
+    }
+    table.dados tbody tr:hover td { background: transparent; }
+    table.dados tbody td {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 0.9rem; text-align: right; white-space: normal;
+      padding: 0.42rem 0; border-bottom: 1px solid #172238;
+    }
+    table.dados tbody td::before {
+      content: attr(data-rot); flex: 0 0 44%; text-align: left;
+      font-size: 0.605rem; text-transform: uppercase; letter-spacing: 0.07em;
+      color: #6b7a93; font-weight: 700; line-height: 1.35;
+    }
+    table.dados tbody td:last-child { border-bottom: none; }
+    /* A primeira coluna vira o titulo do cartao. */
+    table.dados tbody td:first-child {
+      font-size: 0.93rem; font-weight: 700; color: var(--texto);
+      text-align: left; padding: 0.6rem 0 0.5rem; border-bottom: 1px solid #1b2740;
+    }
+    table.dados tbody td:first-child::before { display: none; }
+    table.dados td.wrap { min-width: 0; max-width: none; }
+    .celula-barra { min-width: 0; justify-content: flex-end; }
+    .celula-barra .cb-trilha { max-width: 90px; }
+  }
 </style>
 </head>
 <body>
@@ -487,6 +629,10 @@ if (window.self !== window.top) {
           <div class="topo-sub" id="subTela">&mdash;</div>
         </div>
         <div class="topo-acoes">
+          <button class="btn-acao btn-filtros" id="btnFiltros" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Filtros
+          </button>
           <button class="btn-acao" id="btnExportar" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             CSV
@@ -511,6 +657,7 @@ if (window.self !== window.top) {
       <section class="tela oculto" id="tela-esteira"></section>
       <section class="tela oculto" id="tela-vendas"></section>
       <section class="tela oculto" id="tela-trafego"></section>
+      <section class="tela oculto" id="tela-fin"></section>
       <section class="tela oculto" id="tela-equipe"></section>
       <section class="tela oculto" id="tela-metas"></section>
       <section class="tela oculto" id="tela-fontes"></section>
@@ -546,7 +693,7 @@ if (window.self !== window.top) {
    planilhas ler. A chave vem de PBKDF2-SHA256 (310 mil iteracoes) sobre
    login + senha. */
 const COFRES = [
-  {"v":1,"it":310000,"salt":"JxgItoCO5v9KXiqd7/APpg==","iv":"JbswUKLHyLUGORCg","ct":"CpDdBmFFFvN2CITvJsePAuFKxaiAGnkkCkD3gFYkTEuFGRqdDVC9wszH6KBNbpubtVIe104px8K1Dz146JBKLLbZZKmYhfnAYTM8SbddSzzEglXOm6fDdcGvNg9I0MFE5qM4AWDDqTv9GvAGyPhdBWPSfmDBYU7NPsCbxNTchMh64CjkfxCSbuwVv/77zVlI/P27avIlfEY/rR11UWMjK0a41QlLSu0qCLhH7sfgmbTgrn2qP/55Cqz7pn0PfypSJ8TS1fgCW9dxEsF7nJySgUB/YcaX23bEGCewUOAhzYQOqLJtEoyMYBGJupQWnYk+yAvRujeX3azthI28Ad4Wkg9Rj9WBMT+WoWrpZOfTwAZUjT12RYeEnLv8OA+Wxxs4rGh5gOUvGWsZOGBBTZJ/DROhzxxsUxC6cDENz8VPEAa0v+8p0nzRE6xXSPr8WhGi372gv5C/h56AF5xNpclhmwNJcrL5VVt2Zic+di0eKpn0DkSRb0rqs0QIcXE+Qpbm/oJjGHQ="}
+  {"v":1,"it":310000,"salt":"SFyEWvfqWRB/X6hNNHbE2Q==","iv":"W+6BQ6rq+kzkYVvs","ct":"PHOx8BafR3pP632k2+sP8pw1xNF4kHXPAzKb9fjaIdXuKXcihZ1uSMwauYq5nm7+vny3BCsn10giIRiX74LmAOclS4w0u1BG71PEze8POGxrjN6YkaIdAXNWJ3eXlwML+jLgR1NHT9h12pYSIp0eWC0ayD9WXutNZcMzi0b9vZ+/3fVEalI5iWagqTqSEeJqWUFgAFTGT6gzT7aFX+NerJub/Q0W4Voz5GgT6aHPHf+vGDsXW1/LrdviTmat6w6TclaZbvdYpAemL6nuDQi+RjzGRvlXKP8mescNOKiPn01vGW7PTDWxI1+b3GjjzVN6P3NFe95orCEEbwGJqOxP/j6ddoNlV9FhADKGoLhu43Wu9SoWNct8C/i+u1JsYhHQjZNHr6NmknNAWN7eRcLoVQbISo3Ca+ZN3T2i5O7uBZU0eNEBZPraL7wIBD8svD6QULltPmPe2Qt8XaE7HyDBtHehZ4yCOF8ri8f8IT2AcSt2iMMYvFai3b9z+dklykMdPhSXbotP1m0gUGiXhDu5tySiT6gfKw0gLP2wekWeZxcUtiJhkMMhP6nD16ml7t8e2OUZveRjOe+iJbLy4x6sF78oj/JC76rec7YqZ39Dv2RbWmj9krY7mJSn1Cypu0aJF0gINjkKerk0/2N7ctumPtkiZYNTNWOouTo="}
 ];
 
 const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
@@ -954,16 +1101,24 @@ async function carregarAtend() {
     }));
     r.fupFeitos   = r.fups.filter(f => /feito/i.test(f.status)).length;
     r.fupPendentes= r.fups.filter(f => /pendente/i.test(f.status)).length;
-    const ultimo  = r.fups.filter(f => f.data).sort((a, b) => b.data - a.data)[0];
-    r.ultimoFup   = ultimo ? ultimo.data : null;
     r.etapaFup    = r.fupFeitos ? Math.max.apply(null, r.fups.filter(f => /feito/i.test(f.status)).map(f => f.n)) : 0;
 
-    /* Dias sem toque: do contato mais recente que a planilha registra. */
-    const marcos = [r.ultimoFup, r.dAtend].filter(Boolean);
+    /* Follow up com data no FUTURO e toque AGENDADO, nao toque dado. Misturar
+       os dois fazia "dias sem toque" virar negativo (-10 dias), que nao quer
+       dizer nada para quem precisa decidir quem cobrar hoje. */
+    const passados = r.fups.filter(f => f.data && f.data <= h).sort((a, b) => b.data - a.data);
+    const futuros  = r.fups.filter(f => f.data && f.data > h).sort((a, b) => a.data - b.data);
+    r.ultimoFup   = passados.length ? passados[0].data : null;
+    r.proximoFup  = futuros.length ? futuros[0].data : null;
+
+    /* Dias sem toque: do contato mais recente que a planilha ja registra. */
+    const marcos = [r.ultimoFup, r.dAtend].filter(d => d && d <= h);
     r.ultimoToque = marcos.length ? new Date(Math.max.apply(null, marcos)) : null;
-    r.diasSemToque = r.ultimoToque ? diasEntre(r.ultimoToque, h) : null;
+    r.diasSemToque = r.ultimoToque ? Math.max(0, diasEntre(r.ultimoToque, h)) : null;
     r.emAberto = r.grupo === 'aberto' && !r.arquivado;
-    r.parado   = r.emAberto && r.diasSemToque != null && r.diasSemToque > 7;
+    /* Parado e quem nao tem toque recente NEM proximo toque agendado: com
+       FUP marcado para frente, a negociacao esta em andamento. */
+    r.parado   = r.emAberto && r.diasSemToque != null && r.diasSemToque > 7 && !r.proximoFup;
     return r;
   }).filter(r => r.id || r.lead !== 'Sem nome');
 
@@ -1304,7 +1459,94 @@ async function carregarMetas() {
   return out;
 }
 
-/* ----------------------------------------------------- 5. HISTORICO (antiga)
+/* ------------------------------------------------- 5. DRE COMERCIAL (custo)
+   FLUXO FINANCEIRO 2026, aba "DRE COMERCIAL". E o que permite sair do CAC de
+   midia (so Meta Ads) para o CAC real: custo do setor comercial inteiro -
+   SDR e closer (fixo e variavel), lider, estagiarios, CRM, automacoes, midia.
+
+   Atencao ao regime: a DRE e de CAIXA (o que entrou e saiu no mes) e a
+   planilha de clientes e de COMPETENCIA (contrato assinado no mes). Os dois
+   numeros de receita nao batem de proposito - o painel mostra a diferenca em
+   vez de escolher um e esconder o outro. */
+const DRE_MESES = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO',
+                   'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+
+/* Como cada linha de custo do setor comercial e lida pela gestao. */
+const BUCKET_COMERCIAL = {
+  pessoas: ['lider comercial (fixo)', 'lider comercial (variavel)',
+            'sdrs e social selling (fixo)', 'sdrs e social selling (variavel)',
+            'closers (fixo)', 'closers (variavel)',
+            'rescisao do contrato (comercial)', 'estagiarios (comercial)'],
+  midia:   ['meta ads', 'google ads', 'social media', 'outras despesas de marketing'],
+  ferramentas: ['crm', 'programas e automacoes (comercial)', 'robo ia', 'robo i.a.', 'voip', 'v.o.i.p.']
+};
+function bucketDe(rotulo) {
+  const k = normCab(rotulo);
+  for (const b of Object.keys(BUCKET_COMERCIAL)) {
+    if (BUCKET_COMERCIAL[b].some(x => normCab(x) === k)) return b;
+  }
+  return 'outros';
+}
+
+async function carregarFinanceiro() {
+  const linhas = await lerAba(CONFIG.SHEETS.financeiro, 'DRE COMERCIAL', {
+    esperado: ['JANEIRO', 'DEZEMBRO']
+  });
+  const t = tabela(linhas, 0);
+  const ano = new Date().getFullYear();
+
+  /* Coluna de cada mes, achada pelo NOME - a planilha tem PROJECAO antes e
+     MEDIA/ACUMULADO depois, e a posicao pode mudar. */
+  const colMes = DRE_MESES.map(m => idxDe(t, [m]));
+  const iProj = idxDe(t, ['PROJECAO']);
+
+  const linhaDe = l => {
+    const o = { rotulo: String(l[0] || '').trim(), meses: {}, projecao: iProj >= 0 ? num(l[iProj]) : 0, total: 0 };
+    colMes.forEach((c, i) => {
+      if (c < 0) return;
+      const v = num(l[c]);
+      o.meses[ano + '-' + String(i + 1).padStart(2, '0')] = v;
+      o.total += v;
+    });
+    return o;
+  };
+
+  const todas = t.linhas.filter(l => String(l[0] || '').trim()).map(linhaDe);
+  const achar = txt => {
+    const k = normCab(txt);
+    return todas.find(x => normCab(x.rotulo) === k) ||
+           todas.find(x => normCab(x.rotulo).indexOf(k) === 0) || null;
+  };
+
+  /* As linhas de custo do setor comercial sao as que ficam ENTRE o cabecalho
+     "(-) SETOR COMERCIAL" e a proxima secao "(-) IMPOSTOS". */
+  const iCom = todas.findIndex(x => normCab(x.rotulo).indexOf('(-) setor comercial') === 0);
+  const iImp = todas.findIndex((x, i) => i > iCom && normCab(x.rotulo).indexOf('(-) impostos') === 0);
+  const itens = (iCom >= 0 ? todas.slice(iCom + 1, iImp > iCom ? iImp : undefined) : [])
+    .filter(x => x.rotulo.indexOf('(') !== 0 && x.total !== 0)
+    .map(x => Object.assign({ bucket: bucketDe(x.rotulo) }, x));
+
+  /* Meses com movimento: o resto do ano esta zerado na planilha e entraria
+     como "custo zero", nao como "mes que ainda nao aconteceu". */
+  const receita = achar('(+) RECEITAS');
+  const comercial = achar('(-) SETOR COMERCIAL');
+  const mesesAtivos = Object.keys((receita && receita.meses) || {})
+    .filter(k => (receita && receita.meses[k]) || (comercial && comercial.meses[k]));
+
+  return {
+    ano: ano, meses: mesesAtivos, itens: itens, todas: todas,
+    receita: receita,
+    honorarios: achar('HONORARIOS INICIAIS'),
+    bancarias: achar('(-) DESPESAS BANCARIAS'),
+    rateio: achar('(-) SETOR PROCESSUAL'),
+    comercial: comercial,
+    impostos: achar('(-) IMPOSTOS'),
+    despesas: achar('(=) TOTAL DESPESAS'),
+    lucro: achar('(=) LUCRO LIQUIDO')
+  };
+}
+
+/* ----------------------------------------------------- 6. HISTORICO (antiga)
    Planilha antiga: uso so o acumulado do ano, que e o unico recorte com
    estrutura estavel entre as ~80 abas. */
 async function carregarHistorico() {
@@ -1408,6 +1650,7 @@ const FONTES = [
   { k: 'metaDia',  nome: 'Campanhas Meta Ads - Insights diarios', papel: 'Investimento, CPL e desempenho diario',  sheet: 'meta',     fn: carregarMetaDia,   critica: false },
   { k: 'metaCamp', nome: 'Campanhas Meta Ads - Campanhas',    papel: 'Status e orcamento das campanhas',           sheet: 'meta',     fn: carregarMetaCamp,  critica: false },
   { k: 'metaReun', nome: 'Campanhas Meta Ads - Reunioes',     papel: 'Reunioes marcadas vindas do CRM',            sheet: 'meta',     fn: carregarMetaReun,  critica: false },
+  { k: 'fin',      nome: 'FLUXO FINANCEIRO 2026 - DRE COMERCIAL', papel: 'Custo real do setor comercial, CAC e margem', sheet: 'financeiro', fn: carregarFinanceiro, critica: false },
   { k: 'kommo',    nome: 'Leads Kommo [DASHBOARDS]',          papel: 'Pre-qualificacao lead a lead',               sheet: 'kommo',    fn: carregarKommo,     critica: false },
   { k: 'hist',     nome: 'Metas e Resultados (antiga)',       papel: 'Acumulado do ano, base historica',           sheet: 'antiga',   fn: carregarHistorico, critica: false }
 ];
@@ -1491,23 +1734,35 @@ const tipLinha = (cor, rot, val) =>
   '<div class="d-linha">' + (cor ? '<span class="d-marca" style="background:' + cor + '"></span>' : '') +
   '<span>' + rot + '</span><span class="d-val">' + val + '</span></div>';
 
+/* ===== SISTEMA DE COORDENADAS =====
+   O viewBox e escrito em unidades que valem ~1px na largura tipica de um
+   cartao (600). Com width:100% e altura automatica, o SVG mantem a proporcao
+   do viewBox e o texto escala junto, uniformemente.
+
+   O erro a evitar aqui: viewBox estreito (100 unidades) com width:100%. A
+   altura vira 6x a largura do cartao - um grafico de 1.100px de altura - e
+   forcar a altura por CSS junto com preserveAspectRatio="none" distorce o
+   texto na horizontal. Por isso: viewBox largo e escala uniforme. */
+const VW = 600;
+
 /* ---------------------------------------------------------- COLUNAS (tempo) */
 function vizColunas(o) {
   const dados = o.dados || [];
   if (!dados.length) return '<div class="vazio">Sem dados no recorte.</div>';
-  const W = 100, H = o.altura || 190;
-  const mE = 7.5, mD = 1.5, mT = o.rotulos === false ? 3 : 9, mB = 13;
+  const W = VW, H = o.altura || 230;
+  const mE = 52, mD = 12, mT = o.rotulos === false ? 12 : 22, mB = 30;
   const fmt = o.fmt || n0;
   const topo = escalaTopo(Math.max.apply(null, dados.map(d => d.v).concat([0])));
   const pw = (W - mE - mD) / dados.length;
-  const bw = Math.max(1.2, Math.min(pw * 0.62, 7));
+  const bw = Math.max(4, Math.min(pw * 0.6, 44));
   const ph = H - mT - mB;
   const y = v => mT + ph - (v / topo) * ph;
+  const passo = Math.ceil(dados.length / 12);
 
-  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">';
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
   ticks(topo, 4).forEach(t => {
     s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + y(t) + '" y2="' + y(t) + '" vector-effect="non-scaling-stroke"/>';
-    s += '<text class="eixo" x="' + (mE - 1.5) + '" y="' + (y(t) + 1.2) + '" text-anchor="end" style="font-size:3.6px">' + (o.fmtEixo || n0)(t) + '</text>';
+    s += '<text class="eixo" x="' + (mE - 8) + '" y="' + (y(t) + 3.6) + '" text-anchor="end">' + (o.fmtEixo || n0)(t) + '</text>';
   });
   dados.forEach((d, i) => {
     const cx = mE + pw * i + pw / 2;
@@ -1517,12 +1772,12 @@ function vizColunas(o) {
       (d.extra || []).map(e => tipLinha(e.cor, esc(e.rot), e.val)).join('');
     s += '<g data-tip="' + esc(tip) + '">';
     s += '<rect class="alvo" x="' + (cx - pw / 2) + '" y="' + mT + '" width="' + pw + '" height="' + ph + '"/>';
-    s += '<path d="' + barraTopoRedondo(cx - bw / 2, y(d.v), bw, h, 1.1) + '" fill="' + cor + '"/>';
+    s += '<path d="' + barraTopoRedondo(cx - bw / 2, y(d.v), bw, h, 4) + '" fill="' + cor + '"/>';
     s += '</g>';
     if (o.rotulos !== false && dados.length <= 14 && d.v > 0)
-      s += '<text class="rotulo-dado" x="' + cx + '" y="' + (y(d.v) - 2.2) + '" text-anchor="middle" style="font-size:3.5px">' + fmt(d.v) + '</text>';
-    if (dados.length <= 18 || i % Math.ceil(dados.length / 14) === 0)
-      s += '<text class="eixo" x="' + cx + '" y="' + (H - 4) + '" text-anchor="middle" style="font-size:3.6px">' + esc(d.k) + '</text>';
+      s += '<text class="rotulo-dado" x="' + cx + '" y="' + (y(d.v) - 7) + '" text-anchor="middle">' + fmt(d.v) + '</text>';
+    if (i % passo === 0)
+      s += '<text class="eixo" x="' + cx + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(d.k) + '</text>';
   });
   return s + '</svg>';
 }
@@ -1532,26 +1787,28 @@ function vizBarras(o) {
   const dados = (o.dados || []).filter(d => d.v != null);
   if (!dados.length) return '<div class="vazio">Sem dados no recorte.</div>';
   const fmt = o.fmt || n0;
-  const linha = 23, W = 100;
-  const H = dados.length * linha + 6;
-  const rotW = o.rotuloW || 34;
+  const linha = 30, W = VW;
+  const H = dados.length * linha + 10;
+  const rotW = o.rotuloW || 196;
+  const numW = 96;
   const max = Math.max.apply(null, dados.map(d => Math.abs(d.v)).concat([0])) || 1;
-  const pista = W - rotW - 13;
+  const pista = W - rotW - numW;
 
-  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMinYMin meet" role="img">';
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
   dados.forEach((d, i) => {
-    const yb = 3 + i * linha;
+    const yb = 5 + i * linha;
+    const meio = yb + linha / 2;
     const w = (Math.abs(d.v) / max) * pista;
     const cor = d.cor || o.cor || 'var(--s1)';
     const tip = '<span class="d-tit">' + esc(d.k) + '</span>' + tipLinha(cor, o.nome || 'Valor', fmt(d.v)) +
       (d.extra || []).map(e => tipLinha(e.cor, esc(e.rot), e.val)).join('');
     s += '<g data-tip="' + esc(tip) + '">';
     s += '<rect class="alvo" x="0" y="' + yb + '" width="' + W + '" height="' + linha + '"/>';
-    s += '<text class="eixo" x="0" y="' + (yb + linha / 2 + 1.3) + '" style="font-size:3.9px;fill:var(--texto-2)">' +
-         esc(d.k.length > 30 ? d.k.slice(0, 29) + '…' : d.k) + '</text>';
-    s += '<rect x="' + rotW + '" y="' + (yb + linha / 2 - 3.4) + '" width="' + pista + '" height="6.8" rx="2" fill="var(--bg4)" opacity=".55"/>';
-    s += '<path d="' + barraFimRedondo(rotW, yb + linha / 2 - 3.4, Math.max(w, 1), 6.8, 2) + '" fill="' + cor + '"/>';
-    s += '<text class="rotulo-dado" x="' + (W - 0.5) + '" y="' + (yb + linha / 2 + 1.3) + '" text-anchor="end" style="font-size:3.9px">' + fmt(d.v) + '</text>';
+    s += '<text class="eixo" x="0" y="' + (meio + 4) + '" style="fill:var(--texto-2);font-size:11.5px">' +
+         esc(d.k.length > 32 ? d.k.slice(0, 31) + '…' : d.k) + '</text>';
+    s += '<rect x="' + rotW + '" y="' + (meio - 6) + '" width="' + pista + '" height="12" rx="4" fill="var(--bg4)" opacity=".55"/>';
+    s += '<path d="' + barraFimRedondo(rotW, meio - 6, Math.max(w, 2), 12, 4) + '" fill="' + cor + '"/>';
+    s += '<text class="rotulo-dado" x="' + (W - 2) + '" y="' + (meio + 4) + '" text-anchor="end" style="font-size:11.5px">' + fmt(d.v) + '</text>';
     s += '</g>';
   });
   return s + '</svg>';
@@ -1562,8 +1819,8 @@ function vizLinhas(o) {
   const x = o.x || [];
   const series = (o.series || []).filter(s => s.vals && s.vals.length);
   if (!x.length || !series.length) return '<div class="vazio">Sem dados no recorte.</div>';
-  const W = 100, H = o.altura || 200;
-  const mE = 8, mD = 2, mT = 5, mB = 13;
+  const W = VW, H = o.altura || 240;
+  const mE = 56, mD = 14, mT = 16, mB = 30;
   const fmt = o.fmt || n0;
   let max = 0;
   series.forEach(s => s.vals.forEach(v => { if (v != null && v > max) max = v; }));
@@ -1572,11 +1829,12 @@ function vizLinhas(o) {
   const ph = H - mT - mB;
   const px = i => mE + pw * i + (x.length > 1 ? 0 : (W - mE - mD) / 2);
   const py = v => mT + ph - (v / topo) * ph;
+  const passo = Math.ceil(x.length / 12);
 
-  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">';
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
   ticks(topo, 4).forEach(t => {
     s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + py(t) + '" y2="' + py(t) + '" vector-effect="non-scaling-stroke"/>';
-    s += '<text class="eixo" x="' + (mE - 1.5) + '" y="' + (py(t) + 1.2) + '" text-anchor="end" style="font-size:3.6px">' + (o.fmtEixo || n0)(t) + '</text>';
+    s += '<text class="eixo" x="' + (mE - 8) + '" y="' + (py(t) + 3.6) + '" text-anchor="end">' + (o.fmtEixo || n0)(t) + '</text>';
   });
   series.forEach((se, si) => {
     const cor = se.cor || corSerie(si);
@@ -1589,13 +1847,13 @@ function vizLinhas(o) {
       const prim = se.vals.findIndex(v => v != null);
       let ult = -1; se.vals.forEach((v, i) => { if (v != null) ult = i; });
       if (prim >= 0 && ult > prim) {
-        s += '<path d="' + d + 'L' + px(ult) + ',' + py(0) + 'L' + px(prim) + ',' + py(0) + 'Z" fill="' + cor + '" opacity=".13"/>';
+        s += '<path d="' + d + 'L' + px(ult) + ',' + py(0) + 'L' + px(prim) + ',' + py(0) + 'Z" fill="' + cor + '" opacity=".12"/>';
       }
     }
     s += '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
     if (x.length <= 26) se.vals.forEach((v, i) => {
       if (v == null) return;
-      s += '<circle class="ponto" cx="' + px(i) + '" cy="' + py(v) + '" r="1.5" fill="' + cor + '"/>';
+      s += '<circle class="ponto" cx="' + px(i) + '" cy="' + py(v) + '" r="3.4" fill="' + cor + '"/>';
     });
   });
   /* Faixa por ponto no eixo X: um alvo de hover maior que a marca, com todas
@@ -1605,10 +1863,10 @@ function vizLinhas(o) {
       se.vals[i] == null ? '' : tipLinha(se.cor || corSerie(si), esc(se.nome), fmt(se.vals[i]))).join('');
     s += '<g class="banda" data-tip="' + esc(tip) + '">';
     s += '<line class="crosshair" x1="' + px(i) + '" x2="' + px(i) + '" y1="' + mT + '" y2="' + (mT + ph) + '" vector-effect="non-scaling-stroke"/>';
-    s += '<rect class="alvo" x="' + (px(i) - (pw || 8) / 2) + '" y="' + mT + '" width="' + (pw || 8) + '" height="' + ph + '"/>';
+    s += '<rect class="alvo" x="' + (px(i) - (pw || 40) / 2) + '" y="' + mT + '" width="' + (pw || 40) + '" height="' + ph + '"/>';
     s += '</g>';
-    if (x.length <= 18 || i % Math.ceil(x.length / 12) === 0)
-      s += '<text class="eixo" x="' + px(i) + '" y="' + (H - 4) + '" text-anchor="middle" style="font-size:3.6px">' + esc(rot) + '</text>';
+    if (i % passo === 0)
+      s += '<text class="eixo" x="' + px(i) + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(rot) + '</text>';
   });
   return s + '</svg>';
 }
@@ -1644,12 +1902,12 @@ function vizDonut(o) {
   const dados = (o.dados || []).filter(d => d.v > 0);
   if (!dados.length) return '<div class="vazio">Sem dados no recorte.</div>';
   const total = dados.reduce((a, d) => a + d.v, 0);
-  const R = 42, r = 27, cx = 50, cy = 50;
+  const R = 104, r = 68, cx = 120, cy = 120;
   const fmt = o.fmt || n0;
-  /* 2px de respiro entre fatias: um anel do tom da superficie por cima. */
-  const gap = 1.6;
+  /* 2px de respiro entre fatias, em graus na borda externa. */
+  const gap = 1.4;
   let ang = -90;
-  let s = '<svg class="viz" viewBox="0 0 100 100" style="max-height:200px" role="img">';
+  let s = '<svg class="viz" viewBox="0 0 240 240" style="max-height:232px" role="img">';
   dados.forEach((d, i) => {
     const frac = d.v / total;
     const a0 = ang, a1 = ang + frac * 360;
@@ -1668,8 +1926,8 @@ function vizDonut(o) {
       tipLinha('', 'Participacao', pct(frac * 100, 1));
     s += '<path d="' + p + '" fill="' + cor + '" data-tip="' + esc(tip) + '" style="cursor:default"/>';
   });
-  s += '<text x="50" y="47" text-anchor="middle" style="font-size:11px;font-weight:700;fill:var(--texto)">' + (o.centro || fmt(total)) + '</text>';
-  s += '<text x="50" y="57" text-anchor="middle" style="font-size:5px;fill:var(--texto-muted)">' + esc(o.centroRot || 'total') + '</text>';
+  s += '<text x="120" y="118" text-anchor="middle" style="font-size:30px;font-weight:700;letter-spacing:-0.02em;fill:var(--texto)">' + (o.centro || fmt(total)) + '</text>';
+  s += '<text x="120" y="138" text-anchor="middle" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;fill:var(--texto-muted)">' + esc(o.centroRot || 'total') + '</text>';
   return s + '</svg>';
 }
 
@@ -1678,20 +1936,21 @@ function vizEmpilhado(o) {
   const x = o.x || [];
   const series = o.series || [];
   if (!x.length || !series.length) return '<div class="vazio">Sem dados no recorte.</div>';
-  const W = 100, H = o.altura || 200;
-  const mE = 8, mD = 2, mT = 5, mB = 13;
+  const W = VW, H = o.altura || 240;
+  const mE = 52, mD = 12, mT = 16, mB = 30;
   const fmt = o.fmt || n0;
   const totais = x.map((_, i) => series.reduce((a, s) => a + (s.vals[i] || 0), 0));
   const topo = escalaTopo(Math.max.apply(null, totais.concat([0])));
   const pw = (W - mE - mD) / x.length;
-  const bw = Math.max(1.5, Math.min(pw * 0.64, 9));
+  const bw = Math.max(5, Math.min(pw * 0.6, 48));
   const ph = H - mT - mB;
   const py = v => mT + ph - (v / topo) * ph;
+  const passo = Math.ceil(x.length / 12);
 
-  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">';
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
   ticks(topo, 4).forEach(t => {
     s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + py(t) + '" y2="' + py(t) + '" vector-effect="non-scaling-stroke"/>';
-    s += '<text class="eixo" x="' + (mE - 1.5) + '" y="' + (py(t) + 1.2) + '" text-anchor="end" style="font-size:3.6px">' + (o.fmtEixo || n0)(t) + '</text>';
+    s += '<text class="eixo" x="' + (mE - 8) + '" y="' + (py(t) + 3.6) + '" text-anchor="end">' + (o.fmtEixo || n0)(t) + '</text>';
   });
   x.forEach((rot, i) => {
     const cx = mE + pw * i + pw / 2;
@@ -1706,14 +1965,14 @@ function vizEmpilhado(o) {
       if (v <= 0) return;
       const y0 = py(acc + v), alt = py(acc) - py(acc + v);
       acc += v;
-      /* 2px de respiro: encurto a fatia por baixo. */
-      const respiro = Math.min(0.9, alt * 0.18);
-      s += '<rect x="' + (cx - bw / 2) + '" y="' + y0 + '" width="' + bw + '" height="' + Math.max(0.4, alt - respiro) +
-           '" rx="' + (si === series.length - 1 ? 1.1 : 0) + '" fill="' + (se.cor || corSerie(si)) + '"/>';
+      /* 2px de respiro entre fatias: encurto a fatia por baixo. */
+      const respiro = Math.min(2, alt * 0.14);
+      s += '<rect x="' + (cx - bw / 2) + '" y="' + y0 + '" width="' + bw + '" height="' + Math.max(1, alt - respiro) +
+           '" rx="' + (si === series.length - 1 ? 4 : 0) + '" fill="' + (se.cor || corSerie(si)) + '"/>';
     });
     s += '</g>';
-    if (x.length <= 18 || i % Math.ceil(x.length / 12) === 0)
-      s += '<text class="eixo" x="' + cx + '" y="' + (H - 4) + '" text-anchor="middle" style="font-size:3.6px">' + esc(rot) + '</text>';
+    if (i % passo === 0)
+      s += '<text class="eixo" x="' + cx + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(rot) + '</text>';
   });
   return s + '</svg>';
 }
@@ -1890,7 +2149,8 @@ function desenharTabela(id) {
     h += '<tr>';
     t.cols.forEach(c => {
       const num_ = c.tipo && c.tipo !== 'txt' && c.tipo !== 'data';
-      h += '<td class="' + (num_ ? 'num ' : '') + (c.cls || '') + '">' + celula(r, c) + '</td>';
+      /* data-rot alimenta o ::before do modo cartao no telefone. */
+      h += '<td data-rot="' + esc(c.rot) + '" class="' + (num_ ? 'num ' : '') + (c.cls || '') + '">' + celula(r, c) + '</td>';
     });
     h += '</tr>';
   });
@@ -2070,6 +2330,18 @@ function serieMensal(lista, dataFn, valorFn, meses) {
 }
 
 const soma  = (l, f) => l.reduce((a, r) => a + (f(r) || 0), 0);
+
+/* ===== TICKET MEDIO =====
+   Conta SO quem teve honorario inicial. Fechamento com honorario condicionado
+   a liminar entra na planilha como R$ 0: e venda, mas nao e preco. Deixar
+   esses zeros no divisor achataria o ticket (R$ 888 no lugar de R$ 2.565 em
+   out/26) e esconderia por quanto o escritorio de fato negocia.
+   A contagem de CLIENTES segue sendo todos - o que muda e so o ticket. */
+function ticketMedio(lista) {
+  const com = (lista || []).filter(r => (r.honIni || 0) > 0);
+  return com.length ? soma(com, r => r.honIni) / com.length : null;
+}
+const semTicket = lista => (lista || []).filter(r => (r.honIni || 0) <= 0).length;
 const media = (l, f) => { const v = l.map(f).filter(x => x != null && isFinite(x) && x !== 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
 
 /* KR do mes na planilha de metas, por nome. */
@@ -2178,9 +2450,10 @@ function telaVisao() {
     selo: krHon ? selo(nivelMeta(taxa(honEsc, krHon.metaProp)), 'ritmo ' + pctOuTraco(taxa(honEsc, krHon.metaProp))) : null
   });
   h += kpi({
-    rotulo: 'Ticket medio', valor: brl0(cliMes.length ? honMes / cliMes.length : 0), pequeno: true,
-    nota: cliMes.filter(r => r.condicionado).length ? n0(cliMes.filter(r => r.condicionado).length) +
-      ' fechamento(s) com honorario condicionado a liminar entram como R$ 0 e puxam o ticket para baixo' : 'Honorarios iniciais / clientes do mes'
+    rotulo: 'Ticket medio', valor: ticketMedio(cliMes) == null ? '&mdash;' : brl0(ticketMedio(cliMes)), pequeno: true,
+    dica: 'Media dos honorarios iniciais entre os clientes que tiveram honorario inicial. Fechamento condicionado a liminar (R$ 0) nao entra no calculo: e venda, mas nao e preco.',
+    nota: semTicket(cliMes) ? 'Entre os ' + n0(cliMes.length - semTicket(cliMes)) + ' com honorario inicial &mdash; ' +
+      n0(semTicket(cliMes)) + ' condicionado(s) a liminar ficam fora' : 'Sobre os ' + n0(cliMes.length) + ' clientes do mes'
   });
   h += kpi({
     rotulo: 'Reunioes realizadas', valor: n0(reunMes),
@@ -2247,7 +2520,7 @@ function telaVisao() {
   h += '<div class="grid g-3">';
   const porCloser = semZero(porVolume(agrupar(cli, r => r.closer, r => r.honIni)));
   h += cartao('Honorarios por closer', 'Clientes fechados no recorte.',
-    vizBarras({ dados: porCloser.map((g, i) => ({ k: g.k, v: g.v, cor: corSerie(i), extra: [{ rot: 'Clientes', val: n0(g.n) }, { rot: 'Ticket medio', val: brl0(g.v / g.n) }] })), fmt: brl0, nome: 'Honorarios' }));
+    vizBarras({ dados: porCloser.map((g, i) => ({ k: g.k, v: g.v, cor: corSerie(i), extra: [{ rot: 'Clientes', val: n0(g.n) }, { rot: 'Ticket medio', val: ticketMedio(g.itens) == null ? '—' : brl0(ticketMedio(g.itens)) }] })), fmt: brl0, nome: 'Honorarios' }));
 
   const porProduto = semZero(porVolume(topN(agrupar(cli, r => r.produto, r => r.honIni), 6)));
   h += cartao('Honorarios por produto juridico', 'Concentracao da receita por tese.',
@@ -2551,6 +2824,7 @@ function telaEsteira() {
         (r.parado ? '<span style="color:#f3c45a;font-weight:700">' + n0(r.diasSemToque) + '</span>' : n0(r.diasSemToque)) },
     { k: 'etapaFup', rot: 'FUP feitos', tipo: 'num',
       html: r => barraCelula(r.fupFeitos, (DADOS.atend.fups || []).length || 9, 'var(--s1)', n0(r.fupFeitos) + '/' + ((DADOS.atend.fups || []).length || 9)) },
+    { k: 'proximoFup', rot: 'Proximo FUP', tipo: 'data' },
     { k: 'temperatura', rot: 'Temp.', tipo: 'txt' },
     { k: 'motivoPerda', rot: 'Motivo da perda', tipo: 'txt' },
     { k: 'telefone', rot: 'Telefone', tipo: 'txt' }
@@ -2576,11 +2850,13 @@ function telaVendas() {
   h += '<div class="grid g-kpi">';
   h += kpi({ rotulo: 'Clientes fechados', valor: n0(cli.length) });
   h += kpi({ rotulo: 'Honorarios iniciais', valor: brl0(hon), pequeno: true });
-  h += kpi({ rotulo: 'Ticket medio', valor: brl0(cli.length ? hon / cli.length : 0), pequeno: true,
-    nota: 'Sobre todos os clientes do recorte' });
-  h += kpi({ rotulo: 'Ticket medio com valor', valor: brl0(comValor.length ? soma(comValor, r => r.honIni) / comValor.length : 0), pequeno: true,
-    nota: 'Exclui ' + n0(cli.length - comValor.length) + ' fechamento(s) de honorario R$ 0',
-    dica: 'Fechamentos com honorario condicionado a liminar entram como R$ 0 na planilha. Este ticket olha so quem tem honorario inicial.' });
+  h += kpi({ rotulo: 'Ticket medio', valor: ticketMedio(cli) == null ? '&mdash;' : brl0(ticketMedio(cli)), pequeno: true,
+    dica: 'Media dos honorarios iniciais entre os clientes que tiveram honorario inicial.',
+    nota: semTicket(cli) ? 'Entre os ' + n0(comValor.length) + ' com honorario inicial &mdash; ' +
+      n0(semTicket(cli)) + ' condicionado(s) a liminar ficam fora' : 'Sobre os ' + n0(cli.length) + ' clientes do recorte' });
+  h += kpi({ rotulo: 'Fechados com honorario inicial', valor: n0(comValor.length), pequeno: true,
+    nota: pctOuTraco(taxa(comValor.length, cli.length), 0) + ' dos clientes do recorte',
+    dica: 'Os demais fecharam com honorario condicionado a liminar: contam como cliente, mas nao entram no ticket medio.' });
   h += kpi({ rotulo: 'Entrada recebida', valor: brl0(entrada), pequeno: true,
     nota: pctOuTraco(taxa(entrada, hon), 0) + ' dos honorarios iniciais' });
   h += kpi({ rotulo: 'Pagamento confirmado', valor: pctOuTraco(taxa(cli.filter(r => r.pagoOk).length, cli.length), 0),
@@ -2592,8 +2868,8 @@ function telaVendas() {
   h += '</div>';
 
   if (cond.length) h += aviso('info', '<b>' + n0(cond.length) + ' fechamento(s) do recorte tem honorario inicial R$ 0 com pagamento em Liminar.</b> ' +
-    'Sao vendas com honorario condicionado (politica D28), nao vendas sem valor. Elas entram na contagem de clientes e puxam o ticket medio para baixo &mdash; ' +
-    'por isso o painel mostra o ticket nas duas leituras.');
+    'Sao vendas com honorario condicionado (politica D28), nao vendas sem valor. Elas contam como cliente, ' +
+    'mas <b>ficam fora do ticket medio</b>: e venda, nao e preco. O ticket mede por quanto o escritorio negocia.');
 
   h += '<div class="secao-titulo">Evolucao</div>';
   h += '<div class="grid g-2">';
@@ -2604,7 +2880,7 @@ function telaVendas() {
     vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: cli.filter(r => r.mes === k).length })), cor: 'var(--s3)', nome: 'Clientes' }));
   h += cartao('Ticket medio por mes', 'Honorarios iniciais divididos pelos clientes do mes.',
     vizLinhas({ x: meses.map(rotuloMesCurto), fmt: brl0, area: true, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k',
-      series: [{ nome: 'Ticket medio', vals: meses.map(k => { const g = cli.filter(r => r.mes === k); return g.length ? soma(g, x => x.honIni) / g.length : null; }), cor: 'var(--s4)' }] }));
+      series: [{ nome: 'Ticket medio', vals: meses.map(k => ticketMedio(cli.filter(r => r.mes === k))), cor: 'var(--s4)' }] }));
   h += cartao('Tempo para fechar', 'Media de dias da reuniao ao fechamento, por mes.',
     vizLinhas({ x: meses.map(rotuloMesCurto), fmt: v => n0(v) + ' d', area: true,
       series: [{ nome: 'Dias para fechar', vals: meses.map(k => media(cli.filter(r => r.mes === k), r => r.diasFechar)), cor: 'var(--s7)' }] }));
@@ -2616,7 +2892,7 @@ function telaVendas() {
     const g = semZero(porVolume(topN(agrupar(cli, r => r[campo], r => r.honIni), 7)));
     h += cartao(rot, 'Honorarios iniciais no recorte.',
       vizBarras({ dados: g.map((x, i) => ({ k: x.k, v: x.v, cor: x.cor || corSerie(i),
-        extra: [{ rot: 'Clientes', val: n0(x.n) }, { rot: 'Ticket medio', val: brl0(x.n ? x.v / x.n : 0) }] })), fmt: brl0, nome: 'Honorarios' }));
+        extra: [{ rot: 'Clientes', val: n0(x.n) }, { rot: 'Ticket medio', val: ticketMedio(x.itens) == null ? '—' : brl0(ticketMedio(x.itens)) }] })), fmt: brl0, nome: 'Honorarios' }));
   });
   h += '</div>';
 
@@ -2739,6 +3015,186 @@ function telaTrafego() {
 }
 
 /* ==========================================================================
+   TELA - FINANCEIRO E EFICIENCIA (CAC real)
+   --------------------------------------------------------------------------
+   O CAC de midia responde "quanto custou o anuncio por cliente". O CAC real
+   responde "quanto custou a MAQUINA comercial por cliente": SDR e closer
+   (fixo + variavel), lider, estagiarios, CRM, automacoes e midia. E a
+   diferenca entre os dois que diz se o gargalo e de trafego ou de operacao.
+   ========================================================================== */
+function telaFinanceiro() {
+  if (ERROS.fin) return aviso('critico', '<b>DRE COMERCIAL nao entrou:</b> ' + esc(ERROS.fin));
+  const f = DADOS.fin;
+  if (!f || !f.comercial) return aviso('atencao', 'A aba DRE COMERCIAL foi lida, mas nao achei a linha "(-) SETOR COMERCIAL".');
+
+  const cli = DADOS.clientes ? DADOS.clientes.reg : [];
+  const at  = DADOS.atend ? DADOS.atend.reg : [];
+  const md  = DADOS.metaDia ? DADOS.metaDia.reg : [];
+
+  /* So os meses que a DRE ja fechou E que estao no recorte de periodo. */
+  const noRec = k => { const fx = faixa(); const d = new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, 15); return d >= fx.de && d <= fx.ate; };
+  const meses = f.meses.filter(noRec);
+  if (!meses.length) return aviso('info', 'Nenhum mes da DRE COMERCIAL cai no periodo selecionado. Amplie o periodo no filtro acima.');
+
+  const somaMes = (linha, ks) => (ks || meses).reduce((a, k) => a + ((linha && linha.meses[k]) || 0), 0);
+  const nClientes = ks => cli.filter(r => (ks || meses).indexOf(r.mes) >= 0).length;
+  const honComp   = ks => soma(cli.filter(r => (ks || meses).indexOf(r.mes) >= 0), r => r.honIni);
+  const nReunioes = ks => at.filter(r => r.dAtend && (ks || meses).indexOf(r.mes) >= 0).length;
+  const nLeads    = ks => soma(md.filter(r => (ks || meses).indexOf(r.mes) >= 0), r => r.leadsTotal);
+
+  const custoCom = somaMes(f.comercial);
+  const custoMidia = soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i));
+  const custoPessoas = soma(f.itens.filter(i => i.bucket === 'pessoas'), i => somaMes(i));
+  const custoFerr = soma(f.itens.filter(i => i.bucket === 'ferramentas'), i => somaMes(i));
+  const receita = somaMes(f.receita);
+  const lucro = somaMes(f.lucro);
+  const rateio = somaMes(f.rateio);
+  const impostos = somaMes(f.impostos);
+  const bancarias = somaMes(f.bancarias);
+  const clientes = nClientes();
+  const cacReal = clientes ? custoCom / clientes : null;
+  const cacMidia = clientes ? custoMidia / clientes : null;
+  const tk = ticketMedio(cli.filter(r => meses.indexOf(r.mes) >= 0));
+
+  let h = '';
+  h += '<div class="secao-titulo primeiro">Financeiro do comercial &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += aviso('info', 'Fonte: aba <b>DRE COMERCIAL</b> do FLUXO FINANCEIRO ' + f.ano + '. ' +
+    'A DRE e por <b>regime de caixa</b> (o que entrou e saiu no mes) e a planilha de clientes e por ' +
+    '<b>competencia</b> (contrato assinado no mes) &mdash; os dois numeros de receita nao batem de proposito. ' +
+    'O painel mostra os dois e a diferenca, em vez de escolher um.');
+
+  h += '<div class="grid g-kpi">';
+  h += kpi({ rotulo: 'Receita (caixa)', valor: brl0(receita), pequeno: true,
+    nota: 'Honorarios iniciais recebidos na DRE' });
+  h += kpi({ rotulo: 'Custo do setor comercial', valor: brl0(custoCom), pequeno: true,
+    nota: 'Pessoas + midia + ferramentas' });
+  h += kpi({ rotulo: 'Lucro liquido do comercial', valor: brl0(lucro), pequeno: true,
+    selo: selo(lucro > 0 ? 'ok' : lucro === 0 ? 'neutro' : 'critico', lucro > 0 ? 'positivo' : 'no vermelho'),
+    nota: 'Ja descontados rateio, impostos e taxas' });
+  h += kpi({ rotulo: 'Margem liquida', valor: pctOuTraco(taxa(lucro, receita), 1),
+    dica: 'Lucro liquido do setor sobre a receita de caixa do setor.' });
+  h += kpi({ rotulo: 'CAC real', valor: cacReal == null ? '&mdash;' : brl0(cacReal), pequeno: true,
+    dica: 'Custo do setor comercial inteiro dividido pelos clientes fechados no mesmo periodo. Inclui SDR, closer, lider, estagiarios, CRM, automacoes e midia.',
+    nota: n0(clientes) + ' clientes no periodo' });
+  h += kpi({ rotulo: 'CAC de midia', valor: cacMidia == null ? '&mdash;' : brl0(cacMidia), pequeno: true,
+    nota: cacReal && cacMidia ? 'Midia e ' + pct(taxa(custoMidia, custoCom), 0) + ' do custo comercial' : '' });
+  h += kpi({ rotulo: 'Ticket medio', valor: tk == null ? '&mdash;' : brl0(tk), pequeno: true,
+    nota: 'So quem teve honorario inicial' });
+  h += kpi({ rotulo: 'Margem por cliente', valor: (tk != null && cacReal != null) ? brl0(tk - cacReal) : '&mdash;', pequeno: true,
+    selo: (tk != null && cacReal != null) ? selo(tk - cacReal > 0 ? 'ok' : 'critico',
+      tk - cacReal > 0 ? 'ticket cobre o CAC' : 'CAC acima do ticket') : null,
+    dica: 'Ticket medio menos CAC real. Nao inclui honorario de exito, que entra depois e muda esta conta.' });
+  h += kpi({ rotulo: 'Retorno sobre o custo', valor: custoCom ? n1(receita / custoCom) + 'x' : '&mdash;', pequeno: true,
+    selo: custoCom ? selo(receita / custoCom >= 2 ? 'ok' : receita / custoCom >= 1 ? 'atencao' : 'critico',
+      receita / custoCom >= 2 ? 'saudavel' : receita / custoCom >= 1 ? 'no limite' : 'queima caixa') : null,
+    dica: 'Receita de caixa dividida pelo custo do setor comercial. Diferente do ROI de midia, que olha so o anuncio.' });
+  h += '</div>';
+
+  /* ----- Evolucao ----- */
+  h += '<div class="secao-titulo">Evolucao mes a mes</div>';
+  h += '<div class="grid g-2">';
+  const eixo = meses.map(rotuloMesCurto);
+
+  h += cartao('Receita e custo do comercial', 'Mesma unidade (R$), por isso dividem o grafico. A distancia entre as linhas e o lucro.',
+    vizLinhas({ x: eixo, fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', series: [
+      { nome: 'Receita (caixa)', vals: meses.map(k => somaMes(f.receita, [k])), cor: 'var(--s1)' },
+      { nome: 'Custo do comercial', vals: meses.map(k => somaMes(f.comercial, [k])), cor: 'var(--s2)' }
+    ] }) + legenda([{ nome: 'Receita (caixa)', cor: 'var(--s1)' }, { nome: 'Custo do comercial', cor: 'var(--s2)' }]));
+
+  /* Lucro: positivo x negativo pede par divergente, nao rampa. */
+  h += cartao('Lucro liquido do comercial', 'Barra abaixo de zero e mes em que o setor consumiu caixa.',
+    vizColunas({ dados: meses.map(k => {
+      const v = somaMes(f.lucro, [k]);
+      return { k: rotuloMesCurto(k), rot: rotuloMes(k), v: Math.abs(v),
+               cor: v >= 0 ? 'var(--s1)' : 'var(--s8)',
+               extra: [{ rot: v >= 0 ? 'Lucro' : 'Prejuizo', val: brl0(v), cor: v >= 0 ? 'var(--s1)' : 'var(--s8)' },
+                       { rot: 'Receita', val: brl0(somaMes(f.receita, [k])) },
+                       { rot: 'Custo comercial', val: brl0(somaMes(f.comercial, [k])) }] };
+    }), fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Resultado', rotulos: false }) +
+    legenda([{ nome: 'Mes com lucro', cor: 'var(--s1)' }, { nome: 'Mes com prejuizo', cor: 'var(--s8)' }]));
+
+  h += cartao('CAC real x ticket medio', 'As duas em R$ por cliente: quando o CAC encosta no ticket, cada venda nova para de pagar a operacao.',
+    vizLinhas({ x: eixo, fmt: brl0, fmtEixo: v => 'R$' + n0(v), series: [
+      { nome: 'CAC real', vals: meses.map(k => { const n = nClientes([k]); return n ? somaMes(f.comercial, [k]) / n : null; }), cor: 'var(--s2)' },
+      { nome: 'CAC de midia', vals: meses.map(k => { const n = nClientes([k]); return n ? soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k])) / n : null; }), cor: 'var(--s4)' },
+      { nome: 'Ticket medio', vals: meses.map(k => ticketMedio(cli.filter(r => r.mes === k))), cor: 'var(--s3)' }
+    ] }) + legenda([{ nome: 'CAC real', cor: 'var(--s2)' }, { nome: 'CAC de midia', cor: 'var(--s4)' }, { nome: 'Ticket medio', cor: 'var(--s3)' }]));
+
+  h += cartao('Estrutura do custo comercial', 'Quanto do custo e gente, quanto e midia e quanto e ferramenta.',
+    vizEmpilhado({ x: eixo, fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', series: [
+      { nome: 'Pessoas', vals: meses.map(k => soma(f.itens.filter(i => i.bucket === 'pessoas'), i => somaMes(i, [k]))), cor: 'var(--s1)' },
+      { nome: 'Midia', vals: meses.map(k => soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k]))), cor: 'var(--s2)' },
+      { nome: 'Ferramentas', vals: meses.map(k => soma(f.itens.filter(i => i.bucket === 'ferramentas'), i => somaMes(i, [k]))), cor: 'var(--s3)' }
+    ] }) + legenda([
+      { nome: 'Pessoas', cor: 'var(--s1)', val: brl0(custoPessoas) },
+      { nome: 'Midia', cor: 'var(--s2)', val: brl0(custoMidia) },
+      { nome: 'Ferramentas', cor: 'var(--s3)', val: brl0(custoFerr) }]));
+  h += '</div>';
+
+  /* ----- Eficiencia por etapa ----- */
+  h += '<div class="secao-titulo">Custo por etapa do funil</div>';
+  const leads = nLeads(), reun = nReunioes();
+  h += '<div class="grid g-kpi">';
+  h += kpi({ rotulo: 'Custo por lead', valor: leads ? brl(custoCom / leads) : '&mdash;', pequeno: true,
+    nota: n0(leads) + ' leads de midia no periodo', dica: 'Custo comercial inteiro por lead, nao so o anuncio. O CPL da tela de trafego usa so a midia.' });
+  h += kpi({ rotulo: 'Custo por reuniao', valor: reun ? brl0(custoCom / reun) : '&mdash;', pequeno: true,
+    nota: n0(reun) + ' reunioes realizadas' });
+  h += kpi({ rotulo: 'Custo por cliente', valor: cacReal == null ? '&mdash;' : brl0(cacReal), pequeno: true,
+    nota: n0(clientes) + ' clientes fechados' });
+  h += kpi({ rotulo: 'Rateio do processual', valor: brl0(rateio), pequeno: true,
+    dica: 'Parte do custo do setor processual, liderancas e despesas extraordinarias atribuida ao comercial na DRE. Nao entra no CAC: e custo de entrega, nao de aquisicao.' });
+  h += kpi({ rotulo: 'Impostos', valor: brl0(impostos), pequeno: true });
+  h += kpi({ rotulo: 'Taxas bancarias', valor: brl0(bancarias), pequeno: true,
+    nota: pctOuTraco(taxa(bancarias, receita), 1) + ' da receita',
+    dica: 'Custo de maquininha, link e parcelamento. Sobe junto com a fatia de venda parcelada.' });
+  h += '</div>';
+
+  /* ----- Reconciliacao caixa x competencia ----- */
+  h += '<div class="secao-titulo">Caixa x competencia &middot; onde os dois numeros divergem</div>';
+  const recon = meses.map(k => {
+    const caixa = somaMes(f.receita, [k]);
+    const comp = honComp([k]);
+    return { mes: rotuloMes(k), caixa: caixa, comp: comp, dif: caixa - comp,
+             difPct: comp ? ((caixa - comp) / comp) * 100 : null, clientes: nClientes([k]) };
+  });
+  h += cartao('Receita na DRE x honorarios assinados', 'Diferenca grande e sinal de contrato assinado que ainda nao virou caixa &mdash; ou de lancamento faltando em uma das duas planilhas.',
+    tabelaInterativa('fin-recon', [
+      { k: 'mes', rot: 'Mes', tipo: 'txt', cls: 'forte' },
+      { k: 'clientes', rot: 'Clientes', tipo: 'num' },
+      { k: 'comp', rot: 'Assinado (competencia)', tipo: 'moeda0' },
+      { k: 'caixa', rot: 'Recebido (caixa)', tipo: 'moeda0' },
+      { k: 'dif', rot: 'Diferenca', tipo: 'moeda0',
+        html: r => '<span style="color:' + (Math.abs(r.difPct || 0) > 15 ? '#f3c45a' : 'var(--texto-2)') + '">' + brl0(r.dif) + '</span>' },
+      { k: 'difPct', rot: '%', tipo: 'num', ord: false,
+        html: r => r.difPct == null ? '&mdash;' : delta(r.difPct, { fmt: v => pct(v, 0) }) }
+    ], recon, { titulo: 'Caixa x competencia', limite: 24, ativa: false }));
+
+  /* ----- Linhas de custo ----- */
+  h += '<div class="secao-titulo">Linhas de custo do setor comercial</div>';
+  const itens = f.itens.map(i => {
+    const v = somaMes(i);
+    return { rotulo: i.rotulo, bucket: i.bucket, valor: v,
+             share: taxa(v, custoCom), porCliente: clientes ? v / clientes : null,
+             projecao: i.projecao, media: meses.length ? v / meses.length : 0 };
+  }).filter(i => i.valor !== 0).sort((a, b) => b.valor - a.valor);
+  const maxItem = itens.length ? itens[0].valor : 0;
+  const ROT_BUCKET = { pessoas: 'Pessoas', midia: 'Midia', ferramentas: 'Ferramentas', outros: 'Outros' };
+  const COR_BUCKET = { pessoas: 'var(--s1)', midia: 'var(--s2)', ferramentas: 'var(--s3)', outros: 'var(--texto-muted)' };
+  h += tabelaInterativa('fin-itens', [
+    { k: 'rotulo', rot: 'Linha de custo', tipo: 'txt', cls: 'forte wrap' },
+    { k: 'bucket', rot: 'Grupo', tipo: 'txt', ord: false,
+      html: r => '<span style="color:' + COR_BUCKET[r.bucket] + '">&#9679;</span> ' + esc(ROT_BUCKET[r.bucket] || r.bucket) },
+    { k: 'valor', rot: 'Total no periodo', tipo: 'moeda0',
+      html: r => barraCelula(r.valor, maxItem, COR_BUCKET[r.bucket], brl0(r.valor)) },
+    { k: 'share', rot: '% do custo', tipo: 'pct', casas: 1 },
+    { k: 'media', rot: 'Media mensal', tipo: 'moeda0' },
+    { k: 'porCliente', rot: 'Por cliente', tipo: 'moeda0' }
+  ], itens, { ord: 'valor', dir: -1, titulo: 'Linhas de custo do comercial', limite: 30,
+    total: { valor: d => brl0(soma(d, r => r.valor)), porCliente: d => clientes ? brl0(soma(d, r => r.valor) / clientes) : '' } });
+  return h;
+}
+
+/* ==========================================================================
    TELA 6 - EQUIPE
    ========================================================================== */
 function telaEquipe() {
@@ -2761,7 +3217,7 @@ function telaEquipe() {
       nome: nome, reun: reun, abertos: a.filter(r => r.emAberto).length,
       ganhos: ganhos, perdidos: perdidos,
       taxaGanho: taxa(ganhos, ganhos + perdidos),
-      clientes: c.length, hon: hon, ticket: c.length ? hon / c.length : null,
+      clientes: c.length, hon: hon, ticket: ticketMedio(c),
       conv: taxa(c.length, reun), dias: media(c, r => r.diasFechar),
       propAberta: soma(a.filter(r => r.emAberto), r => r.vInicial),
       parados: a.filter(r => r.parado).length
@@ -3029,6 +3485,7 @@ const IC = {
   trafego: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>',
   equipe:  '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   metas:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  fin:     '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
   fontes:  '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
 };
 
@@ -3041,6 +3498,7 @@ const TELAS = [
   { k: 'vendas',  rot: 'Vendas e receita', sub: 'Fechamentos, honorarios, ticket e prazo', fn: telaVendas },
   { grupo: 'Aquisicao' },
   { k: 'trafego', rot: 'Trafego Meta Ads', sub: 'Investimento, CPL, campanhas e retorno', fn: telaTrafego },
+  { k: 'fin',     rot: 'Financeiro e CAC', sub: 'Custo real do comercial, margem e eficiencia', fn: telaFinanceiro },
   { grupo: 'Gestao' },
   { k: 'equipe',  rot: 'Equipe',          sub: 'Desempenho por closer e por SDR', fn: telaEquipe },
   { k: 'metas',   rot: 'Metas e OKRs',    sub: 'Metas do mes, plano de acao e acumulado do ano', fn: telaMetas },
@@ -3416,6 +3874,12 @@ async function iniciar(recarregar) {
 document.getElementById('btnAtualizar').addEventListener('click', () => iniciar(true));
 document.getElementById('btnExportar').addEventListener('click', exportarCSV);
 document.getElementById('btnPlanilhas').addEventListener('click', () => irPara('fontes'));
+document.getElementById('btnFiltros').addEventListener('click', () => {
+  const el = document.getElementById('filtros');
+  el.classList.toggle('aberto');
+  const n = DIMS.reduce((a, d) => a + F[d.k].size, 0) + (F.busca ? 1 : 0);
+  document.getElementById('btnFiltros').classList.toggle('primario', !el.classList.contains('aberto') && n > 0);
+});
 document.getElementById('btnMenu').addEventListener('click', () => {
   document.getElementById('sidebar').classList.add('aberta');
   document.getElementById('sidebarOverlay').classList.add('vis');
