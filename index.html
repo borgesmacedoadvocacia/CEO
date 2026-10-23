@@ -1,0 +1,3447 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Painel do Gestor Comercial | Borges Macedo</title>
+<link rel="icon" type="image/png" href="favicon.png" />
+<meta name="referrer" content="no-referrer" />
+<!-- A pagina so fala com o endpoint das planilhas. Sem CDN, sem rastreador,
+     sem endereco para onde dado possa escapar. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://docs.google.com; base-uri 'none'; form-action 'none'" />
+<script>
+/* Este painel nunca roda dentro de outra pagina: embutido num iframe de
+   terceiro, ele se recusa a renderizar (anti-clickjacking). */
+if (window.self !== window.top) {
+  try { window.top.location.replace(window.location.href); }
+  catch (e) { document.documentElement.innerHTML = '<p style="font:16px sans-serif;padding:2rem;color:#fff;background:#0f1117">Este painel nao pode ser exibido dentro de outra pagina.</p>'; }
+}
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  * { -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    /* ===== Chrome da Central de Dashboards ===== */
+    --bg: #0f1117;
+    --bg2: #161b26;
+    --bg3: #1e2536;
+    --bg4: #232c42;
+    --azul: #2563eb;
+    --azul-claro: #3b82f6;
+    --texto: #e2e8f0;
+    --texto-2: #b6c2d6;
+    --texto-muted: #64748b;
+    --borda: #1e2d4a;
+    --radius: 12px;
+    --sidebar-w: 268px;
+
+    /* ===== Paleta de DADOS (validada para a superfície #161b26, modo escuro) =====
+       Ordem categorica fixa - nunca ciclar, nunca reordenar por ranking.
+       Validada no validate_palette.js: banda de luminosidade, piso de croma,
+       separacao para daltonismo (pior par adjacente dE 8,4) e contraste >= 3:1. */
+    --s1: #3987e5;  /* azul     */
+    --s2: #d95926;  /* laranja  */
+    --s3: #199e70;  /* agua     */
+    --s4: #c98500;  /* amarelo  */
+    --s5: #d55181;  /* magenta  */
+    --s6: #008300;  /* verde    */
+    --s7: #9085e9;  /* violeta  */
+    --s8: #e66767;  /* vermelho */
+
+    /* Rampa ordinal de um so tom (etapas de funil, magnitude) */
+    --r1: #cde2fb; --r2: #9ec5f4; --r3: #6da7ec;
+    --r4: #3987e5; --r5: #256abf; --r6: #184f95;
+
+    /* Status - reservados. Nunca viram "serie 9". Sempre com icone + rotulo. */
+    --ok: #0ca30c;
+    --atencao: #fab219;
+    --grave: #ec835a;
+    --critico: #d03b3b;
+
+    --grade: rgba(148,163,184,0.13);
+  }
+
+  html { font-size: 15px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--texto);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+  .oculto { display: none !important; }
+  ::selection { background: rgba(59,130,246,0.35); }
+
+  /* ===================== LOGIN ===================== */
+  .login-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: radial-gradient(circle at 50% 0%, #1a2338 0%, var(--bg) 62%);
+    display: flex; align-items: center; justify-content: center; padding: 1.25rem;
+    overflow-y: auto;
+  }
+  .login-caixa {
+    width: 100%; max-width: 372px; background: var(--bg2);
+    border: 1px solid var(--borda); border-radius: 16px; padding: 2rem 1.75rem;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+  }
+  .login-logo { display: block; height: 46px; margin: 0 auto 1.15rem; object-fit: contain; }
+  .login-titulo { text-align: center; font-size: 1.02rem; font-weight: 700; letter-spacing: 0.02em; }
+  .login-sub {
+    text-align: center; font-size: 0.72rem; color: var(--texto-muted);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.25rem; margin-bottom: 1.6rem;
+  }
+  .campo-grupo { margin-bottom: 0.9rem; }
+  .campo-rotulo {
+    display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--texto-muted); font-weight: 700; margin-bottom: 0.35rem;
+  }
+  .campo-texto {
+    width: 100%; background: var(--bg3); border: 1px solid var(--borda);
+    color: var(--texto); border-radius: 9px; padding: 0.68rem 0.85rem;
+    font-size: 0.92rem; font-family: inherit; outline: none; transition: border-color .15s;
+  }
+  .campo-texto:focus { border-color: var(--azul-claro); }
+  .campo-texto::placeholder { color: #47536b; }
+  .btn-entrar {
+    width: 100%; margin-top: 0.5rem; padding: 0.72rem;
+    background: var(--azul); border: none; border-radius: 9px;
+    color: #fff; font-size: 0.92rem; font-weight: 700; font-family: inherit;
+    cursor: pointer; transition: background .15s;
+  }
+  .btn-entrar:hover:not(:disabled) { background: var(--azul-claro); }
+  .btn-entrar:disabled { opacity: 0.6; cursor: default; }
+  .login-erro {
+    margin-top: 0.9rem; padding: 0.6rem 0.75rem; border-radius: 8px;
+    background: rgba(208,59,59,0.12); border: 1px solid rgba(208,59,59,0.45);
+    color: #f1a3a3; font-size: 0.79rem; line-height: 1.45; text-align: center;
+  }
+  .login-rodape {
+    margin-top: 1.35rem; padding-top: 1rem; border-top: 1px solid var(--borda);
+    font-size: 0.7rem; color: var(--texto-muted); text-align: center; line-height: 1.55;
+  }
+
+  /* ===================== APP ===================== */
+  .app { display: flex; height: 100%; }
+
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0; height: 100%;
+    background: var(--bg2); border-right: 1px solid var(--borda);
+    display: flex; flex-direction: column; transition: transform .22s ease; z-index: 90;
+  }
+  .sidebar-topo {
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.05rem 1.15rem; border-bottom: 1px solid var(--borda);
+  }
+  .sidebar-logo { height: 42px; max-width: 100%; width: auto; object-fit: contain; }
+  .nav { flex: 1; overflow-y: auto; padding: 0.9rem 0.7rem 1rem; }
+  .nav::-webkit-scrollbar { width: 8px; }
+  .nav::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+  .nav-grupo-titulo {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--texto-muted); font-weight: 700; padding: 0 0.55rem; margin: 0.9rem 0 0.4rem;
+  }
+  .nav-grupo-titulo.primeiro { margin-top: 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left;
+    background: transparent; border: 1px solid transparent; border-radius: 9px;
+    color: var(--texto-2); font-size: 0.85rem; font-weight: 500; font-family: inherit;
+    padding: 0.56rem 0.7rem; margin-bottom: 2px; cursor: pointer; line-height: 1.3;
+    transition: background .13s, color .13s, border-color .13s;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--texto); }
+  .nav-item.ativo { background: var(--bg4); color: #fff; border-color: var(--borda); font-weight: 600; }
+  .nav-item .ico { flex-shrink: 0; width: 17px; height: 17px; opacity: .85; }
+  .nav-item.ativo .ico { opacity: 1; }
+  .sidebar-rodape {
+    padding: 0.85rem 1rem; border-top: 1px solid var(--borda);
+    font-size: 0.68rem; color: var(--texto-muted); line-height: 1.5;
+  }
+  .btn-sair {
+    width: 100%; margin-top: 0.55rem; padding: 0.45rem; background: var(--bg3);
+    border: 1px solid var(--borda); border-radius: 7px; color: var(--texto-2);
+    font-size: 0.74rem; font-family: inherit; font-weight: 600; cursor: pointer;
+  }
+  .btn-sair:hover { background: var(--bg4); color: var(--texto); }
+
+  .conteudo { flex: 1; min-width: 0; height: 100%; overflow-y: auto; }
+  .conteudo::-webkit-scrollbar { width: 10px; }
+  .conteudo::-webkit-scrollbar-track { background: var(--bg); }
+  .conteudo::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 5px; }
+
+  .topo {
+    position: sticky; top: 0; z-index: 50; background: rgba(15,17,23,0.93);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--borda);
+    padding: 0.85rem 1.4rem 0;
+  }
+  .topo-linha { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .btn-menu {
+    display: none; background: var(--bg3); border: 1px solid var(--borda); border-radius: 8px;
+    color: var(--texto); padding: 0.4rem 0.6rem; cursor: pointer; font-size: 1rem; line-height: 1;
+  }
+  .topo-titulo { font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; }
+  .topo-sub { font-size: 0.74rem; color: var(--texto-muted); margin-top: 0.12rem; }
+  .topo-acoes { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .btn-acao {
+    background: var(--bg3); border: 1px solid var(--borda); border-radius: 8px;
+    color: var(--texto-2); font-size: 0.76rem; font-family: inherit; font-weight: 600;
+    padding: 0.44rem 0.72rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;
+  }
+  .btn-acao:hover { background: var(--bg4); color: var(--texto); }
+  .btn-acao.primario { background: var(--azul); border-color: var(--azul); color: #fff; }
+  .btn-acao.primario:hover { background: var(--azul-claro); }
+  .btn-acao svg { width: 13px; height: 13px; }
+
+  /* ===================== FILTROS ===================== */
+  .filtros {
+    display: flex; align-items: flex-end; gap: 0.7rem; flex-wrap: wrap;
+    padding: 0.8rem 0 0.85rem;
+  }
+  .filtro { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+  .filtro-rotulo {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--texto-muted); font-weight: 700;
+  }
+  .filtro select, .filtro input {
+    background: var(--bg3); border: 1px solid var(--borda); color: var(--texto);
+    border-radius: 8px; padding: 0.42rem 0.6rem; font-size: 0.8rem;
+    font-family: inherit; outline: none; min-width: 152px; max-width: 230px;
+  }
+  .filtro select:focus, .filtro input:focus { border-color: var(--azul-claro); }
+  .filtro input[type="search"] { min-width: 215px; }
+  .chip-multi { position: relative; }
+  .chip-botao {
+    background: var(--bg3); border: 1px solid var(--borda); color: var(--texto);
+    border-radius: 8px; padding: 0.42rem 0.6rem; font-size: 0.8rem; font-family: inherit;
+    cursor: pointer; min-width: 152px; text-align: left; display: flex;
+    align-items: center; justify-content: space-between; gap: 0.4rem;
+  }
+  .chip-botao:hover { border-color: var(--azul-claro); }
+  .chip-botao .cnt {
+    background: var(--azul); color: #fff; border-radius: 99px; font-size: 0.64rem;
+    font-weight: 700; padding: 0.05rem 0.35rem; min-width: 1.2em; text-align: center;
+  }
+  .chip-lista {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 70; min-width: 236px;
+    max-height: 330px; overflow-y: auto; background: var(--bg2);
+    border: 1px solid var(--borda); border-radius: 10px; padding: 0.4rem;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  }
+  .chip-lista label {
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.34rem 0.45rem;
+    border-radius: 6px; font-size: 0.8rem; cursor: pointer; color: var(--texto-2);
+  }
+  .chip-lista label:hover { background: var(--bg3); color: var(--texto); }
+  .chip-lista input { accent-color: var(--azul); min-width: auto; }
+  .chip-lista .cl-qtd { margin-left: auto; font-size: 0.7rem; color: var(--texto-muted); font-variant-numeric: tabular-nums; }
+  .chip-lista .cl-acoes { display: flex; gap: 0.3rem; padding: 0.25rem 0.45rem 0.4rem; border-bottom: 1px solid var(--borda); margin-bottom: 0.3rem; }
+  .chip-lista .cl-acoes button {
+    flex: 1; background: var(--bg3); border: 1px solid var(--borda); color: var(--texto-2);
+    border-radius: 6px; font-size: 0.68rem; font-family: inherit; padding: 0.22rem; cursor: pointer;
+  }
+  .chip-lista .cl-acoes button:hover { background: var(--bg4); color: var(--texto); }
+
+  /* ===================== TELAS / CARTOES ===================== */
+  .tela { padding: 1.3rem 1.4rem 3.5rem; }
+  .tela.oculto { display: none; }
+  .secao-titulo {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.11em;
+    color: var(--texto-muted); font-weight: 700; margin: 1.9rem 0 0.75rem;
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  }
+  .secao-titulo.primeiro { margin-top: 0; }
+
+  .grid { display: grid; gap: 0.85rem; }
+  .g-kpi { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .g-2 { grid-template-columns: repeat(auto-fit, minmax(390px, 1fr)); }
+  .g-3 { grid-template-columns: repeat(auto-fit, minmax(292px, 1fr)); }
+
+  .cartao {
+    background: var(--bg2); border: 1px solid var(--borda); border-radius: var(--radius);
+    padding: 1rem 1.1rem; min-width: 0;
+  }
+  .cartao-titulo {
+    font-size: 0.8rem; font-weight: 700; color: var(--texto);
+    display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.15rem; flex-wrap: wrap;
+  }
+  .cartao-sub { font-size: 0.7rem; color: var(--texto-muted); line-height: 1.45; margin-bottom: 0.9rem; }
+
+  /* Ladrilho de indicador */
+  .kpi { background: var(--bg2); border: 1px solid var(--borda); border-radius: var(--radius); padding: 0.95rem 1rem; }
+  .kpi-rotulo {
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--texto-muted); font-weight: 700; display: flex; align-items: center;
+    gap: 0.35rem; margin-bottom: 0.45rem; line-height: 1.3;
+  }
+  .kpi-valor {
+    font-size: 1.62rem; font-weight: 700; letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--texto);
+  }
+  .kpi-valor.sm { font-size: 1.28rem; }
+  .kpi-nota { font-size: 0.7rem; color: var(--texto-muted); margin-top: 0.3rem; line-height: 1.4; }
+  .kpi-spark { margin-top: 0.5rem; height: 32px; }
+  .delta {
+    display: inline-flex; align-items: center; gap: 0.22rem; font-size: 0.72rem;
+    font-weight: 700; font-variant-numeric: tabular-nums; padding: 0.1rem 0.36rem;
+    border-radius: 6px; margin-top: 0.36rem;
+  }
+  .delta svg { width: 10px; height: 10px; }
+  .delta.pos { color: #5fd35f; background: rgba(12,163,12,0.14); }
+  .delta.neg { color: #e98a8a; background: rgba(208,59,59,0.14); }
+  .delta.neu { color: var(--texto-muted); background: rgba(148,163,184,0.1); }
+
+  /* Barra de ritmo (meta) */
+  .ritmo { margin-top: 0.55rem; }
+  .ritmo-trilha { height: 7px; background: var(--bg4); border-radius: 99px; position: relative; }
+  .ritmo-fill { height: 100%; border-radius: 99px; transition: width .4s ease; }
+  .ritmo-alvo { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--texto-2); opacity: .8; border-radius: 1px; }
+  .ritmo-legenda {
+    display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.66rem;
+    color: var(--texto-muted); margin-top: 0.32rem; font-variant-numeric: tabular-nums;
+  }
+
+  /* Selo de status - cor sempre com icone + rotulo */
+  .selo {
+    display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem;
+    font-weight: 700; padding: 0.14rem 0.46rem; border-radius: 99px;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .selo svg { width: 11px; height: 11px; flex-shrink: 0; }
+  .selo.ok      { color: #5fd35f; background: rgba(12,163,12,0.13);  border-color: rgba(12,163,12,0.4); }
+  .selo.atencao { color: #f3c45a; background: rgba(250,178,25,0.13); border-color: rgba(250,178,25,0.4); }
+  .selo.grave   { color: #f0a681; background: rgba(236,131,90,0.13); border-color: rgba(236,131,90,0.4); }
+  .selo.critico { color: #e98a8a; background: rgba(208,59,59,0.14);  border-color: rgba(208,59,59,0.42); }
+  .selo.neutro  { color: var(--texto-2); background: var(--bg3); border-color: var(--borda); }
+
+  /* Legenda de series */
+  .legenda { display: flex; flex-wrap: wrap; gap: 0.5rem 0.95rem; margin-top: 0.7rem; }
+  .legenda-item { display: inline-flex; align-items: center; gap: 0.38rem; font-size: 0.72rem; color: var(--texto-2); }
+  .legenda-marca { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ===================== TABELAS ===================== */
+  .tabela-caixa { overflow: auto; max-height: 560px; border-radius: 10px; border: 1px solid var(--borda); }
+  .tabela-caixa::-webkit-scrollbar { height: 9px; width: 9px; }
+  .tabela-caixa::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 5px; }
+  table.dados { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.78rem; }
+  table.dados thead th {
+    position: sticky; top: 0; z-index: 2; background: var(--bg3); color: var(--texto-2);
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
+    text-align: left; padding: 0.55rem 0.7rem; white-space: nowrap; cursor: pointer;
+    border-bottom: 1px solid var(--borda); user-select: none;
+  }
+  table.dados thead th:hover { background: var(--bg4); color: var(--texto); }
+  table.dados thead th.nao-ord { cursor: default; }
+  table.dados thead th .seta { opacity: .4; font-size: 0.72rem; margin-left: 0.15rem; }
+  table.dados thead th.ord .seta { opacity: 1; color: var(--azul-claro); }
+  table.dados tbody td {
+    padding: 0.5rem 0.7rem; border-bottom: 1px solid rgba(30,45,74,0.6);
+    color: var(--texto-2); vertical-align: middle; white-space: nowrap;
+  }
+  table.dados tbody tr:hover td { background: rgba(35,44,66,0.55); color: var(--texto); }
+  table.dados td.num, table.dados th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.dados td.forte { color: var(--texto); font-weight: 600; }
+  table.dados td.wrap { white-space: normal; min-width: 210px; max-width: 400px; }
+  table.dados tfoot td {
+    position: sticky; bottom: 0; background: var(--bg3); color: var(--texto);
+    font-weight: 700; padding: 0.5rem 0.7rem; border-top: 1px solid var(--borda);
+    font-variant-numeric: tabular-nums;
+  }
+  .tabela-rodape {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    flex-wrap: wrap; margin-top: 0.6rem; font-size: 0.72rem; color: var(--texto-muted);
+  }
+  .vazio { padding: 2.2rem 1rem; text-align: center; color: var(--texto-muted); font-size: 0.82rem; }
+
+  .celula-barra { display: flex; align-items: center; gap: 0.45rem; min-width: 112px; }
+  .celula-barra .cb-trilha { flex: 1; height: 6px; background: var(--bg4); border-radius: 99px; overflow: hidden; }
+  .celula-barra .cb-fill { height: 100%; border-radius: 99px; }
+  .celula-barra .cb-num { font-variant-numeric: tabular-nums; font-size: 0.74rem; min-width: 2.8em; text-align: right; }
+
+  /* ===================== GRAFICOS ===================== */
+  .viz { width: 100%; display: block; overflow: visible; }
+  .viz text { font-family: "Segoe UI", system-ui, sans-serif; }
+  .viz .eixo { fill: var(--texto-muted); font-size: 10.5px; }
+  .viz .rotulo-dado { fill: var(--texto); font-size: 10.5px; font-weight: 600; }
+  .viz .grade { stroke: var(--grade); stroke-width: 1; }
+  .viz .alvo { fill: transparent; cursor: pointer; }
+  .viz .ponto { stroke: var(--bg2); stroke-width: 2; }
+  .viz .crosshair { stroke: var(--texto-muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; opacity: 0; }
+
+  .dica {
+    position: fixed; z-index: 500; pointer-events: none; opacity: 0;
+    transition: opacity .1s; background: #0b0e14; border: 1px solid var(--borda);
+    border-radius: 9px; padding: 0.5rem 0.65rem; font-size: 0.74rem;
+    color: var(--texto); box-shadow: 0 10px 32px rgba(0,0,0,0.6); max-width: 300px; line-height: 1.5;
+  }
+  .dica.vis { opacity: 1; }
+  .dica .d-tit { font-weight: 700; display: block; margin-bottom: 0.25rem; }
+  .dica .d-linha { display: flex; align-items: center; gap: 0.45rem; }
+  .dica .d-marca { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .dica .d-val { font-variant-numeric: tabular-nums; font-weight: 700; margin-left: auto; }
+
+  /* ===================== AVISOS ===================== */
+  .aviso {
+    display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.8rem 0.95rem;
+    border-radius: 10px; font-size: 0.79rem; line-height: 1.55; margin-bottom: 0.85rem;
+    border: 1px solid transparent;
+  }
+  .aviso svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+  .aviso.critico { background: rgba(208,59,59,0.1);  border-color: rgba(208,59,59,0.4);  color: #f0b3b3; }
+  .aviso.atencao { background: rgba(250,178,25,0.09); border-color: rgba(250,178,25,0.38); color: #f0d79b; }
+  .aviso.info    { background: rgba(57,135,229,0.09); border-color: rgba(57,135,229,0.35); color: #b8d2f5; }
+  .aviso b { color: #fff; font-weight: 700; }
+  .aviso a { color: inherit; }
+  .aviso code {
+    background: rgba(0,0,0,0.35); padding: 0.05rem 0.3rem; border-radius: 4px;
+    font-size: 0.92em; font-family: ui-monospace, Consolas, monospace;
+  }
+
+  .carregando { padding: 3.5rem 1rem; text-align: center; color: var(--texto-muted); font-size: 0.85rem; }
+  .spin {
+    width: 26px; height: 26px; margin: 0 auto 0.9rem; border-radius: 50%;
+    border: 2.5px solid var(--bg4); border-top-color: var(--azul-claro);
+    animation: gira .8s linear infinite;
+  }
+  @keyframes gira { to { transform: rotate(360deg); } }
+
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 80; }
+
+  @media (max-width: 1000px) {
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; transform: translateX(-100%);
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    }
+    .sidebar.aberta { transform: translateX(0); }
+    .sidebar-overlay.vis { display: block; }
+    .btn-menu { display: inline-flex; }
+    .tela { padding: 1.1rem 1rem 3.5rem; }
+    .topo { padding: 0.8rem 1rem 0; }
+    .filtro select, .filtro input, .chip-botao { min-width: 130px; max-width: 100%; }
+    .filtro input[type="search"] { min-width: 150px; }
+  }
+  @media (max-width: 560px) {
+    html { font-size: 14px; }
+    .g-kpi { grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
+    .g-2, .g-3 { grid-template-columns: 1fr; }
+    .kpi-valor { font-size: 1.4rem; }
+    .tabela-caixa { max-height: 460px; }
+  }
+  @media print {
+    .sidebar, .topo-acoes, .filtros, .btn-menu, .sidebar-overlay { display: none !important; }
+    body, .conteudo { overflow: visible; height: auto; }
+    .cartao, .kpi { break-inside: avoid; }
+    .tabela-caixa { max-height: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN ======================= -->
+<div class="login-overlay" id="loginOverlay">
+  <form class="login-caixa" id="loginForm" autocomplete="on">
+    <img src="logo.png" alt="Borges Macedo Advocacia" class="login-logo" onerror="this.style.display='none'" />
+    <div class="login-titulo">Painel do Gestor Comercial</div>
+    <div class="login-sub">Borges Macedo Advocacia</div>
+
+    <div class="campo-grupo">
+      <label class="campo-rotulo" for="campoUsuario">Login</label>
+      <input class="campo-texto" type="text" id="campoUsuario" name="username"
+             autocomplete="username" placeholder="Admin" required />
+    </div>
+    <div class="campo-grupo">
+      <label class="campo-rotulo" for="campoSenha">Senha</label>
+      <input class="campo-texto" type="password" id="campoSenha" name="password"
+             autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required />
+    </div>
+
+    <button class="btn-entrar" type="submit" id="btnEntrar">Entrar</button>
+    <div class="login-erro oculto" id="loginErro"></div>
+
+    <div class="login-rodape">
+      Acesso restrito a gestao comercial.<br />
+      As planilhas de origem ficam em cofre cifrado (AES-256-GCM).
+    </div>
+  </form>
+</div>
+
+<!-- ======================= APP ======================= -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app oculto" id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-topo">
+      <img src="logo.png" alt="Borges Macedo Advocacia" class="sidebar-logo" onerror="this.style.display='none'" />
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-rodape">
+      <div id="rodapeAtualizado">&mdash;</div>
+      <button class="btn-sair" id="btnSair" type="button">Sair</button>
+    </div>
+  </aside>
+
+  <main class="conteudo" id="conteudo">
+    <header class="topo">
+      <div class="topo-linha">
+        <button class="btn-menu" id="btnMenu" type="button" aria-label="Menu">&#9776;</button>
+        <div>
+          <div class="topo-titulo" id="tituloTela">Visao Geral</div>
+          <div class="topo-sub" id="subTela">&mdash;</div>
+        </div>
+        <div class="topo-acoes">
+          <button class="btn-acao" id="btnExportar" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+          </button>
+          <button class="btn-acao" id="btnPlanilhas" type="button">Planilhas</button>
+          <button class="btn-acao primario" id="btnAtualizar" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Atualizar
+          </button>
+        </div>
+      </div>
+      <div class="filtros" id="filtros"></div>
+    </header>
+
+    <div id="telas">
+      <div class="carregando" id="carregando">
+        <div class="spin"></div>
+        Lendo as planilhas&hellip;
+      </div>
+      <section class="tela oculto" id="tela-visao"></section>
+      <section class="tela oculto" id="tela-funil"></section>
+      <section class="tela oculto" id="tela-esteira"></section>
+      <section class="tela oculto" id="tela-vendas"></section>
+      <section class="tela oculto" id="tela-trafego"></section>
+      <section class="tela oculto" id="tela-equipe"></section>
+      <section class="tela oculto" id="tela-metas"></section>
+      <section class="tela oculto" id="tela-fontes"></section>
+    </div>
+  </main>
+</div>
+
+<div class="dica" id="dica"></div>
+<script>
+/* ==========================================================================
+   PAINEL DO GESTOR COMERCIAL - Borges Macedo Advocacia
+   --------------------------------------------------------------------------
+   Reune num so lugar as planilhas que medem o comercial:
+
+     1. Fluxo de Atendimentos [NOVA]  -> reunioes, proposta e esteira de FUP
+     2. FLUXO DE CLIENTES [2026]      -> fechamentos, honorarios, ticket
+     3. Campanhas Meta Ads            -> investimento, CPL, campanhas, reunioes
+     4. Metas e Resultados [NOVA]     -> KPIs do mes, metas e plano de acao
+     5. Metas e Resultados (antiga)   -> acumulado 2026, historico
+     6. Leads Kommo [DASHBOARDS]      -> pre-qualificacao lead a lead
+
+   Leitura: endpoint gviz das proprias planilhas (sem chave de API). Nao ha
+   servidor: o navegador le a planilha e calcula tudo aqui. Cada fonte cai de
+   pe sozinha - uma planilha fora do ar nao derruba o painel, aparece como
+   lacuna declarada na aba Fontes.
+
+   CPF/CNPJ do cliente NAO e lido: nao serve a nenhuma decisao comercial e
+   nao precisa trafegar para ca.
+   ========================================================================== */
+
+/* ===== COFRE - os IDs das planilhas, cifrados com AES-256-GCM =====
+   Sem a credencial correta a decifragem falha e a pagina nao sabe quais
+   planilhas ler. A chave vem de PBKDF2-SHA256 (310 mil iteracoes) sobre
+   login + senha. */
+const COFRES = [
+  {"v":1,"it":310000,"salt":"JxgItoCO5v9KXiqd7/APpg==","iv":"JbswUKLHyLUGORCg","ct":"CpDdBmFFFvN2CITvJsePAuFKxaiAGnkkCkD3gFYkTEuFGRqdDVC9wszH6KBNbpubtVIe104px8K1Dz146JBKLLbZZKmYhfnAYTM8SbddSzzEglXOm6fDdcGvNg9I0MFE5qM4AWDDqTv9GvAGyPhdBWPSfmDBYU7NPsCbxNTchMh64CjkfxCSbuwVv/77zVlI/P27avIlfEY/rR11UWMjK0a41QlLSu0qCLhH7sfgmbTgrn2qP/55Cqz7pn0PfypSJ8TS1fgCW9dxEsF7nJySgUB/YcaX23bEGCewUOAhzYQOqLJtEoyMYBGJupQWnYk+yAvRujeX3azthI28Ad4Wkg9Rj9WBMT+WoWrpZOfTwAZUjT12RYeEnLv8OA+Wxxs4rGh5gOUvGWsZOGBBTZJ/DROhzxxsUxC6cDENz8VPEAa0v+8p0nzRE6xXSPr8WhGi372gv5C/h56AF5xNpclhmwNJcrL5VVt2Zic+di0eKpn0DkSRb0rqs0QIcXE+Qpbm/oJjGHQ="}
+];
+
+const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+const normUsuario = u => u.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+async function abrirUmCofre(cofre, usuario, senha) {
+  const enc = new TextEncoder();
+  const material = await crypto.subtle.importKey(
+    'raw', enc.encode(normUsuario(usuario) + '\n' + senha), 'PBKDF2', false, ['deriveKey']);
+  const chave = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: b64bytes(cofre.salt), iterations: cofre.it, hash: 'SHA-256' },
+    material, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const claro = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: b64bytes(cofre.iv) }, chave, b64bytes(cofre.ct));
+  return JSON.parse(new TextDecoder().decode(claro));
+}
+
+async function abrirCofre(usuario, senha) {
+  for (const cofre of COFRES) {
+    try { return await abrirUmCofre(cofre, usuario, senha); } catch (e) {}
+  }
+  throw new Error('Login ou senha invalidos para este painel.');
+}
+
+const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10 };
+
+const K_AUTH = 'bm_ceo_auth';
+const K_CRED = 'bm_ceo_cred';
+
+/* ===================== FORMATACAO ===================== */
+const fmtBRL  = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtBRL0 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const fmtNum  = new Intl.NumberFormat('pt-BR');
+const fmtNum1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+const MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESES_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const brl  = v => fmtBRL.format(Number(v) || 0);
+const brl0 = v => fmtBRL0.format(Number(v) || 0);
+const n0   = v => fmtNum.format(Math.round(Number(v) || 0));
+const n1   = v => fmtNum1.format(Number(v) || 0);
+const pct  = (v, casas) => (Number(v) || 0).toLocaleString('pt-BR', {
+  minimumFractionDigits: casas == null ? 0 : casas,
+  maximumFractionDigits: casas == null ? 0 : casas }) + '%';
+
+/* Divisao que nao explode nem mente: sem denominador, nao ha taxa. */
+const taxa = (a, b) => (b > 0 ? (a / b) * 100 : null);
+const pctOuTraco = (v, casas) => (v == null ? '&mdash;' : pct(v, casas));
+
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+const chaveBusca = s => String(s == null ? '' : s).toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+/* Cabecalhos reais trazem ordinais ("1o CONTATO", "No do Processo"): o
+   indicador masculino/feminino nao e acento, o NFD nao o remove, e sem tirar
+   ele aqui a coluna simplesmente nao e encontrada. */
+const normCab = s => chaveBusca(s)
+  .replace(/[ºª°]/g, '')
+  .replace(/[?:.]/g, '')
+  .replace(/\s+/g, ' ').trim();
+
+/* ===== Numeros em pt-BR =====
+   "R$ 2.033,28" -> 2033.28 | "1.100" -> 1100 | "66%" -> 66 | "-" -> 0
+   Regra: se tem virgula, a virgula e o decimal e o ponto e milhar. Sem
+   virgula, um ponto so e milhar quando separa grupos de 3 digitos. */
+function num(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  let s = String(v == null ? '' : v).trim();
+  if (!s || s === '-' || s === '--') return 0;
+  if (/^#(DIV\/0|N\/A|REF|VALUE|NAME)/i.test(s)) return 0;
+  s = s.replace(/R\$/gi, '').replace(/\s| /g, '').replace(/%/g, '');
+  const neg = /^\(.*\)$/.test(s) || s.startsWith('-');
+  s = s.replace(/[()]/g, '').replace(/^-/, '');
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const x = parseFloat(s);
+  if (!isFinite(x)) return 0;
+  return neg ? -x : x;
+}
+
+/* Percentual que na planilha pode vir "26%" ou 0,26 */
+function numPct(v) {
+  const s = String(v == null ? '' : v);
+  const x = num(s);
+  if (s.includes('%')) return x;
+  return Math.abs(x) <= 1 && x !== 0 ? x * 100 : x;
+}
+
+/* ===== Datas =====
+   O gviz devolve o valor FORMATADO: dd/mm/aaaa quando a celula e data de
+   verdade e aaaa-mm-dd quando o coletor gravou texto. Ler as duas formas e
+   o que impede o painel de perder meses inteiros sem dar erro. Datas-fantasma
+   do Sheets (1899/1900) contam como vazio. */
+function parseData(v) {
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return valida(new Date(+m[1], +m[2] - 1, +m[3]));
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (m) {
+    let a = +m[3]; if (a < 100) a += 2000;
+    return valida(new Date(a, +m[2] - 1, +m[1]));
+  }
+  m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
+  if (m) return valida(new Date(+m[3], +m[2] - 1, +m[1]));
+  return null;
+  function valida(d) { return (isNaN(d) || d.getFullYear() < 2015 || d.getFullYear() > 2100) ? null : d; }
+}
+
+const chaveMes      = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+const rotuloMes     = k => k ? MESES[Number(k.slice(5, 7)) - 1] + '/' + k.slice(0, 4) : '&mdash;';
+const rotuloMesCurto= k => k ? MESES_CURTO[Number(k.slice(5, 7)) - 1] + '/' + k.slice(2, 4) : '';
+const fmtData       = d => d ? d.toLocaleDateString('pt-BR') : '&mdash;';
+const hoje          = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const diasEntre     = (a, b) => Math.round((b - a) / 86400000);
+
+/* "Mes/26" -> "2026-10" (rotulos automaticos das planilhas) */
+function mesDeRotulo(s) {
+  const t = chaveBusca(s);
+  if (!t) return '';
+  const i = MESES.findIndex(m => t.startsWith(chaveBusca(m).slice(0, 4)));
+  if (i < 0) return '';
+  const a = t.match(/(\d{2,4})\s*$/);
+  if (!a) return '';
+  let ano = +a[1]; if (ano < 100) ano += 2000;
+  return ano + '-' + String(i + 1).padStart(2, '0');
+}
+
+/* ===================== CSV ===================== */
+function parseCSV(txt) {
+  const linhas = []; let linha = []; let cur = ''; let q = false;
+  for (let i = 0; i < txt.length; i++) {
+    const c = txt[i];
+    if (q) {
+      if (c === '"') { if (txt[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { linha.push(cur); cur = ''; }
+    else if (c === '\n') { linha.push(cur); linhas.push(linha); linha = []; cur = ''; }
+    else if (c !== '\r') cur += c;
+  }
+  if (cur !== '' || linha.length) { linha.push(cur); linhas.push(linha); }
+  return linhas;
+}
+
+/* ===================== LEITURA (gviz) ===================== */
+function colLetra(i) {
+  let s = '';
+  for (i = i + 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s;
+  return s;
+}
+const letrasAte = n => Array.from({ length: n }, (_, i) => colLetra(i)).join(',');
+
+/* O parametro headers diz quantas linhas de cima sao cabecalho, e ele NAO e
+   opcional: sem ele o gviz adivinha, e quando adivinha errado devolve a
+   celula de texto VAZIA em qualquer coluna que ele tipou como numero ou data
+   - o cabecalho chega mutilado e o painel nao acha coluna nenhuma.
+   Abas comuns: headers=1. Abas em matriz (titulo em cima do cabecalho, como
+   as de Produtos Juridicos e KPIS): headers = a linha do cabecalho. */
+function urlGviz(id, aba, tq, headers) {
+  const p = new URLSearchParams({ tqx: 'out:csv', headers: String(headers == null ? 1 : headers), sheet: aba });
+  if (tq) p.set('tq', tq);
+  return 'https://docs.google.com/spreadsheets/d/' + id + '/gviz/tq?' + p.toString();
+}
+
+/* Erros que o gviz devolve com status 200 no corpo, e nao no codigo HTTP. */
+function corpoEErro(txt) {
+  const t = txt.slice(0, 400);
+  if (/^\s*</.test(t)) return 'a planilha respondeu uma pagina de login, nao dados';
+  if (/setResponse/.test(t) && /"status"\s*:\s*"error"/.test(t)) {
+    const m = txt.match(/"detailed_message"\s*:\s*"([^"]+)"/) || txt.match(/"message"\s*:\s*"([^"]+)"/);
+    return m ? m[1].replace(/<[^>]+>/g, '') : 'consulta rejeitada pelo gviz';
+  }
+  return null;
+}
+
+async function lerAba(id, aba, opc) {
+  const o = opc || {};
+  let resp;
+  try {
+    resp = await fetch(urlGviz(id, aba, o.tq, o.headers), { cache: 'no-store', credentials: 'omit' });
+  } catch (e) {
+    /* Planilha nao compartilhada: o navegador e desviado para a tela de login
+       do Google e o CORS barra a resposta antes de ela chegar aqui. */
+    throw new Error('sem acesso publico de leitura (compartilhe como "qualquer pessoa com o link")');
+  }
+  if (!resp.ok) {
+    if (resp.status === 401 || resp.status === 403) {
+      throw new Error('sem acesso publico de leitura (compartilhe como "qualquer pessoa com o link")');
+    }
+    throw new Error('a planilha respondeu HTTP ' + resp.status);
+  }
+  const txt = await resp.text();
+  const err = corpoEErro(txt);
+  if (err) throw new Error(err);
+
+  const linhas = parseCSV(txt).filter(l => l.some(c => String(c).trim() !== ''));
+  if (!linhas.length) throw new Error('aba vazia');
+
+  /* O gviz devolve a PRIMEIRA aba da planilha quando o nome pedido nao existe,
+     em vez de dar erro. Conferir o cabecalho e o que separa "aba renomeada"
+     de "numeros errados em silencio". */
+  if (o.esperado && o.esperado.length) {
+    const cab = linhas[o.linhaCab || 0].map(normCab);
+    const faltando = o.esperado.filter(e => !cab.some(c => c.includes(normCab(e))));
+    if (faltando.length) {
+      throw new Error('a aba "' + aba + '" nao tem as colunas esperadas (' +
+        faltando.slice(0, 3).join(', ') + '). Foi renomeada ou reestruturada?');
+    }
+  }
+  return linhas;
+}
+
+/* Cabecalho + linhas, com indice por nome de coluna (aceita apelidos). */
+function tabela(linhas, iCab) {
+  const i = iCab || 0;
+  const cab = (linhas[i] || []).map(c => String(c).trim());
+  return { cab, norm: cab.map(normCab), linhas: linhas.slice(i + 1) };
+}
+
+/* Tres passadas, da mais exigente para a mais tolerante. A ordem importa:
+   com headers=N o gviz cola o texto da linha de cima no rotulo da coluna
+   ("...OUTUBRO 2026 Responsavel"), e sem a passada exata vir primeiro um
+   "Meta Mensal" acharia o "Res. Mensal x Meta Mensal" no lugar certo errado. */
+function idxDe(t, apelidos) {
+  const chaves = apelidos.map(normCab);
+  for (const k of chaves) {                      /* 1. igual */
+    const i = t.norm.indexOf(k);
+    if (i >= 0) return i;
+  }
+  for (const k of chaves) {                      /* 2. termina com */
+    const i = t.norm.findIndex(c => c && c !== k && c.endsWith(k));
+    if (i >= 0) return i;
+  }
+  for (const k of chaves) {                      /* 3. contem - o rotulo mais curto ganha */
+    let melhor = -1, menor = Infinity;
+    t.norm.forEach((c, i) => {
+      if (c && c.includes(k) && c.length < menor) { menor = c.length; melhor = i; }
+    });
+    if (melhor >= 0) return melhor;
+  }
+  return -1;
+}
+
+/* Mapa campo -> indice, e um leitor de celula que nunca estoura. */
+function mapear(t, campos) {
+  const idx = {}; const faltando = [];
+  Object.keys(campos).forEach(k => {
+    idx[k] = idxDe(t, campos[k]);
+    if (idx[k] < 0) faltando.push(campos[k][0]);
+  });
+  const cel = (l, k) => {
+    const i = idx[k];
+    if (i < 0 || i >= l.length) return '';
+    const v = l[i];
+    return v == null ? '' : String(v).trim();
+  };
+  return { idx, cel, faltando };
+}
+/* ==========================================================================
+   FONTES - uma funcao de leitura por planilha.
+   Cada fonte cai de pe sozinha: o painel usa Promise.allSettled e registra o
+   que faltou em ERROS, para a lacuna aparecer declarada em vez de virar zero.
+   ========================================================================== */
+const DADOS = {};
+const ERROS = {};
+const AVISOS = [];
+
+/* ---------------------------------------------------------------- 1. ESTEIRA
+   Fluxo de Atendimentos [NOVA] - reuniao, proposta e negociacao.
+   Le a aba inteira e mapeia por NOME de coluna: a planilha e editada a mao e
+   uma coluna nova no meio nao pode trocar o significado de todas as outras. */
+const CAMPOS_ATEND = {
+  id:         ['ID'],
+  lead:       ['Lead'],
+  telefone:   ['Telefone'],
+  produto:    ['Produto Juridico'],
+  sdr:        ['SDR'],
+  closer:     ['Closer'],
+  dtAgenda:   ['Data do Agendamento'],
+  dtAtend:    ['Data do Atendimento'],
+  resultado:  ['Resultado do Atendimento'],
+  etapa:      ['Etapa do Funil'],
+  diasNeg:    ['Dias em Negociacao'],
+  temperatura:['Temperatura da Negociacao'],
+  vInicial:   ['Valor da Proposta (Honorarios Iniciais)'],
+  vExito:     ['Valor da Proposta (Honorarios de Exito)'],
+  motivoPerda:['Motivo de Perda do Lead'],
+  origem:     ['Origem'],
+  respFup:    ['Responsavel pelo Follow Up'],
+  arquivado:  ['Arquivado'],
+  atualizado: ['Atualizado em (CRM)'],
+  tipoPlano:  ['Tipo de Plano'],
+  tipoContrato:['Tipo de Contrato'],
+  tipoHon:    ['Tipo de Contrato (Honorarios)'],
+  dtFecha:    ['Data do Fechamento'],
+  dtPerda:    ['Data da perda'],
+  catPerda:   ['Categoria da perda'],
+  proxAcao:   ['Proxima acao'],
+  dtProxAcao: ['Data da proxima acao'],
+  historico:  ['Historico'],
+  pasta:      ['Pasta do Processo (Link Drive)'],
+  processo:   ['No do Processo (CNJ)', 'N do Processo (CNJ)']
+};
+
+/* Etapas agrupadas pelo que elas significam para a gestao. */
+const ETAPA_GANHO  = ['enviado a triagem e distribuicao'];
+const ETAPA_PERDA  = ['lead perdido'];
+const ETAPA_MUDA   = ['lead sem resposta'];
+
+function grupoEtapa(etapa) {
+  const k = chaveBusca(etapa);
+  if (!k) return 'indefinido';
+  if (ETAPA_GANHO.some(e => k.includes(e))) return 'ganho';
+  if (ETAPA_PERDA.some(e => k.includes(e))) return 'perdido';
+  if (ETAPA_MUDA.some(e => k.includes(e)))  return 'semresposta';
+  return 'aberto';
+}
+const ROTULO_GRUPO = { ganho: 'Ganho', aberto: 'Em aberto', perdido: 'Perdido', semresposta: 'Sem resposta', indefinido: 'Sem etapa' };
+const COR_GRUPO    = { ganho: 'var(--s3)', aberto: 'var(--s1)', perdido: 'var(--s8)', semresposta: 'var(--s4)', indefinido: 'var(--texto-muted)' };
+
+/* Ordem da esteira, do mais longe ao mais perto da assinatura. */
+const ORDEM_ETAPA = [
+  'Reuniao Agendada', 'Remarcar Reuniao', 'Lead Sem Resposta', 'Em Negociacao',
+  'Oferta de Honorarios em Liminar', 'Oferta de Honorarios Apenas no Exito', 'Buckner',
+  'Confeccionar Contrato', 'Aguardando Assinatura do Contrato', 'Aguardando Pagamento',
+  'Enviado a Triagem e Distribuicao', 'Lead Perdido'
+];
+const posEtapa = e => {
+  const k = chaveBusca(e);
+  const i = ORDEM_ETAPA.findIndex(o => chaveBusca(o) === k);
+  return i < 0 ? 99 : i;
+};
+
+async function carregarAtend() {
+  const linhas = await lerAba(CONFIG.SHEETS.atend, 'Fluxo de Atendimentos', {
+    esperado: ['ID', 'Lead', 'Etapa do Funil', 'Closer']
+  });
+  const t = tabela(linhas);
+  const m = mapear(t, CAMPOS_ATEND);
+
+  /* Os 9 follow ups da esteira (24h, 3d, 5d, 7d, 10d, 14d, 21d Buckner,
+     28d liminar, 45d exito) vem em pares [Status] / [Data]. Acho pelo numero
+     no cabecalho para nao depender da posicao nem do rotulo de prazo. */
+  const fups = [];
+  t.norm.forEach((c, i) => {
+    const mm = c.match(/^follow up (\d+)/);
+    if (!mm) return;
+    const n = +mm[1];
+    let f = fups.find(x => x.n === n);
+    if (!f) { f = { n: n, rotulo: t.cab[i].replace(/\s*\[(status|data)\]\s*$/i, '').trim(), iStatus: -1, iData: -1 }; fups.push(f); }
+    if (/\[status\]/.test(c)) f.iStatus = i;
+    if (/\[data\]/.test(c))   f.iData = i;
+  });
+  fups.sort((a, b) => a.n - b.n);
+
+  const h = hoje();
+  const reg = t.linhas.map(l => {
+    const dAtend  = parseData(m.cel(l, 'dtAtend'));
+    const dAgenda = parseData(m.cel(l, 'dtAgenda'));
+    const dFecha  = parseData(m.cel(l, 'dtFecha'));
+    const etapa   = m.cel(l, 'etapa');
+    const r = {
+      id: m.cel(l, 'id'),
+      lead: m.cel(l, 'lead') || 'Sem nome',
+      telefone: m.cel(l, 'telefone'),
+      produto: m.cel(l, 'produto') || 'Sem produto',
+      sdr: m.cel(l, 'sdr') || 'Sem SDR',
+      closer: m.cel(l, 'closer') || 'Sem closer',
+      dAgenda: dAgenda, dAtend: dAtend, dFecha: dFecha,
+      mes: dAtend ? chaveMes(dAtend) : (dAgenda ? chaveMes(dAgenda) : ''),
+      mesFecha: dFecha ? chaveMes(dFecha) : '',
+      resultado: m.cel(l, 'resultado'),
+      etapa: etapa || 'Sem etapa',
+      grupo: grupoEtapa(etapa),
+      diasNeg: num(m.cel(l, 'diasNeg')),
+      temperatura: m.cel(l, 'temperatura'),
+      vInicial: num(m.cel(l, 'vInicial')),
+      vExito: num(m.cel(l, 'vExito')),
+      motivoPerda: m.cel(l, 'motivoPerda'),
+      catPerda: m.cel(l, 'catPerda'),
+      origem: m.cel(l, 'origem'),
+      respFup: m.cel(l, 'respFup'),
+      arquivado: /^(sim|true|1|x)$/i.test(m.cel(l, 'arquivado')),
+      tipoPlano: m.cel(l, 'tipoPlano'),
+      tipoContrato: m.cel(l, 'tipoContrato'),
+      tipoHon: m.cel(l, 'tipoHon'),
+      proxAcao: m.cel(l, 'proxAcao'),
+      dProxAcao: parseData(m.cel(l, 'dtProxAcao')),
+      historico: m.cel(l, 'historico'),
+      pasta: m.cel(l, 'pasta'),
+      processo: m.cel(l, 'processo'),
+      atualizado: m.cel(l, 'atualizado')
+    };
+
+    /* Esteira de FUP: "Feito" conta como executado, "Pendente" como devido. */
+    r.fups = fups.map(f => ({
+      n: f.n, rotulo: f.rotulo,
+      status: f.iStatus >= 0 ? String(l[f.iStatus] || '').trim() : '',
+      data: f.iData >= 0 ? parseData(l[f.iData]) : null
+    }));
+    r.fupFeitos   = r.fups.filter(f => /feito/i.test(f.status)).length;
+    r.fupPendentes= r.fups.filter(f => /pendente/i.test(f.status)).length;
+    const ultimo  = r.fups.filter(f => f.data).sort((a, b) => b.data - a.data)[0];
+    r.ultimoFup   = ultimo ? ultimo.data : null;
+    r.etapaFup    = r.fupFeitos ? Math.max.apply(null, r.fups.filter(f => /feito/i.test(f.status)).map(f => f.n)) : 0;
+
+    /* Dias sem toque: do contato mais recente que a planilha registra. */
+    const marcos = [r.ultimoFup, r.dAtend].filter(Boolean);
+    r.ultimoToque = marcos.length ? new Date(Math.max.apply(null, marcos)) : null;
+    r.diasSemToque = r.ultimoToque ? diasEntre(r.ultimoToque, h) : null;
+    r.emAberto = r.grupo === 'aberto' && !r.arquivado;
+    r.parado   = r.emAberto && r.diasSemToque != null && r.diasSemToque > 7;
+    return r;
+  }).filter(r => r.id || r.lead !== 'Sem nome');
+
+  return { reg: reg, fups: fups, faltando: m.faltando, linhas: t.linhas.length };
+}
+
+/* --------------------------------------------------------------- 2. CLIENTES
+   FLUXO DE CLIENTES [2026], aba DADOS - a consolidada de todos os meses.
+   Leio A:Q de proposito: a coluna R e CPF/CNPJ e nao entra no painel. */
+const CAMPOS_CLI = {
+  primeiro:   ['1o CONTATO', '1 CONTATO'],
+  origem:     ['ORIGEM'],
+  diasFechar: ['DIAS PARA FECHAR'],
+  jornada:    ['JORNADA COMPLETA'],
+  dtReuniao:  ['DATA DA REUNIAO'],
+  dtFecha:    ['DATA DO FECHAMENTO'],
+  contato:    ['CONTATO (QUEM ESTA EM CONTATO COM O ESCRITORIO)', 'CONTATO'],
+  produto:    ['PRODUTO JURIDICO'],
+  sdr:        ['SDR'],
+  closer:     ['CLOSER'],
+  honIni:     ['HONORARIOS INICIAIS'],
+  entrada:    ['VALOR DA ENTRADA'],
+  honFim:     ['HONORARIOS FINAIS'],
+  pagoOk:     ['PAGAMENTO CONFIRMADO'],
+  obs:        ['OBSERVACOES'],
+  tipoPag:    ['TIPO DE PAGAMENTO'],
+  cliente:    ['CLIENTE (O MESMO DO CONTRATO)', 'CLIENTE']
+};
+
+async function carregarClientes() {
+  const linhas = await lerAba(CONFIG.SHEETS.clientes, 'DADOS', {
+    tq: 'select ' + letrasAte(17),
+    esperado: ['DATA DO FECHAMENTO', 'HONORARIOS INICIAIS', 'CLOSER']
+  });
+  const t = tabela(linhas);
+  const m = mapear(t, CAMPOS_CLI);
+
+  const reg = t.linhas.map(l => {
+    const dFecha = parseData(m.cel(l, 'dtFecha'));
+    return {
+      primeiro: parseData(m.cel(l, 'primeiro')),
+      origem: m.cel(l, 'origem') || 'Sem origem',
+      diasFechar: num(m.cel(l, 'diasFechar')),
+      jornada: num(m.cel(l, 'jornada')),
+      dReuniao: parseData(m.cel(l, 'dtReuniao')),
+      dFecha: dFecha,
+      mes: dFecha ? chaveMes(dFecha) : '',
+      contato: m.cel(l, 'contato') || m.cel(l, 'cliente') || 'Sem nome',
+      cliente: m.cel(l, 'cliente'),
+      produto: m.cel(l, 'produto') || 'Sem produto',
+      sdr: m.cel(l, 'sdr') || 'Sem SDR',
+      closer: m.cel(l, 'closer') || 'Sem closer',
+      honIni: num(m.cel(l, 'honIni')),
+      entrada: num(m.cel(l, 'entrada')),
+      honFim: numPct(m.cel(l, 'honFim')),
+      pagoOk: /^(sim|s|true|1)$/i.test(m.cel(l, 'pagoOk').replace(/â/g, 'a')),
+      obs: m.cel(l, 'obs'),
+      tipoPag: m.cel(l, 'tipoPag') || 'Nao informado'
+    };
+  }).filter(r => r.dFecha);
+
+  /* Honorarios zerados com pagamento "Liminar" nao sao venda sem valor: sao
+     venda com honorario condicionado a liminar (politica D28). Marco para o
+     ticket medio nao ser diluido por eles sem o gestor saber. */
+  reg.forEach(r => { r.condicionado = r.honIni === 0 && /liminar/i.test(r.tipoPag); });
+
+  return { reg: reg, faltando: m.faltando, linhas: t.linhas.length };
+}
+
+/* ------------------------------------------------------------- 3. META ADS */
+async function carregarMetaDia() {
+  /* A:N de proposito: a coluna "Acoes (JSON)" sozinha e 85% do peso da aba
+     (4,5 MB contra 540 KB) e nada aqui depende dela. */
+  const opc = { tq: 'select ' + letrasAte(14), esperado: ['Data', 'Campanha', 'Gasto'] };
+  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Insights diários', opc)
+    .catch(() => lerAba(CONFIG.SHEETS.meta, 'Insights diarios', opc));
+  const t = tabela(linhas);
+  const m = mapear(t, {
+    data: ['Data'], conta: ['Conta'], idCamp: ['ID da campanha'], campanha: ['Campanha'],
+    gasto: ['Gasto'], impressoes: ['Impressoes'], alcance: ['Alcance'],
+    cliques: ['Cliques'], cliquesLink: ['Cliques no link'], pagina: ['Visualizacoes da pagina'],
+    leadsForm: ['Leads (formulario)'], conversas: ['Conversas iniciadas'],
+    leadsPixel: ['Leads (pixel)'], leadsTotal: ['Leads (total)']
+  });
+
+  const reg = t.linhas.map(l => {
+    const d = parseData(m.cel(l, 'data'));
+    return {
+      d: d, mes: d ? chaveMes(d) : '',
+      campanha: m.cel(l, 'campanha') || 'Sem campanha',
+      idCamp: m.cel(l, 'idCamp'),
+      gasto: num(m.cel(l, 'gasto')),
+      impressoes: num(m.cel(l, 'impressoes')),
+      alcance: num(m.cel(l, 'alcance')),
+      cliques: num(m.cel(l, 'cliques')),
+      cliquesLink: num(m.cel(l, 'cliquesLink')),
+      leadsForm: num(m.cel(l, 'leadsForm')),
+      conversas: num(m.cel(l, 'conversas')),
+      leadsPixel: num(m.cel(l, 'leadsPixel')),
+      leadsTotal: num(m.cel(l, 'leadsTotal'))
+    };
+  }).filter(r => r.d);
+  reg.forEach(r => { if (!r.leadsTotal) r.leadsTotal = r.leadsForm + r.conversas + r.leadsPixel; });
+  return { reg: reg, faltando: m.faltando };
+}
+
+async function carregarMetaCamp() {
+  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Campanhas', { esperado: ['Campanha', 'Status'] });
+  const t = tabela(linhas);
+  const m = mapear(t, {
+    idCamp: ['ID da campanha'], campanha: ['Campanha'], status: ['Status'],
+    statusEf: ['Status efetivo'], objetivo: ['Objetivo'], orcDia: ['Orcamento diario'],
+    orcVit: ['Orcamento vitalicio'], conjAtivos: ['Conjuntos ativos'],
+    inicio: ['Inicio'], fim: ['Fim']
+  });
+  const reg = t.linhas.map(l => ({
+    idCamp: m.cel(l, 'idCamp'),
+    campanha: m.cel(l, 'campanha') || 'Sem campanha',
+    status: m.cel(l, 'statusEf') || m.cel(l, 'status'),
+    objetivo: m.cel(l, 'objetivo'),
+    orcDia: num(m.cel(l, 'orcDia')),
+    orcVit: num(m.cel(l, 'orcVit')),
+    conjAtivos: num(m.cel(l, 'conjAtivos')),
+    inicio: parseData(m.cel(l, 'inicio')),
+    fim: parseData(m.cel(l, 'fim'))
+  })).filter(r => r.campanha !== 'Sem campanha');
+  return { reg: reg, faltando: m.faltando };
+}
+
+async function carregarMetaReun() {
+  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Reuniões', { esperado: ['Data', 'Lead'] })
+    .catch(() => lerAba(CONFIG.SHEETS.meta, 'Reunioes', { esperado: ['Data', 'Lead'] }));
+  const t = tabela(linhas);
+  const m = mapear(t, {
+    data: ['Data'], hora: ['Hora'], funil: ['Funil'], idLead: ['ID do lead'],
+    lead: ['Lead'], campanha: ['Campanha'], origem: ['Origem'], produto: ['Produto juridico']
+  });
+  const reg = t.linhas.map(l => {
+    const d = parseData(m.cel(l, 'data'));
+    return {
+      d: d, mes: d ? chaveMes(d) : '',
+      lead: m.cel(l, 'lead'), funil: m.cel(l, 'funil'),
+      campanha: m.cel(l, 'campanha'), origem: m.cel(l, 'origem') || 'Sem origem',
+      produto: m.cel(l, 'produto') || 'Sem produto'
+    };
+  }).filter(r => r.d);
+  return { reg: reg, faltando: m.faltando };
+}
+
+/* ------------------------------------------------------------ 4. METAS/KPIs
+   Metas e Resultados [NOVA]. O cabecalho nao esta na linha 1: acho a linha
+   que comeca com "Responsavel" e leio dali. */
+function lerKpis(linhas) {
+  const t = tabela(linhas, 0);
+  if (idxDe(t, ['Resultados Chaves']) < 0) throw new Error('nao achei a coluna Resultados Chaves');
+  const m = mapear(t, {
+    resp: ['Responsavel'], kr: ['Resultados Chaves'], metaMes: ['Meta Mensal'],
+    metaProp: ['Meta Proporcional'], resultado: ['Resultado do Mes'],
+    vsProp: ['Res. Mensal x Meta Proporcional'], vsMes: ['Res. Mensal x Meta Mensal']
+  });
+
+  let respAtual = '';
+  const krs = [];
+  let diasMes = 0, diasComp = 0, atualizado = '';
+  const soltos = [];
+
+  t.linhas.forEach(l => {
+    const rotulo = l.map(c => normCab(c));
+    const iDias = rotulo.findIndex(c => c === 'dias no mes');
+    if (iDias >= 0) diasMes = num(l[iDias + 1]);
+    const iComp = rotulo.findIndex(c => c === 'dias computados');
+    if (iComp >= 0) diasComp = num(l[iComp + 1]);
+    const iUlt = rotulo.findIndex(c => c === 'ultima atualizacao');
+    if (iUlt >= 0) atualizado = String(l[iUlt + 1] || '').trim();
+
+    /* Guarda as linhas de rodape em que sobrou uma celula sozinha - ver a
+       leitura por forma logo abaixo. */
+    const cheias = l.map(c => String(c == null ? '' : c).trim()).filter(v => v !== '');
+    if (cheias.length === 1) soltos.push(cheias[0]);
+
+    const kr = m.cel(l, 'kr');
+    if (!kr) return;
+    const r = m.cel(l, 'resp');
+    if (r) respAtual = r;
+    const ehPct = /%/.test(m.cel(l, 'metaMes')) || /conversao/i.test(kr);
+    const ehRS  = /R\$/.test(m.cel(l, 'metaMes'));
+    krs.push({
+      resp: respAtual, kr: kr,
+      metaMes: num(m.cel(l, 'metaMes')),
+      metaProp: num(m.cel(l, 'metaProp')),
+      resultado: num(m.cel(l, 'resultado')),
+      vsProp: numPct(m.cel(l, 'vsProp')),
+      vsMes: numPct(m.cel(l, 'vsMes')),
+      tipo: ehRS ? 'moeda' : (ehPct ? 'pct' : 'num'),
+      /* No-Show e o unico KR em que menos e melhor. */
+      inverso: /no.?show/i.test(kr)
+    });
+  });
+  /* Rodape lido pela FORMA, nao pelo rotulo: o gviz devolve a celula de texto
+     ("Dias no Mes") VAZIA quando tipou a coluna como numero, e sobra so o
+     valor na ultima coluna. Entao, entre as celulas soltas do rodape, a data
+     e a ultima atualizacao e, dos inteiros de 1 a 31, o maior e o total de
+     dias do mes e o menor os dias ja computados. Nao depende da ordem. */
+  if (!atualizado) {
+    const d = soltos.find(v => /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(v));
+    if (d) atualizado = d;
+  }
+  if (!diasMes || !diasComp) {
+    const ints = soltos.filter(v => /^\d{1,2}$/.test(v)).map(num).filter(x => x >= 1 && x <= 31);
+    if (ints.length) {
+      if (!diasMes)  diasMes  = Math.max.apply(null, ints);
+      if (!diasComp) diasComp = Math.min.apply(null, ints);
+    }
+  }
+  return { krs: krs, diasMes: diasMes, diasComp: diasComp, atualizado: atualizado };
+}
+
+/* Funil de produto juridico: linhas rotuladas (Projecao Mensal, Resultado
+   Real...) x colunas de etapa. Vale para a planilha NOVA e para a antiga. */
+/* Etapas canonicas do funil de produto. O gviz cola o nome do produto no
+   rotulo da primeira coluna ("Revisional de Plano de Saude Leads (Organico)"),
+   e as abas de meses diferentes nao tem as mesmas colunas - por isso cada
+   rotulo e reduzido a uma destas chaves antes de virar dado. */
+const ETAPA_ROT = {
+  'leads (organico)': 'Leads (Orgânico)',
+  'leads (kommo)': 'Leads (Kommo)',
+  'leads (meta ads)': 'Leads (Meta Ads)',
+  'leads abordados ou que falaram no whatsapp': 'Leads abordados / WhatsApp',
+  'responderam a triagem': 'Responderam a triagem',
+  'elegiveis': 'Elegíveis',
+  'responderam a qualificacao': 'Responderam a qualificação',
+  'qualificados (aguardando documentacao)': 'Qualificados (aguardando documentação)',
+  'diagnosticos': 'Diagnósticos',
+  'viaveis': 'Viáveis',
+  'atendimentos realizados': 'Atendimentos realizados',
+  'clientes': 'Clientes',
+  'ticket medio': 'Ticket médio',
+  'faturamento': 'Faturamento',
+  'cpl': 'CPL',
+  'investimento mensal': 'Investimento mensal',
+  'investimento diario': 'Investimento diário',
+  'roi': 'ROI',
+  'cac': 'CAC',
+  'conversao total': 'Conversão total'
+};
+const CANON = Object.keys(ETAPA_ROT);
+function canonEtapa(rotulo) {
+  const k = normCab(rotulo);
+  if (!k) return '';
+  /* A mais longa primeiro: "leads (meta ads)" antes de um eventual "leads". */
+  const hit = CANON.slice().sort((a, b) => b.length - a.length)
+    .find(c => k === c || k.endsWith(c));
+  return hit || k;
+}
+
+function lerProdutos(linhas) {
+  const t = tabela(linhas, 0);
+  const chaves = t.cab.map(canonEtapa);
+  if (!chaves.includes('clientes')) throw new Error('nao achei a coluna Clientes no funil de produto');
+
+  const linha = rot => {
+    const k = normCab(rot);
+    const l = t.linhas.find(x => normCab(x[0] || '') === k);
+    if (!l) return null;
+    const o = {};
+    chaves.forEach((c, i) => { if (c && i > 0) o[c] = l[i] == null ? '' : String(l[i]).trim(); });
+    return o;
+  };
+  const medicao = (() => {
+    for (const l of t.linhas) {
+      const i = l.map(c => normCab(c)).indexOf('data da medicao');
+      if (i >= 0) return String(l[i + 1] || '').trim();
+    }
+    return '';
+  })();
+  return {
+    etapas: chaves.slice(1).filter(Boolean).map(k => ({ k: k, rot: ETAPA_ROT[k] || k })),
+    real: linha('Resultado Real'),
+    projMes: linha('Projecao Mensal') || linha('Projecao Total'),
+    projProp: linha('Projecao Proporcional'),
+    difer: linha('Diferenca do Resultado Projetado'),
+    taxasProj: linha('Dados Projetados'),
+    taxasReal: linha('Dados Reais'),
+    medicao: medicao
+  };
+}
+
+/* Os nomes das abas seguem o calendario: "KPIS Outubro", "Produtos
+   Juridicos - Out/2026". Monto os nomes a partir da data de hoje para o
+   painel virar o mes sozinho, e tento as variantes com e sem acento. */
+const MES_ABA  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+async function tentarAbas(sheet, nomes, leitor, headers) {
+  let ultimo = null;
+  for (const aba of nomes) {
+    try { return { ok: leitor(await lerAba(sheet, aba, { headers: headers })) }; }
+    catch (e) { ultimo = e; }
+  }
+  return { erro: ultimo ? ultimo.message : 'aba nao encontrada' };
+}
+
+async function carregarMetas() {
+  const mi = new Date().getMonth();
+  const ano = new Date().getFullYear();
+  const out = { meses: {}, okrs: [], produtos: {} };
+
+  /* Nas abas KPIS o cabecalho esta na linha 5 (linhas 1-4 sao titulo). */
+  for (const i of [mi, (mi + 11) % 12]) {
+    const nome = MES_ABA[i];
+    const r = await tentarAbas(CONFIG.SHEETS.metas, ['KPIS ' + nome, 'KPIS ' + semAcento(nome)], lerKpis, 5);
+    out.meses[nome] = r.ok || { erro: r.erro };
+  }
+
+  const abasProd = i => {
+    const a = i > mi ? ano - 1 : ano;
+    const base = ' - ' + MES_ABREV[i] + '/' + a;
+    return ['Produtos Jurídicos' + base, 'Produtos Juridicos' + base];
+  };
+  /* Nas abas de Produtos Juridicos o cabecalho esta na linha 2. */
+  const pa = await tentarAbas(CONFIG.SHEETS.metas, abasProd(mi), lerProdutos, 2);
+  if (pa.ok) out.produtos.atual = pa.ok; else out.produtos.atualErro = pa.erro;
+  const pb = await tentarAbas(CONFIG.SHEETS.metas, abasProd((mi + 11) % 12), lerProdutos, 2);
+  if (pb.ok) out.produtos.anterior = pb.ok;
+  try {
+    /* Na aba OKRS o cabecalho esta na linha 4. */
+    const l = await lerAba(CONFIG.SHEETS.metas, 'OKRS', { headers: 4 });
+    const t = tabela(l, 0);
+    const m = mapear(t, { acao: ['Acao'], resp: ['Responsavel'], prazo: ['Data Conclusao (prevista)'], status: ['Status'], obs: ['Observacao do Resultado'] });
+    out.okrs = t.linhas.map(x => ({
+      acao: m.cel(x, 'acao'), resp: m.cel(x, 'resp'),
+      prazo: parseData(m.cel(x, 'prazo')), status: m.cel(x, 'status'), obs: m.cel(x, 'obs')
+    })).filter(x => x.acao);
+  } catch (e) { out.okrsErro = e.message; }
+
+  return out;
+}
+
+/* ----------------------------------------------------- 5. HISTORICO (antiga)
+   Planilha antiga: uso so o acumulado do ano, que e o unico recorte com
+   estrutura estavel entre as ~80 abas. */
+async function carregarHistorico() {
+  const ano = new Date().getFullYear();
+  const r = await tentarAbas(CONFIG.SHEETS.antiga, [
+    'Produtos Jurídicos [Acumulado ' + ano + ']',
+    'Produtos Juridicos [Acumulado ' + ano + ']'
+  ], lerProdutos, 2);
+  if (!r.ok) throw new Error(r.erro);
+  return { acumulado: r.ok };
+}
+
+/* ------------------------------------------------------------- 6. KOMMO
+   Leads Kommo [DASHBOARDS], aba Leads - pre-qualificacao lead a lead.
+   Dois formatos convivem na aba hoje: o coletor foi reescrito para um layout
+   largo (57 colunas, com valor/motivo de perda/utm) e a rodada falhou no meio,
+   deixando o cabecalho novo sobre linhas no layout antigo (17 colunas).
+   Detecto por linha: linha curta sob cabecalho largo = layout antigo. */
+const LEGADO_KOMMO = ['id','lead','criado','hora','funil','etapa','situacao','origem','campanha',
+  'produto','plano','tipoPlano','mensalidade','tempo','responsavel','reuniao','atualizado'];
+
+async function carregarKommo() {
+  const linhas = await lerAba(CONFIG.SHEETS.kommo, 'Leads', { tq: 'select ' + letrasAte(57) });
+  const t = tabela(linhas);
+  const largo = t.norm.includes('lead_id');
+  const m = mapear(t, {
+    id:        ['lead_id', 'ID'],
+    lead:      ['nome', 'Lead', 'contato_nome'],
+    criado:    ['criado_data', 'criado em', 'criado_em'],
+    hora:      ['Hora'],
+    funil:     ['funil'],
+    etapa:     ['etapa'],
+    situacao:  ['situacao'],
+    origem:    ['Origem'],
+    campanha:  ['Campanha'],
+    produto:   ['Produto Juridico'],
+    plano:     ['Qual seu plano de saude', 'plano de saude'],
+    tipoPlano: ['Qual o tipo do seu plano', 'tipo do plano'],
+    mensalidade:['Qual o valor da mensalidade', 'mensalidade'],
+    tempo:     ['Quanto tempo voce esta nele', 'tempo de plano'],
+    responsavel:['responsavel'],
+    reuniao:   ['Proximo agendamento', 'reuniao em'],
+    valor:     ['valor'],
+    motivoPerda:['motivo_perda'],
+    fechado:   ['fechado_data'],
+    diasFechar:['dias_para_fechar']
+  });
+
+  let legadas = 0;
+  const reg = t.linhas.map(l => {
+    /* Linha curta sob cabecalho largo: le pela posicao do layout antigo. */
+    const antiga = largo && l.length <= 18;
+    if (antiga) legadas++;
+    const pega = k => {
+      if (!antiga) return m.cel(l, k);
+      const i = LEGADO_KOMMO.indexOf(k);
+      if (i < 0 || i >= l.length) return '';
+      return l[i] == null ? '' : String(l[i]).trim();
+    };
+    const d = parseData(pega('criado'));
+    const r = {
+      id: pega('id'),
+      lead: pega('lead') || 'Lead sem nome',
+      d: d, mes: d ? chaveMes(d) : '',
+      funil: pega('funil') || 'Sem funil',
+      etapa: pega('etapa') || 'Sem etapa',
+      situacao: pega('situacao') || 'Em aberto',
+      origem: pega('origem') || 'Sem origem',
+      campanha: pega('campanha'),
+      produto: pega('produto') || 'Sem produto',
+      plano: pega('plano'), tipoPlano: pega('tipoPlano'),
+      mensalidade: pega('mensalidade'), tempo: pega('tempo'),
+      responsavel: pega('responsavel') || 'Sem responsavel',
+      reuniao: parseData(pega('reuniao')),
+      valor: num(pega('valor')),
+      motivoPerda: pega('motivoPerda'),
+      legado: antiga
+    };
+    /* Pre-qualificado e quem respondeu a triagem. Uma resposta basta: quem
+       comecou a responder passou pelo formulario. */
+    r.preQual = !!(r.plano || r.tipoPlano || r.mensalidade || r.tempo);
+    r.perdido = /perdid|lost/i.test(r.situacao);
+    r.ganho   = /ganh|won/i.test(r.situacao);
+    return r;
+  }).filter(r => r.d);
+
+  /* O funil Processual nao e comercial: sao clientes que ja estao na casa. */
+  const comercial = reg.filter(r => !/processual/i.test(r.funil));
+
+  return {
+    reg: comercial, todos: reg, legadas: legadas,
+    formato: largo ? 'largo' : 'antigo', faltando: m.faltando, linhas: t.linhas.length
+  };
+}
+
+/* ===================== ORQUESTRACAO ===================== */
+const FONTES = [
+  { k: 'atend',    nome: 'Fluxo de Atendimentos [NOVA]',      papel: 'Reunioes, proposta e esteira de negociacao', sheet: 'atend',    fn: carregarAtend,     critica: true },
+  { k: 'clientes', nome: 'FLUXO DE CLIENTES [2026]',          papel: 'Fechamentos, honorarios e ticket medio',     sheet: 'clientes', fn: carregarClientes,  critica: true },
+  { k: 'metas',    nome: 'Metas e Resultados - Comercial [NOVA]', papel: 'KPIs do mes, metas e plano de acao',      sheet: 'metas',    fn: carregarMetas,     critica: true },
+  { k: 'metaDia',  nome: 'Campanhas Meta Ads - Insights diarios', papel: 'Investimento, CPL e desempenho diario',  sheet: 'meta',     fn: carregarMetaDia,   critica: false },
+  { k: 'metaCamp', nome: 'Campanhas Meta Ads - Campanhas',    papel: 'Status e orcamento das campanhas',           sheet: 'meta',     fn: carregarMetaCamp,  critica: false },
+  { k: 'metaReun', nome: 'Campanhas Meta Ads - Reunioes',     papel: 'Reunioes marcadas vindas do CRM',            sheet: 'meta',     fn: carregarMetaReun,  critica: false },
+  { k: 'kommo',    nome: 'Leads Kommo [DASHBOARDS]',          papel: 'Pre-qualificacao lead a lead',               sheet: 'kommo',    fn: carregarKommo,     critica: false },
+  { k: 'hist',     nome: 'Metas e Resultados (antiga)',       papel: 'Acumulado do ano, base historica',           sheet: 'antiga',   fn: carregarHistorico, critica: false }
+];
+
+let ULTIMA_LEITURA = null;
+
+async function carregarTudo() {
+  Object.keys(ERROS).forEach(k => delete ERROS[k]);
+  AVISOS.length = 0;
+
+  const res = await Promise.allSettled(FONTES.map(f => f.fn()));
+  res.forEach((r, i) => {
+    const f = FONTES[i];
+    if (r.status === 'fulfilled') {
+      DADOS[f.k] = r.value;
+      if (r.value && r.value.faltando && r.value.faltando.length) {
+        AVISOS.push({ nivel: 'atencao', fonte: f.nome,
+          txt: 'colunas nao encontradas: ' + r.value.faltando.join(', ') + '. Os campos ficam vazios no painel.' });
+      }
+    } else {
+      delete DADOS[f.k];
+      ERROS[f.k] = (r.reason && r.reason.message) || String(r.reason);
+    }
+  });
+  ULTIMA_LEITURA = new Date();
+  return DADOS;
+}
+/* ==========================================================================
+   GRAFICOS - SVG inline, sem biblioteca.
+   Regras seguidas aqui (paleta validada em validate_palette.js):
+     . uma escala por grafico. Nunca dois eixos Y.
+     . cor categorica em ordem fixa (--s1..--s8), nunca ciclada;
+       da 9a serie em diante tudo cai em "Outros".
+     . magnitude de etapa usa a rampa de um so tom (--r1..--r6).
+     . marca fina, ponta arredondada 4px ancorada na linha de base,
+       2px de respiro entre fatias empilhadas e barras vizinhas.
+     . texto sempre em token de texto, nunca na cor da serie.
+     . camada de hover por padrao em todo grafico.
+   ========================================================================== */
+const SERIES = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)','var(--s6)','var(--s7)','var(--s8)'];
+const RAMPA  = ['var(--r1)','var(--r2)','var(--r3)','var(--r4)','var(--r5)','var(--r6)'];
+const corSerie = i => SERIES[i] || 'var(--texto-muted)';
+const corRampa = (i, n) => RAMPA[Math.min(RAMPA.length - 1, Math.round((i / Math.max(1, n - 1)) * (RAMPA.length - 1)))];
+
+/* Escala "bonita": topo arredondado para 1/2/5 x 10^n. */
+function escalaTopo(max) {
+  if (!(max > 0)) return 1;
+  const e = Math.pow(10, Math.floor(Math.log10(max)));
+  const r = max / e;
+  const p = r <= 1 ? 1 : r <= 2 ? 2 : r <= 2.5 ? 2.5 : r <= 5 ? 5 : 10;
+  return p * e;
+}
+function ticks(topo, n) {
+  const out = [];
+  for (let i = 0; i <= n; i++) out.push((topo / n) * i);
+  return out;
+}
+
+/* Barra com a ponta de cima arredondada e a base reta (ancorada no eixo). */
+function barraTopoRedondo(x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h));
+  if (h <= 0.5) return '';
+  return 'M' + x + ',' + (y + h) + 'V' + (y + rr) +
+         'q0,' + (-rr) + ' ' + rr + ',' + (-rr) +
+         'h' + (w - 2 * rr) +
+         'q' + rr + ',0 ' + rr + ',' + rr +
+         'V' + (y + h) + 'Z';
+}
+/* Idem para barra horizontal: ponta da direita arredondada. */
+function barraFimRedondo(x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, h / 2, w));
+  if (w <= 0.5) return '';
+  return 'M' + x + ',' + y + 'H' + (x + w - rr) +
+         'q' + rr + ',0 ' + rr + ',' + rr +
+         'v' + (h - 2 * rr) +
+         'q0,' + rr + ' ' + (-rr) + ',' + rr +
+         'H' + x + 'Z';
+}
+
+const tipLinha = (cor, rot, val) =>
+  '<div class="d-linha">' + (cor ? '<span class="d-marca" style="background:' + cor + '"></span>' : '') +
+  '<span>' + rot + '</span><span class="d-val">' + val + '</span></div>';
+
+/* ---------------------------------------------------------- COLUNAS (tempo) */
+function vizColunas(o) {
+  const dados = o.dados || [];
+  if (!dados.length) return '<div class="vazio">Sem dados no recorte.</div>';
+  const W = 100, H = o.altura || 190;
+  const mE = 7.5, mD = 1.5, mT = o.rotulos === false ? 3 : 9, mB = 13;
+  const fmt = o.fmt || n0;
+  const topo = escalaTopo(Math.max.apply(null, dados.map(d => d.v).concat([0])));
+  const pw = (W - mE - mD) / dados.length;
+  const bw = Math.max(1.2, Math.min(pw * 0.62, 7));
+  const ph = H - mT - mB;
+  const y = v => mT + ph - (v / topo) * ph;
+
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">';
+  ticks(topo, 4).forEach(t => {
+    s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + y(t) + '" y2="' + y(t) + '" vector-effect="non-scaling-stroke"/>';
+    s += '<text class="eixo" x="' + (mE - 1.5) + '" y="' + (y(t) + 1.2) + '" text-anchor="end" style="font-size:3.6px">' + (o.fmtEixo || n0)(t) + '</text>';
+  });
+  dados.forEach((d, i) => {
+    const cx = mE + pw * i + pw / 2;
+    const h = Math.max(0, (d.v / topo) * ph);
+    const cor = d.cor || o.cor || 'var(--s1)';
+    const tip = '<span class="d-tit">' + esc(d.rot || d.k) + '</span>' + tipLinha(cor, o.nome || 'Valor', fmt(d.v)) +
+      (d.extra || []).map(e => tipLinha(e.cor, esc(e.rot), e.val)).join('');
+    s += '<g data-tip="' + esc(tip) + '">';
+    s += '<rect class="alvo" x="' + (cx - pw / 2) + '" y="' + mT + '" width="' + pw + '" height="' + ph + '"/>';
+    s += '<path d="' + barraTopoRedondo(cx - bw / 2, y(d.v), bw, h, 1.1) + '" fill="' + cor + '"/>';
+    s += '</g>';
+    if (o.rotulos !== false && dados.length <= 14 && d.v > 0)
+      s += '<text class="rotulo-dado" x="' + cx + '" y="' + (y(d.v) - 2.2) + '" text-anchor="middle" style="font-size:3.5px">' + fmt(d.v) + '</text>';
+    if (dados.length <= 18 || i % Math.ceil(dados.length / 14) === 0)
+      s += '<text class="eixo" x="' + cx + '" y="' + (H - 4) + '" text-anchor="middle" style="font-size:3.6px">' + esc(d.k) + '</text>';
+  });
+  return s + '</svg>';
+}
+
+/* --------------------------------------------------------- BARRAS (ranking) */
+function vizBarras(o) {
+  const dados = (o.dados || []).filter(d => d.v != null);
+  if (!dados.length) return '<div class="vazio">Sem dados no recorte.</div>';
+  const fmt = o.fmt || n0;
+  const linha = 23, W = 100;
+  const H = dados.length * linha + 6;
+  const rotW = o.rotuloW || 34;
+  const max = Math.max.apply(null, dados.map(d => Math.abs(d.v)).concat([0])) || 1;
+  const pista = W - rotW - 13;
+
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMinYMin meet" role="img">';
+  dados.forEach((d, i) => {
+    const yb = 3 + i * linha;
+    const w = (Math.abs(d.v) / max) * pista;
+    const cor = d.cor || o.cor || 'var(--s1)';
+    const tip = '<span class="d-tit">' + esc(d.k) + '</span>' + tipLinha(cor, o.nome || 'Valor', fmt(d.v)) +
+      (d.extra || []).map(e => tipLinha(e.cor, esc(e.rot), e.val)).join('');
+    s += '<g data-tip="' + esc(tip) + '">';
+    s += '<rect class="alvo" x="0" y="' + yb + '" width="' + W + '" height="' + linha + '"/>';
+    s += '<text class="eixo" x="0" y="' + (yb + linha / 2 + 1.3) + '" style="font-size:3.9px;fill:var(--texto-2)">' +
+         esc(d.k.length > 30 ? d.k.slice(0, 29) + '…' : d.k) + '</text>';
+    s += '<rect x="' + rotW + '" y="' + (yb + linha / 2 - 3.4) + '" width="' + pista + '" height="6.8" rx="2" fill="var(--bg4)" opacity=".55"/>';
+    s += '<path d="' + barraFimRedondo(rotW, yb + linha / 2 - 3.4, Math.max(w, 1), 6.8, 2) + '" fill="' + cor + '"/>';
+    s += '<text class="rotulo-dado" x="' + (W - 0.5) + '" y="' + (yb + linha / 2 + 1.3) + '" text-anchor="end" style="font-size:3.9px">' + fmt(d.v) + '</text>';
+    s += '</g>';
+  });
+  return s + '</svg>';
+}
+
+/* ----------------------------------------------------------- LINHAS (tempo) */
+function vizLinhas(o) {
+  const x = o.x || [];
+  const series = (o.series || []).filter(s => s.vals && s.vals.length);
+  if (!x.length || !series.length) return '<div class="vazio">Sem dados no recorte.</div>';
+  const W = 100, H = o.altura || 200;
+  const mE = 8, mD = 2, mT = 5, mB = 13;
+  const fmt = o.fmt || n0;
+  let max = 0;
+  series.forEach(s => s.vals.forEach(v => { if (v != null && v > max) max = v; }));
+  const topo = escalaTopo(max);
+  const pw = x.length > 1 ? (W - mE - mD) / (x.length - 1) : 0;
+  const ph = H - mT - mB;
+  const px = i => mE + pw * i + (x.length > 1 ? 0 : (W - mE - mD) / 2);
+  const py = v => mT + ph - (v / topo) * ph;
+
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">';
+  ticks(topo, 4).forEach(t => {
+    s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + py(t) + '" y2="' + py(t) + '" vector-effect="non-scaling-stroke"/>';
+    s += '<text class="eixo" x="' + (mE - 1.5) + '" y="' + (py(t) + 1.2) + '" text-anchor="end" style="font-size:3.6px">' + (o.fmtEixo || n0)(t) + '</text>';
+  });
+  series.forEach((se, si) => {
+    const cor = se.cor || corSerie(si);
+    let d = '', aberto = false;
+    se.vals.forEach((v, i) => {
+      if (v == null) { aberto = false; return; }
+      d += (aberto ? 'L' : 'M') + px(i) + ',' + py(v); aberto = true;
+    });
+    if (o.area && series.length === 1) {
+      const prim = se.vals.findIndex(v => v != null);
+      let ult = -1; se.vals.forEach((v, i) => { if (v != null) ult = i; });
+      if (prim >= 0 && ult > prim) {
+        s += '<path d="' + d + 'L' + px(ult) + ',' + py(0) + 'L' + px(prim) + ',' + py(0) + 'Z" fill="' + cor + '" opacity=".13"/>';
+      }
+    }
+    s += '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
+    if (x.length <= 26) se.vals.forEach((v, i) => {
+      if (v == null) return;
+      s += '<circle class="ponto" cx="' + px(i) + '" cy="' + py(v) + '" r="1.5" fill="' + cor + '"/>';
+    });
+  });
+  /* Faixa por ponto no eixo X: um alvo de hover maior que a marca, com todas
+     as series do ponto no mesmo balao. */
+  x.forEach((rot, i) => {
+    const tip = '<span class="d-tit">' + esc(rot) + '</span>' + series.map((se, si) =>
+      se.vals[i] == null ? '' : tipLinha(se.cor || corSerie(si), esc(se.nome), fmt(se.vals[i]))).join('');
+    s += '<g class="banda" data-tip="' + esc(tip) + '">';
+    s += '<line class="crosshair" x1="' + px(i) + '" x2="' + px(i) + '" y1="' + mT + '" y2="' + (mT + ph) + '" vector-effect="non-scaling-stroke"/>';
+    s += '<rect class="alvo" x="' + (px(i) - (pw || 8) / 2) + '" y="' + mT + '" width="' + (pw || 8) + '" height="' + ph + '"/>';
+    s += '</g>';
+    if (x.length <= 18 || i % Math.ceil(x.length / 12) === 0)
+      s += '<text class="eixo" x="' + px(i) + '" y="' + (H - 4) + '" text-anchor="middle" style="font-size:3.6px">' + esc(rot) + '</text>';
+  });
+  return s + '</svg>';
+}
+
+/* ------------------------------------------------------------------- FUNIL */
+function vizFunil(etapas) {
+  const et = (etapas || []).filter(e => e.v != null);
+  if (!et.length) return '<div class="vazio">Sem dados de funil.</div>';
+  const base = et[0].v || 1;
+  let h = '<div style="display:flex;flex-direction:column;gap:2px">';
+  et.forEach((e, i) => {
+    const largura = Math.max(3, (e.v / base) * 100);
+    const cor = corRampa(i, et.length);
+    const ant = i > 0 ? et[i - 1].v : null;
+    const conv = ant ? taxa(e.v, ant) : null;
+    const tip = '<span class="d-tit">' + esc(e.k) + '</span>' +
+      tipLinha(cor, 'Volume', n0(e.v)) +
+      (conv != null ? tipLinha('', 'Conversao da etapa anterior', pct(conv, 1)) : '') +
+      tipLinha('', 'Do topo do funil', pct(taxa(e.v, base), 2));
+    h += '<div data-tip="' + esc(tip) + '" style="display:flex;align-items:center;gap:0.6rem;cursor:default">';
+    h += '<div style="flex:0 0 40%;max-width:210px;font-size:0.74rem;color:var(--texto-2);line-height:1.3">' + esc(e.k) + '</div>';
+    h += '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:0.5rem">';
+    h += '<div style="height:20px;border-radius:4px;background:' + cor + ';width:' + largura + '%;min-width:3px"></div>';
+    h += '<span style="font-size:0.78rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--texto)">' + n0(e.v) + '</span>';
+    if (conv != null) h += '<span style="font-size:0.7rem;color:var(--texto-muted);font-variant-numeric:tabular-nums">' + pct(conv, 0) + '</span>';
+    h += '</div></div>';
+  });
+  return h + '</div>';
+}
+
+/* ------------------------------------------------------------------- DONUT */
+function vizDonut(o) {
+  const dados = (o.dados || []).filter(d => d.v > 0);
+  if (!dados.length) return '<div class="vazio">Sem dados no recorte.</div>';
+  const total = dados.reduce((a, d) => a + d.v, 0);
+  const R = 42, r = 27, cx = 50, cy = 50;
+  const fmt = o.fmt || n0;
+  /* 2px de respiro entre fatias: um anel do tom da superficie por cima. */
+  const gap = 1.6;
+  let ang = -90;
+  let s = '<svg class="viz" viewBox="0 0 100 100" style="max-height:200px" role="img">';
+  dados.forEach((d, i) => {
+    const frac = d.v / total;
+    const a0 = ang, a1 = ang + frac * 360;
+    ang = a1;
+    const cor = d.cor || corSerie(i);
+    const ia0 = (a0 + gap / 2) * Math.PI / 180, ia1 = (a1 - gap / 2) * Math.PI / 180;
+    if (ia1 <= ia0) return;
+    const grande = (a1 - a0) > 180 ? 1 : 0;
+    const p = [
+      'M', cx + R * Math.cos(ia0), cy + R * Math.sin(ia0),
+      'A', R, R, 0, grande, 1, cx + R * Math.cos(ia1), cy + R * Math.sin(ia1),
+      'L', cx + r * Math.cos(ia1), cy + r * Math.sin(ia1),
+      'A', r, r, 0, grande, 0, cx + r * Math.cos(ia0), cy + r * Math.sin(ia0), 'Z'
+    ].join(' ');
+    const tip = '<span class="d-tit">' + esc(d.k) + '</span>' + tipLinha(cor, 'Valor', fmt(d.v)) +
+      tipLinha('', 'Participacao', pct(frac * 100, 1));
+    s += '<path d="' + p + '" fill="' + cor + '" data-tip="' + esc(tip) + '" style="cursor:default"/>';
+  });
+  s += '<text x="50" y="47" text-anchor="middle" style="font-size:11px;font-weight:700;fill:var(--texto)">' + (o.centro || fmt(total)) + '</text>';
+  s += '<text x="50" y="57" text-anchor="middle" style="font-size:5px;fill:var(--texto-muted)">' + esc(o.centroRot || 'total') + '</text>';
+  return s + '</svg>';
+}
+
+/* --------------------------------------------------------------- EMPILHADO */
+function vizEmpilhado(o) {
+  const x = o.x || [];
+  const series = o.series || [];
+  if (!x.length || !series.length) return '<div class="vazio">Sem dados no recorte.</div>';
+  const W = 100, H = o.altura || 200;
+  const mE = 8, mD = 2, mT = 5, mB = 13;
+  const fmt = o.fmt || n0;
+  const totais = x.map((_, i) => series.reduce((a, s) => a + (s.vals[i] || 0), 0));
+  const topo = escalaTopo(Math.max.apply(null, totais.concat([0])));
+  const pw = (W - mE - mD) / x.length;
+  const bw = Math.max(1.5, Math.min(pw * 0.64, 9));
+  const ph = H - mT - mB;
+  const py = v => mT + ph - (v / topo) * ph;
+
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">';
+  ticks(topo, 4).forEach(t => {
+    s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + py(t) + '" y2="' + py(t) + '" vector-effect="non-scaling-stroke"/>';
+    s += '<text class="eixo" x="' + (mE - 1.5) + '" y="' + (py(t) + 1.2) + '" text-anchor="end" style="font-size:3.6px">' + (o.fmtEixo || n0)(t) + '</text>';
+  });
+  x.forEach((rot, i) => {
+    const cx = mE + pw * i + pw / 2;
+    let acc = 0;
+    const tip = '<span class="d-tit">' + esc(rot) + '</span>' +
+      series.map((se, si) => (se.vals[i] ? tipLinha(se.cor || corSerie(si), esc(se.nome), fmt(se.vals[i])) : '')).join('') +
+      tipLinha('', 'Total', fmt(totais[i]));
+    s += '<g data-tip="' + esc(tip) + '">';
+    s += '<rect class="alvo" x="' + (cx - pw / 2) + '" y="' + mT + '" width="' + pw + '" height="' + ph + '"/>';
+    series.forEach((se, si) => {
+      const v = se.vals[i] || 0;
+      if (v <= 0) return;
+      const y0 = py(acc + v), alt = py(acc) - py(acc + v);
+      acc += v;
+      /* 2px de respiro: encurto a fatia por baixo. */
+      const respiro = Math.min(0.9, alt * 0.18);
+      s += '<rect x="' + (cx - bw / 2) + '" y="' + y0 + '" width="' + bw + '" height="' + Math.max(0.4, alt - respiro) +
+           '" rx="' + (si === series.length - 1 ? 1.1 : 0) + '" fill="' + (se.cor || corSerie(si)) + '"/>';
+    });
+    s += '</g>';
+    if (x.length <= 18 || i % Math.ceil(x.length / 12) === 0)
+      s += '<text class="eixo" x="' + cx + '" y="' + (H - 4) + '" text-anchor="middle" style="font-size:3.6px">' + esc(rot) + '</text>';
+  });
+  return s + '</svg>';
+}
+
+/* ---------------------------------------------------------------- SPARKLINE */
+function spark(vals, cor) {
+  const v = (vals || []).filter(x => x != null);
+  if (v.length < 2) return '';
+  const max = Math.max.apply(null, v), min = Math.min.apply(null, v);
+  const amp = (max - min) || 1;
+  const pw = 100 / (v.length - 1);
+  const pts = v.map((x, i) => (i * pw).toFixed(2) + ',' + (26 - ((x - min) / amp) * 22).toFixed(2));
+  return '<svg class="viz" viewBox="0 0 100 30" preserveAspectRatio="none" style="height:30px">' +
+    '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + (cor || 'var(--s1)') +
+    '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
+    '<circle cx="100" cy="' + (26 - ((v[v.length - 1] - min) / amp) * 22).toFixed(2) + '" r="2" fill="' + (cor || 'var(--s1)') + '"/></svg>';
+}
+
+/* ===================== LEGENDA ===================== */
+function legenda(itens) {
+  if (!itens || itens.length < 2) return '';
+  return '<div class="legenda">' + itens.map((it, i) =>
+    '<span class="legenda-item"><span class="legenda-marca" style="background:' + (it.cor || corSerie(i)) + '"></span>' +
+    esc(it.nome) + (it.val != null ? ' <b style="color:var(--texto)">' + it.val + '</b>' : '') + '</span>').join('') + '</div>';
+}
+
+/* ===================== PECAS DE UI ===================== */
+const ICO = {
+  ok:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  alerta:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  sobe:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
+  desce:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
+  igual:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+};
+
+/* Selo de status: a cor nunca vem sozinha - sempre com icone e rotulo. */
+function selo(nivel, texto) {
+  const ic = nivel === 'ok' ? ICO.ok : nivel === 'neutro' ? ICO.info : ICO.alerta;
+  return '<span class="selo ' + nivel + '">' + ic + esc(texto) + '</span>';
+}
+
+/* Classifica atingimento contra a meta proporcional do mes. */
+function nivelMeta(p) {
+  if (p == null) return 'neutro';
+  if (p >= 100) return 'ok';
+  if (p >= 85) return 'atencao';
+  if (p >= 60) return 'grave';
+  return 'critico';
+}
+
+function delta(v, opc) {
+  const o = opc || {};
+  if (v == null || !isFinite(v)) return '<span class="delta neu">' + ICO.igual + '&mdash;</span>';
+  const bom = o.inverso ? v < 0 : v > 0;
+  const zero = Math.abs(v) < 0.05;
+  const cls = zero ? 'neu' : (bom ? 'pos' : 'neg');
+  const ic = zero ? ICO.igual : (v > 0 ? ICO.sobe : ICO.desce);
+  const txt = (v > 0 ? '+' : '') + (o.fmt ? o.fmt(v) : pct(v, 1));
+  return '<span class="delta ' + cls + '">' + ic + txt + (o.sufixo ? ' ' + esc(o.sufixo) : '') + '</span>';
+}
+
+function kpi(o) {
+  let h = '<div class="kpi">';
+  h += '<div class="kpi-rotulo">' + esc(o.rotulo) +
+       (o.dica ? '<span data-tip="' + esc(o.dica) + '" style="cursor:help;opacity:.6">&#9432;</span>' : '') + '</div>';
+  h += '<div class="kpi-valor' + (o.pequeno ? ' sm' : '') + '">' + (o.valor == null ? '&mdash;' : o.valor) + '</div>';
+  if (o.delta) h += o.delta;
+  if (o.selo) h += ' ' + o.selo;
+  if (o.nota) h += '<div class="kpi-nota">' + o.nota + '</div>';
+  if (o.ritmo) h += o.ritmo;
+  if (o.spark) h += '<div class="kpi-spark">' + o.spark + '</div>';
+  return h + '</div>';
+}
+
+/* Barra de ritmo: quanto do mes passou x quanto da meta foi entregue. */
+function ritmo(o) {
+  const feito = o.feito || 0, meta = o.meta || 0;
+  const p = meta > 0 ? Math.min(100, (feito / meta) * 100) : 0;
+  const alvo = o.alvoPct == null ? null : Math.min(100, Math.max(0, o.alvoPct));
+  const atingimento = meta > 0 && alvo != null && alvo > 0 ? (p / alvo) * 100 : null;
+  const nv = nivelMeta(atingimento);
+  const cor = nv === 'ok' ? 'var(--ok)' : nv === 'atencao' ? 'var(--atencao)' : nv === 'grave' ? 'var(--grave)' : nv === 'critico' ? 'var(--critico)' : 'var(--s1)';
+  let h = '<div class="ritmo"><div class="ritmo-trilha">';
+  h += '<div class="ritmo-fill" style="width:' + p.toFixed(1) + '%;background:' + cor + '"></div>';
+  if (alvo != null) h += '<div class="ritmo-alvo" style="left:' + alvo.toFixed(1) + '%" data-tip="' +
+    esc('Ritmo esperado para hoje: ' + pct(alvo, 0) + ' da meta do mes') + '"></div>';
+  h += '</div><div class="ritmo-legenda"><span>' + (o.fmt || n0)(feito) + ' de ' + (o.fmt || n0)(meta) +
+       (o.escopo ? ' <span style="opacity:.75">&middot; ' + esc(o.escopo) + '</span>' : '') + '</span>' +
+       '<span>' + pct(p, 0) + ' da meta</span></div></div>';
+  return h;
+}
+
+function cartao(titulo, sub, corpo, extra) {
+  return '<div class="cartao"><div class="cartao-titulo">' + esc(titulo) + (extra || '') + '</div>' +
+    (sub ? '<div class="cartao-sub">' + sub + '</div>' : '<div style="height:0.6rem"></div>') + corpo + '</div>';
+}
+
+function aviso(nivel, html) {
+  const ic = nivel === 'info' ? ICO.info : ICO.alerta;
+  return '<div class="aviso ' + nivel + '">' + ic + '<div>' + html + '</div></div>';
+}
+
+/* ===================== TABELAS INTERATIVAS =====================
+   Ordenar pelo cabecalho, buscar, limitar e exportar. O estado fica no
+   registro para o redesenho nao perder a ordenacao escolhida. */
+const TABELAS = {};
+let TABELA_ATIVA = null;
+
+function tabelaInterativa(id, cols, dados, opc) {
+  const o = opc || {};
+  TABELAS[id] = {
+    cols: cols, dados: dados,
+    ord: o.ord || null, dir: o.dir || -1,
+    limite: o.limite || 60, passo: o.limite || 60,
+    titulo: o.titulo || id, total: o.total || null
+  };
+  if (o.ativa !== false) TABELA_ATIVA = id;
+  return '<div id="tbl-' + id + '">' + desenharTabela(id) + '</div>';
+}
+
+function valOrd(r, c) {
+  const v = typeof c.v === 'function' ? c.v(r) : r[c.k];
+  if (v instanceof Date) return v.getTime();
+  if (v == null || v === '') return c.tipo === 'txt' ? '' : -Infinity;
+  return typeof v === 'number' ? v : (c.tipo && c.tipo !== 'txt' ? num(v) : chaveBusca(v));
+}
+
+function linhasOrdenadas(id) {
+  const t = TABELAS[id];
+  let d = t.dados.slice();
+  if (t.ord) {
+    const c = t.cols.find(x => x.k === t.ord);
+    if (c) d.sort((a, b) => {
+      const va = valOrd(a, c), vb = valOrd(b, c);
+      if (va === vb) return 0;
+      return (va > vb ? 1 : -1) * t.dir;
+    });
+  }
+  return d;
+}
+
+function celula(r, c) {
+  if (c.html) return c.html(r);
+  const v = typeof c.v === 'function' ? c.v(r) : r[c.k];
+  if (v == null || v === '') return '&mdash;';
+  switch (c.tipo) {
+    case 'moeda': return brl(v);
+    case 'moeda0':return brl0(v);
+    case 'num':   return n0(v);
+    case 'num1':  return n1(v);
+    case 'pct':   return pct(v, c.casas == null ? 0 : c.casas);
+    case 'data':  return fmtData(v);
+    default:      return esc(v);
+  }
+}
+
+function desenharTabela(id) {
+  const t = TABELAS[id];
+  const d = linhasOrdenadas(id);
+  if (!d.length) return '<div class="vazio">Nenhum registro no recorte atual.</div>';
+  const vis = d.slice(0, t.limite);
+
+  let h = '<div class="tabela-caixa"><table class="dados"><thead><tr>';
+  t.cols.forEach(c => {
+    const num_ = c.tipo && c.tipo !== 'txt' && c.tipo !== 'data';
+    const ordenavel = c.ord !== false;
+    h += '<th class="' + (num_ ? 'num ' : '') + (ordenavel ? '' : 'nao-ord ') + (t.ord === c.k ? 'ord' : '') +
+      '" ' + (ordenavel ? 'data-tabela="' + id + '" data-col="' + esc(c.k) + '"' : '') + '>' + esc(c.rot) +
+      (ordenavel ? '<span class="seta">' + (t.ord === c.k ? (t.dir > 0 ? '▲' : '▼') : '⇅') + '</span>' : '') + '</th>';
+  });
+  h += '</tr></thead><tbody>';
+  vis.forEach(r => {
+    h += '<tr>';
+    t.cols.forEach(c => {
+      const num_ = c.tipo && c.tipo !== 'txt' && c.tipo !== 'data';
+      h += '<td class="' + (num_ ? 'num ' : '') + (c.cls || '') + '">' + celula(r, c) + '</td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody>';
+  if (t.total) {
+    h += '<tfoot><tr>';
+    t.cols.forEach((c, i) => {
+      const tv = t.total[c.k];
+      const num_ = c.tipo && c.tipo !== 'txt' && c.tipo !== 'data';
+      h += '<td class="' + (num_ ? 'num' : '') + '">' + (i === 0 ? 'Total (' + n0(d.length) + ')' : (tv ? tv(d) : '')) + '</td>';
+    });
+    h += '</tr></tfoot>';
+  }
+  h += '</table></div>';
+
+  h += '<div class="tabela-rodape"><span>Exibindo ' + n0(vis.length) + ' de ' + n0(d.length) + ' registros</span>';
+  if (d.length > t.limite)
+    h += '<button class="btn-acao" data-mais="' + id + '" type="button">Mostrar mais ' + n0(Math.min(t.passo, d.length - t.limite)) + '</button>';
+  h += '</div>';
+  return h;
+}
+
+function repintarTabela(id) {
+  const el = document.getElementById('tbl-' + id);
+  if (el) el.innerHTML = desenharTabela(id);
+}
+
+/* Mini barra dentro da celula - comparacao rapida sem sair da tabela. */
+function barraCelula(v, max, cor, texto) {
+  const p = max > 0 ? Math.min(100, (Math.abs(v) / max) * 100) : 0;
+  return '<div class="celula-barra"><div class="cb-trilha"><div class="cb-fill" style="width:' + p.toFixed(1) +
+    '%;background:' + (cor || 'var(--s1)') + '"></div></div><span class="cb-num">' + (texto == null ? n0(v) : texto) + '</span></div>';
+}
+/* ==========================================================================
+   RECORTE (filtros) - um unico estado global que todas as telas respeitam.
+   ========================================================================== */
+const F = {
+  periodo: 'u6',
+  produtos: new Set(), sdrs: new Set(), closers: new Set(), origens: new Set(),
+  busca: '',
+  /* Recorte de situacao, so da tabela da esteira. Comeca em "em aberto"
+     porque e nela que da para agir - mas os botoes mostram todas as
+     contagens, para nada ficar escondido sem o gestor ver. */
+  grupo: 'aberto'
+};
+
+const MES_ATUAL = chaveMes(new Date());
+function mesMais(chave, delta) {
+  const a = +chave.slice(0, 4), m = +chave.slice(5, 7) - 1 + delta;
+  const d = new Date(a, m, 1);
+  return chaveMes(d);
+}
+
+const PERIODOS = [
+  { k: 'mes',   rot: 'Mes atual' },
+  { k: 'ant',   rot: 'Mes anterior' },
+  { k: 'u3',    rot: 'Ultimos 3 meses' },
+  { k: 'u6',    rot: 'Ultimos 6 meses' },
+  { k: 'u12',   rot: 'Ultimos 12 meses' },
+  { k: 'ano',   rot: 'Ano corrente' },
+  { k: 'tudo',  rot: 'Todo o historico' }
+];
+
+/* Resolve o periodo em uma faixa de datas e na lista de meses do eixo X. */
+function faixa() {
+  const h = new Date();
+  const fimMes = new Date(h.getFullYear(), h.getMonth() + 1, 0, 23, 59, 59);
+  let de, ate = fimMes;
+  switch (F.periodo) {
+    case 'mes': de = new Date(h.getFullYear(), h.getMonth(), 1); break;
+    case 'ant': de = new Date(h.getFullYear(), h.getMonth() - 1, 1);
+                ate = new Date(h.getFullYear(), h.getMonth(), 0, 23, 59, 59); break;
+    case 'u3':  de = new Date(h.getFullYear(), h.getMonth() - 2, 1); break;
+    case 'u6':  de = new Date(h.getFullYear(), h.getMonth() - 5, 1); break;
+    case 'u12': de = new Date(h.getFullYear(), h.getMonth() - 11, 1); break;
+    case 'ano': de = new Date(h.getFullYear(), 0, 1); break;
+    default:    de = new Date(2000, 0, 1);
+  }
+  return { de: de, ate: ate };
+}
+
+function mesesDoEixo(minimo) {
+  const f = faixa();
+  const out = [];
+  let k = chaveMes(f.de);
+  const fim = chaveMes(f.ate);
+  let guarda = 0;
+  while (k <= fim && guarda++ < 240) { out.push(k); k = mesMais(k, 1); }
+  if (minimo && out.length < 2 && minimo.length) return minimo;
+  return out;
+}
+
+const noPeriodo = d => { if (!d) return false; const f = faixa(); return d >= f.de && d <= f.ate; };
+const passaSet = (s, v) => !s.size || s.has(v);
+function passaBusca(campos) {
+  if (!F.busca) return true;
+  const k = chaveBusca(F.busca);
+  return campos.some(c => chaveBusca(c).includes(k));
+}
+
+/* Recortes por fonte */
+function selAtend() {
+  const d = DADOS.atend;
+  if (!d) return [];
+  return d.reg.filter(r =>
+    noPeriodo(r.dAtend || r.dAgenda) &&
+    passaSet(F.produtos, r.produto) && passaSet(F.sdrs, r.sdr) &&
+    passaSet(F.closers, r.closer) &&
+    passaBusca([r.lead, r.id, r.etapa, r.closer, r.sdr, r.produto, r.telefone, r.resultado]));
+}
+function selClientes() {
+  const d = DADOS.clientes;
+  if (!d) return [];
+  return d.reg.filter(r =>
+    noPeriodo(r.dFecha) &&
+    passaSet(F.produtos, r.produto) && passaSet(F.sdrs, r.sdr) &&
+    passaSet(F.closers, r.closer) && passaSet(F.origens, r.origem) &&
+    passaBusca([r.contato, r.cliente, r.produto, r.closer, r.sdr, r.origem, r.tipoPag]));
+}
+function selMetaDia() {
+  const d = DADOS.metaDia;
+  if (!d) return [];
+  return d.reg.filter(r => noPeriodo(r.d) && passaBusca([r.campanha]));
+}
+function selMetaReun() {
+  const d = DADOS.metaReun;
+  if (!d) return [];
+  return d.reg.filter(r => noPeriodo(r.d) && passaSet(F.produtos, r.produto) && passaSet(F.origens, r.origem));
+}
+function selKommo() {
+  const d = DADOS.kommo;
+  if (!d) return [];
+  return d.reg.filter(r =>
+    noPeriodo(r.d) && passaSet(F.produtos, r.produto) && passaSet(F.origens, r.origem) &&
+    passaBusca([r.lead, r.id, r.etapa, r.funil, r.campanha, r.produto]));
+}
+
+/* ===================== AGREGACAO ===================== */
+function agrupar(lista, chaveFn, valorFn) {
+  const m = new Map();
+  lista.forEach(r => {
+    const k = (chaveFn(r) || '').toString().trim() || '—';
+    if (!m.has(k)) m.set(k, { k: k, n: 0, v: 0, itens: [] });
+    const o = m.get(k);
+    o.n++; o.v += valorFn ? (valorFn(r) || 0) : 1; o.itens.push(r);
+  });
+  return Array.from(m.values());
+}
+const porVolume = a => a.sort((x, y) => y.v - x.v || y.n - x.n);
+const porN      = a => a.sort((x, y) => y.n - x.n);
+/* Barra de R$ 0 nao informa nada e ocupa linha: fora dos recortes de valor. */
+const semZero   = a => a.filter(x => (x.v || 0) !== 0);
+
+/* Concentra a cauda em "Outros": a 9a cor categorica nao existe. */
+function topN(arr, n, rotulo) {
+  if (arr.length <= n) return arr;
+  const cab = arr.slice(0, n - 1);
+  const resto = arr.slice(n - 1);
+  cab.push({
+    k: rotulo || 'Outros (' + resto.length + ')',
+    n: resto.reduce((a, x) => a + x.n, 0),
+    v: resto.reduce((a, x) => a + x.v, 0),
+    itens: resto.reduce((a, x) => a.concat(x.itens || []), []),
+    cor: 'var(--texto-muted)'
+  });
+  return cab;
+}
+
+function serieMensal(lista, dataFn, valorFn, meses) {
+  const m = {};
+  lista.forEach(r => {
+    const d = dataFn(r); if (!d) return;
+    const k = chaveMes(d);
+    m[k] = (m[k] || 0) + (valorFn ? (valorFn(r) || 0) : 1);
+  });
+  return meses.map(k => m[k] || 0);
+}
+
+const soma  = (l, f) => l.reduce((a, r) => a + (f(r) || 0), 0);
+const media = (l, f) => { const v = l.map(f).filter(x => x != null && isFinite(x) && x !== 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+
+/* KR do mes na planilha de metas, por nome. */
+function kr(nomeMes, texto) {
+  const m = DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nomeMes];
+  if (!m || !m.krs) return null;
+  const k = chaveBusca(texto);
+  return m.krs.find(x => chaveBusca(x.kr).includes(k)) || null;
+}
+function metasMesAtual() {
+  const m = DADOS.metas && DADOS.metas.meses;
+  if (!m) return null;
+  const nome = MESES_ACENTO[new Date().getMonth()];
+  return m[nome] && !m[nome].erro ? m[nome] : null;
+}
+const MESES_ACENTO = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+/* Quanto do mes ja passou - base de toda leitura de ritmo. */
+function ritmoDoMes() {
+  const m = metasMesAtual();
+  const h = new Date();
+  const diasMes = (m && m.diasMes) || new Date(h.getFullYear(), h.getMonth() + 1, 0).getDate();
+  const diasComp = (m && m.diasComp) || h.getDate();
+  return { diasMes: diasMes, diasComp: diasComp, pct: diasMes ? (diasComp / diasMes) * 100 : 0 };
+}
+
+/* ==========================================================================
+   TELA 1 - VISAO GERAL
+   ========================================================================== */
+function telaVisao() {
+  const meses = mesesDoEixo();
+  const at = selAtend(), cli = selClientes(), md = selMetaDia();
+  const rm = ritmoDoMes();
+  const mAtual = metasMesAtual();
+
+  /* O bloco de cima e sempre o MES CORRENTE, independente do filtro de
+     periodo: e a leitura de ritmo que o gestor precisa todo dia. */
+  const cliMes = (DADOS.clientes ? DADOS.clientes.reg : []).filter(r => r.mes === MES_ATUAL);
+  const atMes  = (DADOS.atend ? DADOS.atend.reg : []).filter(r => r.mes === MES_ATUAL);
+  const mdMes  = (DADOS.metaDia ? DADOS.metaDia.reg : []).filter(r => r.mes === MES_ATUAL);
+  const honMes = soma(cliMes, r => r.honIni);
+  const invMes = soma(mdMes, r => r.gasto);
+  const leadsMes = soma(mdMes, r => r.leadsTotal);
+  const reunMes = atMes.filter(r => r.dAtend).length;
+
+  const nomeMes = MESES_ACENTO[new Date().getMonth()];
+  const krClientes = kr(nomeMes, 'clientes');
+  const krHon      = kr(nomeMes, 'honorarios iniciais');
+  const krReun     = kr(nomeMes, 'reunioes realizadas');
+
+  /* Os KRs da planilha sao POR RESPONSAVEL: "Clientes" e "Honorarios
+     Iniciais" estao no bloco do closer, nao no do time. O numero grande do
+     cartao e do time inteiro (e isso que a gestao olha), mas o ritmo contra a
+     meta recorta o realizado no mesmo escopo do KR - senao compara 26
+     fechamentos do time com a meta de 32 de uma pessoa so. */
+  const escopoKr = (k, lista) => {
+    if (!k || !k.resp) return { itens: lista, rot: 'time' };
+    const nome = chaveBusca(k.resp);
+    const pc = lista.filter(r => chaveBusca(r.closer || '') === nome);
+    if (pc.length) return { itens: pc, rot: k.resp };
+    const ps = lista.filter(r => chaveBusca(r.sdr || '') === nome);
+    if (ps.length) return { itens: ps, rot: k.resp };
+    return { itens: lista, rot: 'time' };
+  };
+  const escCli  = escopoKr(krClientes, cliMes);
+  const escHon  = escopoKr(krHon, cliMes);
+  const escReun = escopoKr(krReun, atMes.filter(r => r.dAtend));
+  const honEsc  = soma(escHon.itens, r => r.honIni);
+
+  let h = '';
+
+  /* ----- Alertas de operacao e de dado ----- */
+  const alertas = [];
+  const paradas = (DADOS.atend ? DADOS.atend.reg : []).filter(r => r.parado);
+  const fupPend = (DADOS.atend ? DADOS.atend.reg : []).filter(r => r.emAberto && r.fupPendentes > 0);
+  if (paradas.length) alertas.push(aviso('atencao', '<b>' + n0(paradas.length) + ' negociacoes em aberto sem nenhum toque ha mais de 7 dias</b> ' +
+    '(valor de proposta parado: ' + brl0(soma(paradas, r => r.vInicial)) + '). Veja em <a href="#" data-ir="esteira">Negociacao</a>.'));
+  if (fupPend.length) alertas.push(aviso('atencao', '<b>' + n0(fupPend.length) + ' negociacoes com follow up marcado como Pendente</b> na esteira de FUP.'));
+  if (ERROS.kommo) alertas.push(aviso('critico', '<b>Leads Kommo nao entrou:</b> ' + esc(ERROS.kommo) +
+    ' A pre-qualificacao lead a lead fica indisponivel; os totais de funil seguem vindo da planilha de Metas.'));
+  Object.keys(ERROS).filter(k => k !== 'kommo').forEach(k => {
+    const f = FONTES.find(x => x.k === k);
+    alertas.push(aviso(f && f.critica ? 'critico' : 'atencao', '<b>' + esc(f ? f.nome : k) + ' nao entrou:</b> ' + esc(ERROS[k])));
+  });
+  if (alertas.length) h += alertas.join('');
+
+  /* ----- KPIs do mes corrente ----- */
+  h += '<div class="secao-titulo primeiro">Mes corrente &middot; ' + rotuloMes(MES_ATUAL) +
+       ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(' + rm.diasComp + ' de ' + rm.diasMes +
+       ' dias &mdash; ' + pct(rm.pct, 0) + ' do mes)</span></div>';
+  if (escCli.rot !== 'time' || escHon.rot !== 'time') {
+    h += aviso('info', 'Os numeros grandes sao do <b>time inteiro</b>, somados das planilhas de atendimento e de clientes. ' +
+      'As metas da planilha de Metas estao lancadas <b>por responsavel</b> &mdash; por isso a barra de ritmo diz de quem e a meta ' +
+      'que ela esta medindo. E tambem por isso o painel pode mostrar mais clientes no mes do que o KR de um closer sozinho.');
+  }
+  h += '<div class="grid g-kpi">';
+  h += kpi({
+    rotulo: 'Clientes fechados', valor: n0(cliMes.length),
+    dica: 'O numero grande e do time. A barra de ritmo compara com a meta do responsavel pelo KR na planilha.',
+    ritmo: krClientes ? ritmo({ feito: escCli.itens.length, meta: krClientes.metaMes, alvoPct: rm.pct, escopo: escCli.rot }) : null,
+    selo: krClientes ? selo(nivelMeta(taxa(escCli.itens.length, krClientes.metaProp)), 'ritmo ' + pctOuTraco(taxa(escCli.itens.length, krClientes.metaProp))) : null
+  });
+  h += kpi({
+    rotulo: 'Honorarios iniciais', valor: brl0(honMes), pequeno: true,
+    ritmo: krHon ? ritmo({ feito: honEsc, meta: krHon.metaMes, alvoPct: rm.pct, fmt: brl0, escopo: escHon.rot }) : null,
+    selo: krHon ? selo(nivelMeta(taxa(honEsc, krHon.metaProp)), 'ritmo ' + pctOuTraco(taxa(honEsc, krHon.metaProp))) : null
+  });
+  h += kpi({
+    rotulo: 'Ticket medio', valor: brl0(cliMes.length ? honMes / cliMes.length : 0), pequeno: true,
+    nota: cliMes.filter(r => r.condicionado).length ? n0(cliMes.filter(r => r.condicionado).length) +
+      ' fechamento(s) com honorario condicionado a liminar entram como R$ 0 e puxam o ticket para baixo' : 'Honorarios iniciais / clientes do mes'
+  });
+  h += kpi({
+    rotulo: 'Reunioes realizadas', valor: n0(reunMes),
+    ritmo: krReun ? ritmo({ feito: escReun.itens.length, meta: krReun.metaMes, alvoPct: rm.pct, escopo: escReun.rot }) : null,
+    selo: krReun ? selo(nivelMeta(taxa(escReun.itens.length, krReun.metaProp)), 'ritmo ' + pctOuTraco(taxa(escReun.itens.length, krReun.metaProp))) : null
+  });
+  h += kpi({
+    rotulo: 'Conversao reuniao → cliente', valor: pctOuTraco(taxa(cliMes.length, reunMes), 1),
+    dica: 'Clientes fechados no mes dividido por reunioes realizadas no mes. Nao e a mesma coorte: um cliente de outubro pode ter vindo de reuniao de setembro.',
+    nota: n0(cliMes.length) + ' clientes / ' + n0(reunMes) + ' reunioes' +
+      (escCli.rot !== 'time' && escReun.itens.length
+        ? ' &middot; ' + esc(escCli.rot) + ': ' + pctOuTraco(taxa(escCli.itens.length, escReun.itens.length), 1) : '')
+  });
+  h += kpi({
+    rotulo: 'Investimento Meta Ads', valor: brl0(invMes), pequeno: true,
+    nota: mdMes.length ? 'Media diaria ' + brl0(invMes / Math.max(1, rm.diasComp)) : 'Sem leitura de insights'
+  });
+  h += kpi({
+    rotulo: 'CPL', valor: leadsMes ? brl(invMes / leadsMes) : '&mdash;', pequeno: true,
+    nota: n0(leadsMes) + ' leads no Meta no mes'
+  });
+  h += kpi({
+    rotulo: 'CAC', valor: cliMes.length ? brl0(invMes / cliMes.length) : '&mdash;', pequeno: true,
+    dica: 'Investimento em midia do mes dividido pelos clientes do mes. Nao inclui custo de equipe.'
+  });
+  h += kpi({
+    rotulo: 'ROI sobre midia', valor: invMes ? n1(honMes / invMes) + 'x' : '&mdash;', pequeno: true,
+    selo: invMes ? selo(honMes / invMes >= 3 ? 'ok' : honMes / invMes >= 1.5 ? 'atencao' : 'critico',
+      honMes / invMes >= 3 ? 'saudavel' : honMes / invMes >= 1.5 ? 'apertado' : 'no vermelho') : null,
+    nota: 'Honorarios iniciais / investimento'
+  });
+  h += '</div>';
+
+  /* ----- Series do periodo filtrado ----- */
+  h += '<div class="secao-titulo">Evolucao &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += '<div class="grid g-2">';
+
+  const sClientes = serieMensal(cli, r => r.dFecha, null, meses);
+  const sHon      = serieMensal(cli, r => r.dFecha, r => r.honIni, meses);
+  const sReun     = serieMensal(at.filter(r => r.dAtend), r => r.dAtend, null, meses);
+  const sInv      = serieMensal(md, r => r.d, r => r.gasto, meses);
+  const sLeads    = serieMensal(md, r => r.d, r => r.leadsTotal, meses);
+  const eixo      = meses.map(rotuloMesCurto);
+
+  h += cartao('Clientes por mes de fechamento', 'Fonte: FLUXO DE CLIENTES [2026], aba DADOS.',
+    vizColunas({ dados: meses.map((k, i) => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: sClientes[i] })), cor: 'var(--s3)', nome: 'Clientes' }));
+
+  h += cartao('Honorarios iniciais por mes', 'Soma da coluna HONORARIOS INICIAIS, por data de fechamento.',
+    vizColunas({ dados: meses.map((k, i) => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: sHon[i] })), cor: 'var(--s1)', nome: 'Honorarios', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', rotulos: false }));
+
+  /* Duas medidas de escalas diferentes = dois graficos. Nunca dois eixos Y. */
+  h += cartao('Reunioes realizadas x clientes fechados', 'Mesma escala (contagem), por isso dividem o grafico.',
+    vizLinhas({ x: eixo, fmt: n0, series: [
+      { nome: 'Reunioes', vals: sReun, cor: 'var(--s1)' },
+      { nome: 'Clientes', vals: sClientes, cor: 'var(--s3)' }
+    ] }) + legenda([{ nome: 'Reunioes', cor: 'var(--s1)' }, { nome: 'Clientes', cor: 'var(--s3)' }]));
+
+  h += cartao('Investimento em midia por mes', 'Gasto no Meta Ads. O retorno aparece no grafico ao lado, em escala propria.',
+    vizColunas({ dados: meses.map((k, i) => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: sInv[i] })), cor: 'var(--s2)', nome: 'Investimento', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', rotulos: false }));
+  h += '</div>';
+
+  /* ----- Quebras ----- */
+  h += '<div class="secao-titulo">Onde o resultado se forma</div>';
+  h += '<div class="grid g-3">';
+  const porCloser = semZero(porVolume(agrupar(cli, r => r.closer, r => r.honIni)));
+  h += cartao('Honorarios por closer', 'Clientes fechados no recorte.',
+    vizBarras({ dados: porCloser.map((g, i) => ({ k: g.k, v: g.v, cor: corSerie(i), extra: [{ rot: 'Clientes', val: n0(g.n) }, { rot: 'Ticket medio', val: brl0(g.v / g.n) }] })), fmt: brl0, nome: 'Honorarios' }));
+
+  const porProduto = semZero(porVolume(topN(agrupar(cli, r => r.produto, r => r.honIni), 6)));
+  h += cartao('Honorarios por produto juridico', 'Concentracao da receita por tese.',
+    vizBarras({ dados: porProduto.map((g, i) => ({ k: g.k, v: g.v, cor: g.cor || corSerie(i), extra: [{ rot: 'Clientes', val: n0(g.n) }] })), fmt: brl0, nome: 'Honorarios' }));
+
+  const porOrigem = porN(topN(agrupar(cli, r => r.origem), 6));
+  h += cartao('Clientes por origem', 'De onde vem quem assina.',
+    vizBarras({ dados: porOrigem.map((g, i) => ({ k: g.k, v: g.n, cor: g.cor || corSerie(i), extra: [{ rot: 'Honorarios', val: brl0(soma(g.itens, r => r.honIni)) }] })), nome: 'Clientes' }));
+  h += '</div>';
+
+  return h;
+}
+
+/* ==========================================================================
+   TELA 2 - FUNIL E PRE-QUALIFICACAO
+   ========================================================================== */
+function telaFunil() {
+  let h = '';
+  const p = DADOS.metas && DADOS.metas.produtos;
+  const atual = p && p.atual;
+
+  if (atual && atual.real) {
+    const ordem = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)', 'responderam a triagem', 'elegiveis',
+      'responderam a qualificacao', 'qualificados (aguardando documentacao)', 'diagnosticos', 'viaveis',
+      'atendimentos realizados', 'clientes'];
+    /* As linhas de ORIGEM de lead (Organico, Kommo, Meta Ads) sao paralelas
+       entre si, nao etapas em sequencia: encadear uma na outra produziria
+       "conversao de 1.981%". Elas entram somadas como topo do funil, e a
+       cadeia de conversao comeca na triagem. */
+    const FONTES_LEAD = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)',
+                         'leads abordados ou que falaram no whatsapp'];
+    const valorDe = k => (atual.real && atual.real[k] != null && atual.real[k] !== '') ? num(atual.real[k]) : null;
+
+    const origens = FONTES_LEAD.map(k => {
+      const v = valorDe(k);
+      if (!v) return null;
+      const e = atual.etapas.find(x => x.k === k);
+      return { k: (e && e.rot) || k, v: v };
+    }).filter(Boolean);
+    const totalLeads = origens.reduce((a, o) => a + o.v, 0);
+
+    const etapas = totalLeads ? [{ k: 'Leads (todas as origens)', v: totalLeads }] : [];
+    ordem.filter(k => FONTES_LEAD.indexOf(k) < 0).forEach(k => {
+      const v = valorDe(k);
+      if (!v) return;
+      const e = atual.etapas.find(x => x.k === k);
+      etapas.push({ k: (e && e.rot) || k, v: v });
+    });
+
+    h += '<div class="secao-titulo primeiro">Funil do produto &middot; ' +
+      (atual.medicao ? 'medicao de ' + esc(atual.medicao) : rotuloMes(MES_ATUAL)) + '</div>';
+    h += aviso('info', 'Este funil vem da aba <b>Produtos Juridicos</b> da planilha de Metas &mdash; ' +
+      'e a contagem que o time mantem a mao. A percentagem ao lado de cada etapa e a conversao sobre a etapa anterior. ' +
+      'As origens de lead entram somadas no topo (elas sao paralelas, nao etapas em sequencia).');
+    h += '<div class="grid g-2">';
+    h += cartao('Funil realizado no mes', 'Volume por etapa e conversao etapa a etapa.', vizFunil(etapas));
+
+    if (origens.length > 1) {
+      h += cartao('De onde vieram os leads do mes', 'Origens somadas no topo do funil.',
+        /* Barra horizontal ja carrega o proprio rotulo: legenda aqui seria
+           repetir a mesma lista duas vezes. */
+        vizBarras({ dados: origens.map((o, i) => ({ k: o.k, v: o.v, cor: corSerie(i),
+          extra: [{ rot: 'Participacao', val: pct(taxa(o.v, totalLeads), 1) }] })), nome: 'Leads' }));
+    }
+
+    /* Real x projetado: a planilha ja traz as duas projecoes. Mostro o texto
+       original da celula (R$, %, decimal) em vez de reformatar - assim a
+       linha de ROI nao vira "2" no lugar de "2,02". */
+    const cel = (o, k) => (o && o[k] != null && o[k] !== '') ? String(o[k]).trim() : '';
+    const linhas = atual.etapas.map(e => ({
+      etapa: e.rot,
+      real: num(cel(atual.real, e.k)),        realTxt: cel(atual.real, e.k),
+      projProp: num(cel(atual.projProp, e.k)), projPropTxt: cel(atual.projProp, e.k),
+      projMes: num(cel(atual.projMes, e.k)),   projMesTxt: cel(atual.projMes, e.k)
+    })).filter(l => l.realTxt || l.projMesTxt);
+    const txtOuNum = (txt, n) => txt ? esc(txt) : (n ? n0(n) : '&mdash;');
+
+    h += cartao('Realizado x projetado', 'Comparacao com a projecao proporcional (ritmo esperado para hoje) e com a meta cheia do mes.',
+      tabelaInterativa('funil-proj', [
+        { k: 'etapa', rot: 'Etapa', tipo: 'txt', cls: 'forte' },
+        { k: 'real', rot: 'Real', tipo: 'num',
+          html: r => '<b style="color:var(--texto)">' + txtOuNum(r.realTxt, r.real) + '</b>' },
+        { k: 'projProp', rot: 'Proj. proporcional', tipo: 'num', html: r => txtOuNum(r.projPropTxt, r.projProp) },
+        { k: 'atingProp', rot: 'vs proporcional', tipo: 'num', ord: false,
+          html: r => { const t = taxa(r.real, r.projProp); return t == null ? '&mdash;' : selo(nivelMeta(t), pct(t, 0)); } },
+        { k: 'projMes', rot: 'Meta do mes', tipo: 'num', html: r => txtOuNum(r.projMesTxt, r.projMes) },
+        { k: 'atingMes', rot: 'vs meta', tipo: 'num', ord: false,
+          html: r => { const t = taxa(r.real, r.projMes); return t == null ? '&mdash;' : pct(t, 0); } }
+      ], linhas, { titulo: 'Funil realizado x projetado', limite: 25, ativa: false }));
+    h += '</div>';
+
+    /* Taxas de conversao projetadas x reais, quando a planilha informa. */
+    if (atual.taxasReal && atual.taxasProj) {
+      const tx = atual.etapas.map(e => {
+        const r = atual.taxasReal[e.k], pj = atual.taxasProj[e.k];
+        if (!r || !pj || !/%/.test(String(r)) && !/%/.test(String(pj))) return null;
+        return { etapa: e.rot, real: numPct(r), proj: numPct(pj) };
+      }).filter(Boolean);
+      if (tx.length) {
+        h += '<div class="secao-titulo">Taxas de conversao &middot; real x projetada</div>';
+        h += cartao('Conversao por etapa', 'Onde a operacao esta acima e abaixo do que o modelo assume.',
+          vizLinhas({ x: tx.map(t => t.etapa.length > 14 ? t.etapa.slice(0, 13) + '…' : t.etapa), fmt: v => pct(v, 0),
+            series: [{ nome: 'Projetada', vals: tx.map(t => t.proj), cor: 'var(--s4)' },
+                     { nome: 'Real', vals: tx.map(t => t.real), cor: 'var(--s1)' }] }) +
+          legenda([{ nome: 'Projetada', cor: 'var(--s4)' }, { nome: 'Real', cor: 'var(--s1)' }]));
+      }
+    }
+  } else if (p && p.atualErro) {
+    h += aviso('atencao', 'Nao consegui ler a aba de funil da planilha de Metas: ' + esc(p.atualErro));
+  }
+
+  /* ----- Pre-qualificacao lead a lead (Kommo) ----- */
+  h += '<div class="secao-titulo">Pre-qualificacao lead a lead &middot; Kommo</div>';
+  if (ERROS.kommo) {
+    h += aviso('critico', '<b>A planilha Leads Kommo [DASHBOARDS] nao pode ser lida pelo navegador.</b><br>' +
+      esc(ERROS.kommo) + '<br><br>Das seis planilhas do painel, ela e a unica sem leitura por link. ' +
+      'Para liberar: abra a planilha &rarr; <b>Compartilhar</b> &rarr; <i>Acesso geral</i> &rarr; ' +
+      '<b>Qualquer pessoa com o link</b>, no papel <b>Leitor</b>. ' +
+      'Enquanto isso, o funil acima continua vindo da planilha de Metas.');
+  } else if (DADOS.kommo) {
+    const kk = selKommo();
+    const d = DADOS.kommo;
+    if (d.legadas) {
+      h += aviso('atencao', '<b>A aba Leads esta no meio de uma reescrita.</b> ' +
+        'O cabecalho ja esta no formato novo (57 colunas), mas ' + n0(d.legadas) +
+        ' linhas ainda estao no formato antigo (17 colunas) &mdash; o coletor falhou antes de terminar. ' +
+        'O painel le os dois formatos, mas os campos novos (valor, motivo de perda, UTM) so existem nas linhas ja migradas.');
+    }
+    const preq = kk.filter(r => r.preQual);
+    h += '<div class="grid g-kpi">';
+    h += kpi({ rotulo: 'Leads no recorte', valor: n0(kk.length), nota: 'Funil Processual fora: nao e lead comercial' });
+    h += kpi({ rotulo: 'Responderam a triagem', valor: n0(preq.length),
+      nota: pctOuTraco(taxa(preq.length, kk.length), 1) + ' dos leads',
+      dica: 'Conta quem respondeu ao menos um campo do formulario (plano, tipo, mensalidade ou tempo de plano).' });
+    h += kpi({ rotulo: 'Marcados como perdidos', valor: n0(kk.filter(r => r.perdido).length),
+      nota: pctOuTraco(taxa(kk.filter(r => r.perdido).length, kk.length), 1) + ' dos leads' });
+    h += kpi({ rotulo: 'Com reuniao agendada', valor: n0(kk.filter(r => r.reuniao).length) });
+    h += '</div>';
+
+    const meses = mesesDoEixo();
+    h += '<div class="grid g-2" style="margin-top:0.85rem">';
+    h += cartao('Leads por mes de entrada', 'Total e quantos responderam a triagem.',
+      vizLinhas({ x: meses.map(rotuloMesCurto), fmt: n0, series: [
+        { nome: 'Leads', vals: serieMensal(kk, r => r.d, null, meses), cor: 'var(--s1)' },
+        { nome: 'Responderam a triagem', vals: serieMensal(preq, r => r.d, null, meses), cor: 'var(--s3)' }
+      ] }) + legenda([{ nome: 'Leads', cor: 'var(--s1)' }, { nome: 'Responderam a triagem', cor: 'var(--s3)' }]));
+
+    h += cartao('Etapas do CRM', 'Onde os leads do recorte estao parados.',
+      vizBarras({ dados: porN(topN(agrupar(kk, r => r.etapa), 10)).map((g, i) => ({ k: g.k, v: g.n, cor: g.cor || corRampa(i, 10) })), nome: 'Leads' }));
+
+    h += cartao('Campanhas que trouxeram lead', 'Pelo campo Campanha do CRM.',
+      vizBarras({ dados: porN(topN(agrupar(kk.filter(r => r.campanha), r => r.campanha), 8)).map((g, i) => ({ k: g.k, v: g.n, cor: g.cor || corSerie(i) })), nome: 'Leads' }));
+
+    h += cartao('Perfil de quem responde', 'Tipo de plano declarado na triagem.',
+      vizBarras({ dados: porN(topN(agrupar(preq.filter(r => r.tipoPlano), r => r.tipoPlano), 7)).map((g, i) => ({ k: g.k, v: g.n, cor: g.cor || corSerie(i) })), nome: 'Leads' }));
+    h += '</div>';
+
+    h += '<div class="secao-titulo">Leads do recorte</div>';
+    h += tabelaInterativa('kommo-leads', [
+      { k: 'd', rot: 'Entrada', tipo: 'data' },
+      { k: 'lead', rot: 'Lead', tipo: 'txt', cls: 'forte' },
+      { k: 'funil', rot: 'Funil', tipo: 'txt' },
+      { k: 'etapa', rot: 'Etapa', tipo: 'txt' },
+      { k: 'situacao', rot: 'Situacao', tipo: 'txt' },
+      { k: 'produto', rot: 'Produto', tipo: 'txt' },
+      { k: 'campanha', rot: 'Campanha', tipo: 'txt' },
+      { k: 'tipoPlano', rot: 'Tipo de plano', tipo: 'txt' },
+      { k: 'mensalidade', rot: 'Mensalidade', tipo: 'txt' },
+      { k: 'preQual', rot: 'Triagem', tipo: 'txt', ord: false,
+        html: r => r.preQual ? selo('ok', 'respondeu') : selo('neutro', 'sem resposta') },
+      { k: 'responsavel', rot: 'Responsavel', tipo: 'txt' }
+    ], kk, { ord: 'd', dir: -1, titulo: 'Leads Kommo', limite: 50 });
+  }
+  return h;
+}
+
+/* ==========================================================================
+   TELA 3 - NEGOCIACAO (ESTEIRA)
+   ========================================================================== */
+function telaEsteira() {
+  if (ERROS.atend) return aviso('critico', '<b>Fluxo de Atendimentos nao entrou:</b> ' + esc(ERROS.atend));
+  const at = selAtend();
+  const todos = DADOS.atend ? DADOS.atend.reg : [];
+  const abertos = at.filter(r => r.emAberto);
+  const ganhos = at.filter(r => r.grupo === 'ganho');
+  const perdidos = at.filter(r => r.grupo === 'perdido');
+  const semResp = at.filter(r => r.grupo === 'semresposta');
+  const decididos = ganhos.length + perdidos.length;
+
+  let h = '';
+  h += '<div class="secao-titulo primeiro">Esteira de negociacao &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += '<div class="grid g-kpi">';
+  h += kpi({ rotulo: 'Em aberto', valor: n0(abertos.length),
+    nota: 'Negociacoes vivas (fora ganho, perda e sem resposta)' });
+  h += kpi({ rotulo: 'Proposta em aberto', valor: brl0(soma(abertos, r => r.vInicial)), pequeno: true,
+    nota: 'Soma dos honorarios iniciais propostos nas negociacoes vivas',
+    dica: 'So conta quem tem valor de proposta preenchido na planilha.' });
+  h += kpi({ rotulo: 'Ganhos no recorte', valor: n0(ganhos.length),
+    nota: 'Etapa "Enviado a Triagem e Distribuicao"' });
+  h += kpi({ rotulo: 'Taxa de ganho', valor: pctOuTraco(taxa(ganhos.length, decididos), 1),
+    dica: 'Ganhos dividido por ganhos + perdidos. Quem esta sem resposta nao entra: ainda nao decidiu.',
+    nota: n0(ganhos.length) + ' de ' + n0(decididos) + ' decididos' });
+  h += kpi({ rotulo: 'Sem resposta', valor: n0(semResp.length),
+    nota: pctOuTraco(taxa(semResp.length, at.length), 0) + ' dos atendimentos do recorte',
+    selo: taxa(semResp.length, at.length) > 40 ? selo('critico', 'maior gargalo') : null });
+  h += kpi({ rotulo: 'Tempo medio em negociacao', valor: (() => { const m = media(abertos, r => r.diasNeg); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true });
+  h += kpi({ rotulo: 'Paradas ha mais de 7 dias', valor: n0(abertos.filter(r => r.parado).length),
+    selo: abertos.filter(r => r.parado).length ? selo('atencao', 'retomar contato') : selo('ok', 'em dia'),
+    dica: 'Dias desde o ultimo follow up registrado ou, na falta dele, desde o atendimento.' });
+  h += kpi({ rotulo: 'FUP pendentes', valor: n0(soma(abertos, r => r.fupPendentes)),
+    nota: n0(abertos.filter(r => r.fupPendentes > 0).length) + ' negociacoes com pendencia' });
+  h += '</div>';
+
+  /* ----- Distribuicao pela esteira ----- */
+  h += '<div class="secao-titulo">Como a esteira esta distribuida</div>';
+  h += '<div class="grid g-2">';
+  const etapas = agrupar(at, r => r.etapa).sort((a, b) => posEtapa(a.k) - posEtapa(b.k));
+  h += cartao('Etapas do funil de negociacao', 'Na ordem da esteira, do primeiro contato ao fechamento.',
+    vizBarras({ dados: etapas.map((g, i) => ({
+      k: g.k, v: g.n, cor: COR_GRUPO[grupoEtapa(g.k)],
+      extra: [{ rot: 'Proposta somada', val: brl0(soma(g.itens, r => r.vInicial)) }]
+    })), nome: 'Negociacoes' }) +
+    legenda(['ganho', 'aberto', 'semresposta', 'perdido'].map(g => ({ nome: ROTULO_GRUPO[g], cor: COR_GRUPO[g] }))));
+
+  const sit = ['ganho', 'aberto', 'semresposta', 'perdido'].map(g => ({
+    k: ROTULO_GRUPO[g], v: at.filter(r => r.grupo === g).length, cor: COR_GRUPO[g]
+  }));
+  h += cartao('Desfecho dos atendimentos', 'Participacao de cada situacao no recorte.',
+    vizDonut({ dados: sit, centro: n0(at.length), centroRot: 'atendimentos' }) + legenda(sit.map(s => ({ nome: s.k, cor: s.cor, val: n0(s.v) }))));
+
+  /* Esteira de FUP: onde cada negociacao viva parou. */
+  const fupDef = DADOS.atend.fups || [];
+  if (fupDef.length) {
+    const passos = fupDef.map(f => ({
+      k: f.rotulo,
+      v: at.filter(r => r.fups.some(x => x.n === f.n && /feito/i.test(x.status))).length,
+      pend: at.filter(r => r.fups.some(x => x.n === f.n && /pendente/i.test(x.status))).length
+    }));
+    h += cartao('Esteira de follow up', 'Quantos atendimentos do recorte tiveram cada follow up marcado como Feito. O degrau onde a barra cai e onde a esteira perde gente.',
+      vizBarras({ dados: passos.map((p, i) => ({
+        k: p.k, v: p.v, cor: corRampa(i, passos.length),
+        extra: p.pend ? [{ rot: 'Pendentes', val: n0(p.pend), cor: 'var(--atencao)' }] : []
+      })), nome: 'Feitos' }));
+  }
+
+  const perdaMotivo = porN(agrupar(perdidos.filter(r => r.motivoPerda), r => r.motivoPerda));
+  h += cartao('Motivos de perda', perdidos.length ? 'Entre as ' + n0(perdidos.length) + ' perdas do recorte, ' +
+      n0(perdidos.filter(r => r.motivoPerda).length) + ' tem motivo registrado.' : 'Sem perdas no recorte.',
+    perdaMotivo.length ? vizBarras({ dados: perdaMotivo.map((g, i) => ({ k: g.k, v: g.n, cor: corSerie(i) })), nome: 'Perdas' })
+      : '<div class="vazio">Nenhuma perda com motivo preenchido no recorte.</div>');
+  h += '</div>';
+
+  /* ----- Oferta e temperatura ----- */
+  const comHon = at.filter(r => r.tipoHon);
+  if (comHon.length) {
+    h += '<div class="secao-titulo">Formato de honorario oferecido</div>';
+    h += '<div class="grid g-3">';
+    h += cartao('Tipo de contrato de honorarios', 'Reflete a esteira de oferta: inicial, liminar (D28) e exito.',
+      vizBarras({ dados: porN(agrupar(comHon, r => r.tipoHon)).map((g, i) => ({
+        k: g.k, v: g.n, cor: corSerie(i),
+        extra: [{ rot: 'Proposta somada', val: brl0(soma(g.itens, r => r.vInicial)) }] })), nome: 'Negociacoes' }));
+    const temp = at.filter(r => r.temperatura);
+    h += cartao('Temperatura da negociacao', temp.length ? 'Preenchida em ' + n0(temp.length) + ' de ' + n0(at.length) + ' atendimentos.' : 'Campo pouco preenchido na planilha.',
+      temp.length ? vizBarras({ dados: porN(agrupar(temp, r => r.temperatura)).map(g => ({
+        k: g.k, v: g.n, cor: /quente/i.test(g.k) ? 'var(--s2)' : /fria/i.test(g.k) ? 'var(--s1)' : 'var(--s4)' })), nome: 'Negociacoes' })
+        : '<div class="vazio">Sem temperatura registrada no recorte.</div>');
+    h += cartao('Proposta por faixa de valor', 'Honorarios iniciais propostos.',
+      (() => {
+        const faixas = [{ k: 'Ate R$ 1.000', t: v => v > 0 && v <= 1000 }, { k: 'R$ 1.000 a 2.000', t: v => v > 1000 && v <= 2000 },
+          { k: 'R$ 2.000 a 3.000', t: v => v > 2000 && v <= 3000 }, { k: 'R$ 3.000 a 5.000', t: v => v > 3000 && v <= 5000 },
+          { k: 'Acima de R$ 5.000', t: v => v > 5000 }];
+        const d = faixas.map((f, i) => ({ k: f.k, v: at.filter(r => f.t(r.vInicial)).length, cor: corRampa(i, faixas.length) }));
+        return d.some(x => x.v) ? vizBarras({ dados: d, nome: 'Propostas' }) : '<div class="vazio">Sem valor de proposta preenchido no recorte.</div>';
+      })());
+    h += '</div>';
+  }
+
+  /* ----- Tabela operacional ----- */
+  h += '<div class="secao-titulo">Negociacoes &middot; ordene por dias sem toque para achar o que esfriou</div>';
+  const TOG = [{ k: '', rot: 'Todas' }, { k: 'aberto', rot: 'Em aberto' }, { k: 'ganho', rot: 'Ganhos' },
+               { k: 'semresposta', rot: 'Sem resposta' }, { k: 'perdido', rot: 'Perdidos' }];
+  h += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem">' + TOG.map(g => {
+    const qt = g.k ? at.filter(r => r.grupo === g.k).length : at.length;
+    return '<button class="btn-acao' + (F.grupo === g.k ? ' primario' : '') + '" type="button" data-grupo="' + g.k + '">' +
+      esc(g.rot) + ' <b style="font-variant-numeric:tabular-nums">' + n0(qt) + '</b></button>';
+  }).join('') + '</div>';
+  const linhasTab = F.grupo ? at.filter(r => r.grupo === F.grupo) : at;
+  h += tabelaInterativa('esteira-tab', [
+    { k: 'dAtend', rot: 'Atendimento', tipo: 'data' },
+    { k: 'lead', rot: 'Lead', tipo: 'txt', cls: 'forte' },
+    { k: 'etapa', rot: 'Etapa', tipo: 'txt',
+      html: r => '<span style="color:' + COR_GRUPO[r.grupo] + ';font-weight:600">&#9679;</span> ' + esc(r.etapa) },
+    { k: 'closer', rot: 'Closer', tipo: 'txt' },
+    { k: 'sdr', rot: 'SDR', tipo: 'txt' },
+    { k: 'produto', rot: 'Produto', tipo: 'txt' },
+    { k: 'vInicial', rot: 'Proposta inicial', tipo: 'moeda0' },
+    { k: 'tipoHon', rot: 'Honorarios', tipo: 'txt' },
+    { k: 'diasNeg', rot: 'Dias em neg.', tipo: 'num' },
+    { k: 'diasSemToque', rot: 'Dias sem toque', tipo: 'num',
+      html: r => r.diasSemToque == null ? '&mdash;' :
+        (r.parado ? '<span style="color:#f3c45a;font-weight:700">' + n0(r.diasSemToque) + '</span>' : n0(r.diasSemToque)) },
+    { k: 'etapaFup', rot: 'FUP feitos', tipo: 'num',
+      html: r => barraCelula(r.fupFeitos, (DADOS.atend.fups || []).length || 9, 'var(--s1)', n0(r.fupFeitos) + '/' + ((DADOS.atend.fups || []).length || 9)) },
+    { k: 'temperatura', rot: 'Temp.', tipo: 'txt' },
+    { k: 'motivoPerda', rot: 'Motivo da perda', tipo: 'txt' },
+    { k: 'telefone', rot: 'Telefone', tipo: 'txt' }
+  ], linhasTab, { ord: 'diasSemToque', dir: -1, titulo: 'Esteira de negociacao', limite: 60 });
+
+  return h;
+}
+
+/* ==========================================================================
+   TELA 4 - VENDAS E RECEITA
+   ========================================================================== */
+function telaVendas() {
+  if (ERROS.clientes) return aviso('critico', '<b>FLUXO DE CLIENTES nao entrou:</b> ' + esc(ERROS.clientes));
+  const cli = selClientes();
+  const meses = mesesDoEixo();
+  const hon = soma(cli, r => r.honIni);
+  const entrada = soma(cli, r => r.entrada);
+  const cond = cli.filter(r => r.condicionado);
+  const comValor = cli.filter(r => r.honIni > 0);
+
+  let h = '';
+  h += '<div class="secao-titulo primeiro">Vendas &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += '<div class="grid g-kpi">';
+  h += kpi({ rotulo: 'Clientes fechados', valor: n0(cli.length) });
+  h += kpi({ rotulo: 'Honorarios iniciais', valor: brl0(hon), pequeno: true });
+  h += kpi({ rotulo: 'Ticket medio', valor: brl0(cli.length ? hon / cli.length : 0), pequeno: true,
+    nota: 'Sobre todos os clientes do recorte' });
+  h += kpi({ rotulo: 'Ticket medio com valor', valor: brl0(comValor.length ? soma(comValor, r => r.honIni) / comValor.length : 0), pequeno: true,
+    nota: 'Exclui ' + n0(cli.length - comValor.length) + ' fechamento(s) de honorario R$ 0',
+    dica: 'Fechamentos com honorario condicionado a liminar entram como R$ 0 na planilha. Este ticket olha so quem tem honorario inicial.' });
+  h += kpi({ rotulo: 'Entrada recebida', valor: brl0(entrada), pequeno: true,
+    nota: pctOuTraco(taxa(entrada, hon), 0) + ' dos honorarios iniciais' });
+  h += kpi({ rotulo: 'Pagamento confirmado', valor: pctOuTraco(taxa(cli.filter(r => r.pagoOk).length, cli.length), 0),
+    nota: n0(cli.filter(r => r.pagoOk).length) + ' de ' + n0(cli.length) + ' clientes' });
+  h += kpi({ rotulo: 'Dias para fechar (medio)', valor: (() => { const m = media(cli, r => r.diasFechar); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true,
+    dica: 'Da reuniao ao fechamento, pela coluna DIAS PARA FECHAR.' });
+  h += kpi({ rotulo: 'Jornada completa (media)', valor: (() => { const m = media(cli, r => r.jornada); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true,
+    dica: 'Do primeiro contato ao fechamento.' });
+  h += '</div>';
+
+  if (cond.length) h += aviso('info', '<b>' + n0(cond.length) + ' fechamento(s) do recorte tem honorario inicial R$ 0 com pagamento em Liminar.</b> ' +
+    'Sao vendas com honorario condicionado (politica D28), nao vendas sem valor. Elas entram na contagem de clientes e puxam o ticket medio para baixo &mdash; ' +
+    'por isso o painel mostra o ticket nas duas leituras.');
+
+  h += '<div class="secao-titulo">Evolucao</div>';
+  h += '<div class="grid g-2">';
+  h += cartao('Honorarios iniciais por mes', 'Por data de fechamento.',
+    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: soma(cli.filter(r => r.mes === k), x => x.honIni) })),
+      cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorarios', rotulos: false }));
+  h += cartao('Clientes e ticket medio', 'Duas escalas diferentes, dois graficos: aqui o volume.',
+    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: cli.filter(r => r.mes === k).length })), cor: 'var(--s3)', nome: 'Clientes' }));
+  h += cartao('Ticket medio por mes', 'Honorarios iniciais divididos pelos clientes do mes.',
+    vizLinhas({ x: meses.map(rotuloMesCurto), fmt: brl0, area: true, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k',
+      series: [{ nome: 'Ticket medio', vals: meses.map(k => { const g = cli.filter(r => r.mes === k); return g.length ? soma(g, x => x.honIni) / g.length : null; }), cor: 'var(--s4)' }] }));
+  h += cartao('Tempo para fechar', 'Media de dias da reuniao ao fechamento, por mes.',
+    vizLinhas({ x: meses.map(rotuloMesCurto), fmt: v => n0(v) + ' d', area: true,
+      series: [{ nome: 'Dias para fechar', vals: meses.map(k => media(cli.filter(r => r.mes === k), r => r.diasFechar)), cor: 'var(--s7)' }] }));
+  h += '</div>';
+
+  h += '<div class="secao-titulo">Quebras da receita</div>';
+  h += '<div class="grid g-3">';
+  [['closer', 'Closer'], ['sdr', 'SDR'], ['produto', 'Produto juridico'], ['origem', 'Origem'], ['tipoPag', 'Tipo de pagamento']].forEach(([campo, rot]) => {
+    const g = semZero(porVolume(topN(agrupar(cli, r => r[campo], r => r.honIni), 7)));
+    h += cartao(rot, 'Honorarios iniciais no recorte.',
+      vizBarras({ dados: g.map((x, i) => ({ k: x.k, v: x.v, cor: x.cor || corSerie(i),
+        extra: [{ rot: 'Clientes', val: n0(x.n) }, { rot: 'Ticket medio', val: brl0(x.n ? x.v / x.n : 0) }] })), fmt: brl0, nome: 'Honorarios' }));
+  });
+  h += '</div>';
+
+  h += '<div class="secao-titulo">Clientes fechados no recorte</div>';
+  h += tabelaInterativa('vendas-tab', [
+    { k: 'dFecha', rot: 'Fechamento', tipo: 'data' },
+    { k: 'contato', rot: 'Contato', tipo: 'txt', cls: 'forte' },
+    { k: 'produto', rot: 'Produto', tipo: 'txt' },
+    { k: 'origem', rot: 'Origem', tipo: 'txt' },
+    { k: 'sdr', rot: 'SDR', tipo: 'txt' },
+    { k: 'closer', rot: 'Closer', tipo: 'txt' },
+    { k: 'honIni', rot: 'Hon. iniciais', tipo: 'moeda' },
+    { k: 'entrada', rot: 'Entrada', tipo: 'moeda' },
+    { k: 'honFim', rot: 'Hon. exito', tipo: 'pct' },
+    { k: 'tipoPag', rot: 'Pagamento', tipo: 'txt' },
+    { k: 'pagoOk', rot: 'Confirmado', tipo: 'txt', ord: false,
+      html: r => r.pagoOk ? selo('ok', 'sim') : selo('atencao', 'nao') },
+    { k: 'diasFechar', rot: 'Dias p/ fechar', tipo: 'num' },
+    { k: 'jornada', rot: 'Jornada', tipo: 'num' }
+  ], cli, { ord: 'dFecha', dir: -1, titulo: 'Clientes fechados', limite: 60,
+    total: { honIni: d => brl0(soma(d, r => r.honIni)), entrada: d => brl0(soma(d, r => r.entrada)),
+             diasFechar: d => { const m = media(d, r => r.diasFechar); return m == null ? '' : n0(m) + ' d'; } } });
+  return h;
+}
+
+/* ==========================================================================
+   TELA 5 - TRAFEGO (META ADS)
+   ========================================================================== */
+function telaTrafego() {
+  if (ERROS.metaDia) return aviso('critico', '<b>Insights do Meta Ads nao entraram:</b> ' + esc(ERROS.metaDia));
+  const md = selMetaDia();
+  const cli = selClientes();
+  const meses = mesesDoEixo();
+  const gasto = soma(md, r => r.gasto);
+  const leads = soma(md, r => r.leadsTotal);
+  const impr = soma(md, r => r.impressoes);
+  const cliques = soma(md, r => r.cliques);
+  const hon = soma(cli, r => r.honIni);
+  const reun = selMetaReun();
+
+  let h = '';
+  h += '<div class="secao-titulo primeiro">Trafego pago &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += '<div class="grid g-kpi">';
+  h += kpi({ rotulo: 'Investimento', valor: brl0(gasto), pequeno: true });
+  h += kpi({ rotulo: 'Leads', valor: n0(leads), nota: 'Formulario + conversas + pixel' });
+  h += kpi({ rotulo: 'CPL', valor: leads ? brl(gasto / leads) : '&mdash;', pequeno: true });
+  h += kpi({ rotulo: 'Impressoes', valor: n0(impr), pequeno: true });
+  h += kpi({ rotulo: 'CTR', valor: pctOuTraco(taxa(cliques, impr), 2),
+    nota: n0(cliques) + ' cliques' });
+  h += kpi({ rotulo: 'Reunioes do CRM', valor: n0(reun.length),
+    nota: ERROS.metaReun ? 'aba Reunioes indisponivel' : 'aba Reunioes da planilha do Meta' });
+  h += kpi({ rotulo: 'Custo por reuniao', valor: reun.length ? brl0(gasto / reun.length) : '&mdash;', pequeno: true });
+  h += kpi({ rotulo: 'CAC', valor: cli.length ? brl0(gasto / cli.length) : '&mdash;', pequeno: true,
+    dica: 'Investimento em midia do recorte dividido pelos clientes fechados no mesmo recorte. Nao e coorte: o cliente pode ter entrado antes.' });
+  h += kpi({ rotulo: 'ROI sobre midia', valor: gasto ? n1(hon / gasto) + 'x' : '&mdash;', pequeno: true,
+    selo: gasto ? selo(hon / gasto >= 3 ? 'ok' : hon / gasto >= 1.5 ? 'atencao' : 'critico',
+      hon / gasto >= 3 ? 'saudavel' : hon / gasto >= 1.5 ? 'apertado' : 'no vermelho') : null });
+  h += '</div>';
+
+  h += '<div class="secao-titulo">Evolucao</div>';
+  h += '<div class="grid g-2">';
+  h += cartao('Investimento por mes', 'Gasto no Meta Ads.',
+    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: soma(md.filter(r => r.mes === k), x => x.gasto) })),
+      cor: 'var(--s2)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Investimento', rotulos: false }));
+  h += cartao('Leads por mes', 'Soma dos leads atribuidos as campanhas.',
+    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: soma(md.filter(r => r.mes === k), x => x.leadsTotal) })),
+      cor: 'var(--s1)', nome: 'Leads' }));
+  h += cartao('CPL por mes', 'Investimento dividido pelos leads do mes. Linha subindo = lead encarecendo.',
+    vizLinhas({ x: meses.map(rotuloMesCurto), fmt: brl, area: true, fmtEixo: v => 'R$' + n0(v),
+      series: [{ nome: 'CPL', vals: meses.map(k => { const g = md.filter(r => r.mes === k); const l = soma(g, x => x.leadsTotal); return l ? soma(g, x => x.gasto) / l : null; }), cor: 'var(--s4)' }] }));
+  h += cartao('Retorno sobre a midia', 'Honorarios iniciais por real investido, mes a mes.',
+    vizLinhas({ x: meses.map(rotuloMesCurto), fmt: v => n1(v) + 'x', area: true, fmtEixo: v => n1(v) + 'x',
+      series: [{ nome: 'ROI', vals: meses.map(k => { const g = soma(md.filter(r => r.mes === k), x => x.gasto); return g ? soma(cli.filter(r => r.mes === k), x => x.honIni) / g : null; }), cor: 'var(--s3)' }] }));
+  h += '</div>';
+
+  /* Campanhas: agrega os insights e cruza com o cadastro de campanhas. */
+  const porCamp = porVolume(agrupar(md, r => r.campanha, r => r.gasto));
+  const cadastro = {};
+  (DADOS.metaCamp ? DADOS.metaCamp.reg : []).forEach(c => { cadastro[chaveBusca(c.campanha)] = c; });
+  const campanhas = porCamp.map(g => {
+    const c = cadastro[chaveBusca(g.k)] || {};
+    const l = soma(g.itens, r => r.leadsTotal);
+    return {
+      campanha: g.k, gasto: g.v, leads: l, cpl: l ? g.v / l : null,
+      impressoes: soma(g.itens, r => r.impressoes), cliques: soma(g.itens, r => r.cliques),
+      ctr: taxa(soma(g.itens, r => r.cliques), soma(g.itens, r => r.impressoes)),
+      status: c.status || '', orcDia: c.orcDia || 0, dias: new Set(g.itens.map(r => chaveMes(r.d) + r.d.getDate())).size
+    };
+  });
+
+  h += '<div class="secao-titulo">Campanhas do recorte</div>';
+  h += '<div class="grid g-2">';
+  h += cartao('Investimento por campanha', 'Onde o dinheiro foi.',
+    vizBarras({ dados: topN(campanhas.slice(0, 9).map(c => ({ k: c.campanha, v: c.gasto, n: 1 })), 8).map((x, i) => ({
+      k: x.k, v: x.v, cor: x.cor || corSerie(i) })), fmt: brl0, nome: 'Investimento', rotuloW: 44 }));
+  const comCPL = campanhas.filter(c => c.cpl != null && c.leads >= 3).sort((a, b) => a.cpl - b.cpl).slice(0, 9);
+  h += cartao('CPL por campanha', 'So campanhas com 3 leads ou mais &mdash; abaixo disso o CPL e ruido.',
+    comCPL.length ? vizBarras({ dados: comCPL.map(c => ({ k: c.campanha, v: c.cpl,
+      cor: c.cpl <= 15 ? 'var(--s3)' : c.cpl <= 30 ? 'var(--s4)' : 'var(--s2)',
+      extra: [{ rot: 'Leads', val: n0(c.leads) }, { rot: 'Gasto', val: brl0(c.gasto) }] })), fmt: brl, nome: 'CPL', rotuloW: 44 })
+      : '<div class="vazio">Nenhuma campanha com 3 ou mais leads no recorte.</div>');
+  h += '</div>';
+
+  h += tabelaInterativa('trafego-tab', [
+    { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap' },
+    { k: 'status', rot: 'Status', tipo: 'txt', html: r => !r.status ? '&mdash;' :
+      (/^active$/i.test(r.status) ? selo('ok', 'ativa') : selo('neutro', r.status.toLowerCase())) },
+    { k: 'gasto', rot: 'Investimento', tipo: 'moeda0' },
+    { k: 'leads', rot: 'Leads', tipo: 'num' },
+    { k: 'cpl', rot: 'CPL', tipo: 'moeda' },
+    { k: 'impressoes', rot: 'Impressoes', tipo: 'num' },
+    { k: 'cliques', rot: 'Cliques', tipo: 'num' },
+    { k: 'ctr', rot: 'CTR', tipo: 'pct', casas: 2 },
+    { k: 'orcDia', rot: 'Orc. diario', tipo: 'moeda0' },
+    { k: 'dias', rot: 'Dias com gasto', tipo: 'num' }
+  ], campanhas, { ord: 'gasto', dir: -1, titulo: 'Campanhas Meta Ads', limite: 50,
+    total: { gasto: d => brl0(soma(d, r => r.gasto)), leads: d => n0(soma(d, r => r.leads)),
+             cpl: d => { const l = soma(d, r => r.leads); return l ? brl(soma(d, r => r.gasto) / l) : ''; } } });
+  return h;
+}
+
+/* ==========================================================================
+   TELA 6 - EQUIPE
+   ========================================================================== */
+function telaEquipe() {
+  const at = selAtend(), cli = selClientes();
+  let h = '';
+  h += '<div class="secao-titulo primeiro">Equipe comercial &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += aviso('info', 'Closers aparecem pela coluna <b>Closer</b> e SDRs pela coluna <b>SDR</b> das planilhas de atendimento e de clientes. ' +
+    'A conversao e do recorte, nao de coorte: um cliente pode ter vindo de reuniao de mes anterior.');
+
+  /* --- Closers --- */
+  const closers = Array.from(new Set(at.map(r => r.closer).concat(cli.map(r => r.closer)))).filter(x => x && x !== 'Sem closer');
+  const linhasCloser = closers.map(nome => {
+    const a = at.filter(r => r.closer === nome);
+    const c = cli.filter(r => r.closer === nome);
+    const reun = a.filter(r => r.dAtend).length;
+    const ganhos = a.filter(r => r.grupo === 'ganho').length;
+    const perdidos = a.filter(r => r.grupo === 'perdido').length;
+    const hon = soma(c, r => r.honIni);
+    return {
+      nome: nome, reun: reun, abertos: a.filter(r => r.emAberto).length,
+      ganhos: ganhos, perdidos: perdidos,
+      taxaGanho: taxa(ganhos, ganhos + perdidos),
+      clientes: c.length, hon: hon, ticket: c.length ? hon / c.length : null,
+      conv: taxa(c.length, reun), dias: media(c, r => r.diasFechar),
+      propAberta: soma(a.filter(r => r.emAberto), r => r.vInicial),
+      parados: a.filter(r => r.parado).length
+    };
+  }).sort((a, b) => b.hon - a.hon);
+
+  h += '<div class="secao-titulo">Closers</div>';
+  h += '<div class="grid g-3">';
+  h += cartao('Honorarios por closer', 'Receita inicial fechada no recorte.',
+    vizBarras({ dados: linhasCloser.filter(c => c.hon > 0).map((c, i) => ({ k: c.nome, v: c.hon, cor: corSerie(i),
+      extra: [{ rot: 'Clientes', val: n0(c.clientes) }, { rot: 'Ticket medio', val: c.ticket == null ? '—' : brl0(c.ticket) }] })), fmt: brl0, nome: 'Honorarios' }));
+  h += cartao('Conversao reuniao → cliente', 'Clientes sobre reunioes realizadas.',
+    vizBarras({ dados: linhasCloser.filter(c => c.conv != null).map((c, i) => ({ k: c.nome, v: c.conv, cor: corSerie(i),
+      extra: [{ rot: 'Reunioes', val: n0(c.reun) }, { rot: 'Clientes', val: n0(c.clientes) }] })), fmt: v => pct(v, 1), nome: 'Conversao' }));
+  h += cartao('Taxa de ganho na negociacao', 'Ganhos sobre ganhos + perdidos. Sem resposta nao entra.',
+    vizBarras({ dados: linhasCloser.filter(c => c.taxaGanho != null).map((c, i) => ({ k: c.nome, v: c.taxaGanho, cor: corSerie(i),
+      extra: [{ rot: 'Ganhos', val: n0(c.ganhos) }, { rot: 'Perdidos', val: n0(c.perdidos) }] })), fmt: v => pct(v, 1), nome: 'Taxa de ganho' }));
+  h += '</div>';
+
+  h += tabelaInterativa('closer-tab', [
+    { k: 'nome', rot: 'Closer', tipo: 'txt', cls: 'forte' },
+    { k: 'reun', rot: 'Reunioes', tipo: 'num' },
+    { k: 'clientes', rot: 'Clientes', tipo: 'num' },
+    { k: 'conv', rot: 'Conversao', tipo: 'pct', casas: 1 },
+    { k: 'ganhos', rot: 'Ganhos', tipo: 'num' },
+    { k: 'perdidos', rot: 'Perdidos', tipo: 'num' },
+    { k: 'taxaGanho', rot: 'Taxa de ganho', tipo: 'pct', casas: 1 },
+    { k: 'hon', rot: 'Honorarios', tipo: 'moeda0' },
+    { k: 'ticket', rot: 'Ticket medio', tipo: 'moeda0' },
+    { k: 'dias', rot: 'Dias p/ fechar', tipo: 'num1' },
+    { k: 'abertos', rot: 'Em aberto', tipo: 'num' },
+    { k: 'propAberta', rot: 'Proposta em aberto', tipo: 'moeda0' },
+    { k: 'parados', rot: 'Parados > 7d', tipo: 'num',
+      html: r => r.parados ? '<span style="color:#f3c45a;font-weight:700">' + n0(r.parados) + '</span>' : '0' }
+  ], linhasCloser, { ord: 'hon', dir: -1, titulo: 'Desempenho por closer', limite: 30 });
+
+  /* --- SDRs --- */
+  const sdrs = Array.from(new Set(at.map(r => r.sdr).concat(cli.map(r => r.sdr)))).filter(x => x && x !== 'Sem SDR');
+  const linhasSdr = sdrs.map(nome => {
+    const a = at.filter(r => r.sdr === nome);
+    const c = cli.filter(r => r.sdr === nome);
+    const agendadas = a.filter(r => r.dAgenda).length;
+    const realizadas = a.filter(r => r.dAtend).length;
+    return {
+      nome: nome, agendadas: agendadas, realizadas: realizadas,
+      noShow: Math.max(0, agendadas - realizadas),
+      presenca: taxa(realizadas, agendadas),
+      clientes: c.length, hon: soma(c, r => r.honIni),
+      conv: taxa(c.length, realizadas),
+      semResposta: a.filter(r => r.grupo === 'semresposta').length
+    };
+  }).sort((a, b) => b.realizadas - a.realizadas);
+
+  h += '<div class="secao-titulo">SDR &middot; agendamento e comparecimento</div>';
+  h += '<div class="grid g-2">';
+  h += cartao('Reunioes agendadas x realizadas', 'A diferenca e o no-show da agenda.',
+    vizEmpilhado({ x: linhasSdr.map(s => s.nome), fmt: n0, series: [
+      { nome: 'Realizadas', vals: linhasSdr.map(s => s.realizadas), cor: 'var(--s3)' },
+      { nome: 'Nao realizadas', vals: linhasSdr.map(s => s.noShow), cor: 'var(--s4)' }
+    ] }) + legenda([{ nome: 'Realizadas', cor: 'var(--s3)' }, { nome: 'Nao realizadas', cor: 'var(--s4)' }]));
+  h += cartao('Clientes gerados por SDR', 'Fechamentos atribuidos ao SDR que originou.',
+    vizBarras({ dados: linhasSdr.map((s, i) => ({ k: s.nome, v: s.clientes, cor: corSerie(i),
+      extra: [{ rot: 'Honorarios', val: brl0(s.hon) }] })), nome: 'Clientes' }));
+  h += '</div>';
+
+  h += tabelaInterativa('sdr-tab', [
+    { k: 'nome', rot: 'SDR', tipo: 'txt', cls: 'forte' },
+    { k: 'agendadas', rot: 'Agendadas', tipo: 'num' },
+    { k: 'realizadas', rot: 'Realizadas', tipo: 'num' },
+    { k: 'noShow', rot: 'Nao realizadas', tipo: 'num' },
+    { k: 'presenca', rot: 'Comparecimento', tipo: 'pct', casas: 1 },
+    { k: 'semResposta', rot: 'Sem resposta', tipo: 'num' },
+    { k: 'clientes', rot: 'Clientes', tipo: 'num' },
+    { k: 'conv', rot: 'Conversao', tipo: 'pct', casas: 1 },
+    { k: 'hon', rot: 'Honorarios', tipo: 'moeda0' }
+  ], linhasSdr, { ord: 'realizadas', dir: -1, titulo: 'Desempenho por SDR', limite: 30, ativa: false });
+  return h;
+}
+
+/* ==========================================================================
+   TELA 7 - METAS E OKRS
+   ========================================================================== */
+function telaMetas() {
+  let h = '';
+  if (ERROS.metas) return aviso('critico', '<b>Planilha de Metas nao entrou:</b> ' + esc(ERROS.metas));
+  const m = DADOS.metas || {};
+  const nomeAtual = MESES_ACENTO[new Date().getMonth()];
+  const nomeAnt = MESES_ACENTO[(new Date().getMonth() + 11) % 12];
+  const rm = ritmoDoMes();
+
+  const atual = m.meses && m.meses[nomeAtual] && !m.meses[nomeAtual].erro ? m.meses[nomeAtual] : null;
+  const ant = m.meses && m.meses[nomeAnt] && !m.meses[nomeAnt].erro ? m.meses[nomeAnt] : null;
+
+  h += '<div class="secao-titulo primeiro">Metas do mes &middot; ' + esc(nomeAtual) + '</div>';
+  if (!atual) {
+    h += aviso('atencao', 'Nao encontrei a aba <code>KPIS ' + esc(nomeAtual) + '</code> na planilha de Metas. ' +
+      'Quando o time criar a aba do mes, ela aparece aqui sozinha.');
+  } else {
+    h += aviso('info', 'Medicao de <b>' + esc(atual.atualizado || 'data nao informada na planilha') + '</b> &middot; ' +
+      rm.diasComp + ' de ' + rm.diasMes + ' dias do mes (' + pct(rm.pct, 0) + '). ' +
+      'A <b>meta proporcional</b> e o quanto deveria estar entregue hoje; e contra ela que o ritmo e lido.');
+
+    const fmtKr = k => k.tipo === 'moeda' ? brl0 : (k.tipo === 'pct' ? (v => pct(v, 0)) : n0);
+    h += tabelaInterativa('metas-tab', [
+      { k: 'resp', rot: 'Responsavel', tipo: 'txt', cls: 'forte' },
+      { k: 'kr', rot: 'Resultado chave', tipo: 'txt', cls: 'wrap' },
+      { k: 'metaMes', rot: 'Meta do mes', tipo: 'num', html: r => fmtKr(r)(r.metaMes) },
+      { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num', html: r => fmtKr(r)(r.metaProp) },
+      { k: 'resultado', rot: 'Resultado', tipo: 'num', html: r => '<b style="color:var(--texto)">' + fmtKr(r)(r.resultado) + '</b>' },
+      { k: 'vsProp', rot: 'vs proporcional', tipo: 'num', ord: false,
+        html: r => selo(nivelMeta(r.inverso ? (r.vsProp ? 200 - r.vsProp : null) : r.vsProp), pct(r.vsProp, 0)) },
+      { k: 'vsMes', rot: 'vs meta do mes', tipo: 'num', ord: false,
+        html: r => barraCelula(r.vsMes, 120, r.vsMes >= 100 ? 'var(--ok)' : r.vsMes >= 60 ? 'var(--atencao)' : 'var(--critico)', pct(r.vsMes, 0)) },
+      { k: 'ritmo', rot: 'Ritmo', tipo: 'txt', ord: false,
+        html: r => ritmo({ feito: r.resultado, meta: r.metaMes, alvoPct: rm.pct, fmt: fmtKr(r) }) }
+    ], atual.krs, { titulo: 'Metas do mes', limite: 40 });
+
+    /* Comparacao com o mes anterior pelos KRs de mesmo nome. */
+    if (ant) {
+      const comp = atual.krs.map(k => {
+        const a = ant.krs.find(x => chaveBusca(x.kr) === chaveBusca(k.kr));
+        if (!a) return null;
+        return { kr: k.kr, resp: k.resp, atual: k.resultado, ant: a.resultado,
+                 var: a.resultado ? ((k.resultado - a.resultado) / Math.abs(a.resultado)) * 100 : null, inverso: k.inverso, tipo: k.tipo };
+      }).filter(Boolean);
+      if (comp.length) {
+        h += '<div class="secao-titulo">' + esc(nomeAtual) + ' x ' + esc(nomeAnt) +
+          ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(' + esc(nomeAtual) + ' ainda em curso &mdash; compare com o ritmo, nao com o total)</span></div>';
+        h += tabelaInterativa('metas-comp', [
+          { k: 'kr', rot: 'Resultado chave', tipo: 'txt', cls: 'forte wrap' },
+          { k: 'resp', rot: 'Responsavel', tipo: 'txt' },
+          { k: 'ant', rot: esc(nomeAnt), tipo: 'num', html: r => (r.tipo === 'moeda' ? brl0 : r.tipo === 'pct' ? (v => pct(v, 0)) : n0)(r.ant) },
+          { k: 'atual', rot: esc(nomeAtual) + ' (parcial)', tipo: 'num', html: r => (r.tipo === 'moeda' ? brl0 : r.tipo === 'pct' ? (v => pct(v, 0)) : n0)(r.atual) },
+          { k: 'var', rot: 'Variacao', tipo: 'num', ord: false, html: r => delta(r.var, { inverso: r.inverso }) }
+        ], comp, { titulo: 'Comparativo de metas', limite: 40, ativa: false });
+      }
+    }
+  }
+
+  /* --- Plano de acao --- */
+  h += '<div class="secao-titulo">Plano de acao</div>';
+  if (m.okrs && m.okrs.length) {
+    h += tabelaInterativa('okr-tab', [
+      { k: 'acao', rot: 'Acao', tipo: 'txt', cls: 'forte wrap' },
+      { k: 'resp', rot: 'Responsavel', tipo: 'txt' },
+      { k: 'prazo', rot: 'Conclusao prevista', tipo: 'data' },
+      { k: 'status', rot: 'Status', tipo: 'txt', ord: false,
+        html: r => !r.status ? '&mdash;' : selo(/conclu|feito|pronto/i.test(r.status) ? 'ok' :
+          /execu|andamento/i.test(r.status) ? 'neutro' : 'atencao', r.status) },
+      { k: 'atraso', rot: 'Prazo', tipo: 'num', ord: false,
+        html: r => { if (!r.prazo) return '&mdash;';
+          const d = diasEntre(r.prazo, hoje());
+          if (/conclu|feito/i.test(r.status || '')) return selo('ok', 'concluida');
+          return d > 0 ? selo('atencao', d + ' dia(s) em atraso') : d === 0 ? selo('atencao', 'vence hoje') : selo('neutro', 'em ' + (-d) + ' dia(s)'); } },
+      { k: 'obs', rot: 'Observacao', tipo: 'txt', cls: 'wrap' }
+    ], m.okrs, { titulo: 'Plano de acao', limite: 40, ativa: false });
+  } else {
+    h += '<div class="cartao"><div class="vazio">' +
+      (m.okrsErro ? 'Nao consegui ler a aba OKRS: ' + esc(m.okrsErro) : 'Nenhuma acao cadastrada na aba OKRS.') + '</div></div>';
+  }
+
+  /* --- Acumulado do ano (planilha antiga) --- */
+  h += '<div class="secao-titulo">Acumulado do ano <span style="text-transform:none;letter-spacing:0;font-weight:500">(planilha antiga &mdash; base historica)</span></div>';
+  if (DADOS.hist && DADOS.hist.acumulado && DADOS.hist.acumulado.real) {
+    const ac = DADOS.hist.acumulado;
+    const linhas = ac.etapas.map(e => ({
+      etapa: e.rot, real: num(ac.real[e.k]),
+      proj: ac.projMes ? num(ac.projMes[e.k]) : null, bruto: ac.real[e.k]
+    })).filter(l => l.real || l.proj);
+    h += cartao('Funil acumulado do ano', 'Vem da aba <b>Produtos Juridicos [Acumulado ' + new Date().getFullYear() +
+      ']</b> da planilha antiga. Use como referencia de ano, nao como numero do mes.',
+      tabelaInterativa('hist-tab', [
+        { k: 'etapa', rot: 'Etapa', tipo: 'txt', cls: 'forte' },
+        { k: 'proj', rot: 'Projetado no ano', tipo: 'num' },
+        { k: 'real', rot: 'Real no ano', tipo: 'num', html: r => '<b style="color:var(--texto)">' + (/R\$|%/.test(String(r.bruto)) ? esc(r.bruto) : n0(r.real)) + '</b>' },
+        { k: 'ating', rot: 'Atingimento', tipo: 'num', ord: false,
+          html: r => { const t = taxa(r.real, r.proj); return t == null ? '&mdash;' : barraCelula(t, 200, t >= 100 ? 'var(--ok)' : 'var(--atencao)', pct(t, 0)); } }
+      ], linhas, { titulo: 'Acumulado 2026', limite: 30, ativa: false }));
+  } else {
+    h += '<div class="cartao"><div class="vazio">' +
+      (ERROS.hist ? 'Planilha antiga nao entrou: ' + esc(ERROS.hist) : 'Sem acumulado disponivel.') + '</div></div>';
+  }
+  return h;
+}
+
+/* ==========================================================================
+   TELA 8 - FONTES E SAUDE DO DADO
+   ========================================================================== */
+function telaFontes() {
+  let h = '';
+  h += '<div class="secao-titulo primeiro">Saude das fontes</div>';
+  h += aviso('info', 'O painel nao tem servidor nem banco: o navegador le as planilhas direto e calcula tudo na hora. ' +
+    'Cada fonte cai de pe sozinha &mdash; se uma falha, as outras telas seguem funcionando e a falha aparece aqui.');
+
+  const contar = d => {
+    if (!d) return null;
+    if (d.reg) return d.reg.length;
+    if (d.meses) {
+      const n = Object.keys(d.meses).reduce((a, k) => a + ((d.meses[k] && d.meses[k].krs) ? d.meses[k].krs.length : 0), 0);
+      return n || null;
+    }
+    if (d.acumulado && d.acumulado.etapas) return d.acumulado.etapas.length;
+    return null;
+  };
+  const linhas = FONTES.map(f => {
+    const d = DADOS[f.k];
+    return { nome: f.nome, papel: f.papel, erro: ERROS[f.k] || '', reg: contar(d),
+             critica: f.critica, sheet: CONFIG.SHEETS ? CONFIG.SHEETS[f.sheet] : null };
+  });
+  h += tabelaInterativa('fontes-tab', [
+    { k: 'nome', rot: 'Planilha / aba', tipo: 'txt', cls: 'forte wrap' },
+    { k: 'papel', rot: 'O que alimenta', tipo: 'txt', cls: 'wrap' },
+    { k: 'status', rot: 'Status', tipo: 'txt', ord: false,
+      html: r => r.erro ? selo(r.critica ? 'critico' : 'atencao', 'nao entrou') : selo('ok', 'lida') },
+    { k: 'reg', rot: 'Registros', tipo: 'num', html: r => r.reg == null ? '&mdash;' : n0(r.reg) },
+    { k: 'erro', rot: 'Detalhe', tipo: 'txt', cls: 'wrap' },
+    { k: 'abrir', rot: 'Planilha', tipo: 'txt', ord: false,
+      html: r => r.sheet ? '<a href="https://docs.google.com/spreadsheets/d/' + esc(r.sheet) +
+        '/edit" target="_blank" rel="noopener" style="color:var(--azul-claro)">abrir</a>' : '&mdash;' }
+  ], linhas, { titulo: 'Fontes', limite: 20, ativa: false });
+
+  if (AVISOS.length) {
+    h += '<div class="secao-titulo">Colunas que o painel nao achou</div>';
+    AVISOS.forEach(a => { h += aviso(a.nivel, '<b>' + esc(a.fonte) + ':</b> ' + esc(a.txt)); });
+  }
+
+  /* Diagnostico do coletor do Kommo, quando a planilha e legivel. */
+  if (DADOS.kommo) {
+    h += '<div class="secao-titulo">Coletor do Kommo</div>';
+    const d = DADOS.kommo;
+    h += '<div class="grid g-kpi">';
+    h += kpi({ rotulo: 'Linhas na aba', valor: n0(d.linhas) });
+    h += kpi({ rotulo: 'Leads com data valida', valor: n0(d.todos.length) });
+    h += kpi({ rotulo: 'Formato do cabecalho', valor: d.formato === 'largo' ? '57 colunas' : '17 colunas', pequeno: true });
+    h += kpi({ rotulo: 'Linhas no formato antigo', valor: n0(d.legadas), pequeno: true,
+      selo: d.legadas ? selo('atencao', 'reescrita incompleta') : selo('ok', 'consistente') });
+    h += '</div>';
+  }
+
+  h += '<div class="secao-titulo">Nota de seguranca</div>';
+  h += aviso('atencao', '<b>Este painel protege a descoberta, nao os dados.</b> ' +
+    'O login cifra os IDs das planilhas (AES-256-GCM, PBKDF2-SHA256 com 310 mil iteracoes): sem a senha, a pagina nao sabe o que ler. ' +
+    'Mas as planilhas que ele le estao compartilhadas como <i>qualquer pessoa com o link</i> &mdash; ' +
+    'quem tiver o ID de uma delas le os dados direto no Google, sem passar por aqui. ' +
+    'CPF/CNPJ dos clientes nao e lido por este painel.');
+  return h;
+}
+
+/* Rotulo do periodo em uso, para os titulos das telas. */
+function rotuloPeriodo() {
+  const p = PERIODOS.find(x => x.k === F.periodo);
+  const f = faixa();
+  if (F.periodo === 'tudo') return 'todo o historico';
+  if (F.periodo === 'mes' || F.periodo === 'ant') return rotuloMes(chaveMes(f.de)).replace('&mdash;', '');
+  return (p ? p.rot.toLowerCase() : '') + ' (' + rotuloMesCurto(chaveMes(f.de)) + ' a ' + rotuloMesCurto(chaveMes(f.ate)) + ')';
+}
+/* ==========================================================================
+   NAVEGACAO
+   ========================================================================== */
+const IC = {
+  visao:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+  funil:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>',
+  esteira: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  vendas:  '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  trafego: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>',
+  equipe:  '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  metas:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  fontes:  '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
+};
+
+const TELAS = [
+  { grupo: 'Comando' },
+  { k: 'visao',   rot: 'Visao Geral',     sub: 'Ritmo do mes, evolucao e onde o resultado se forma', fn: telaVisao },
+  { grupo: 'Funil comercial' },
+  { k: 'funil',   rot: 'Funil e pre-qualificacao', sub: 'Do lead ao cliente, etapa por etapa', fn: telaFunil },
+  { k: 'esteira', rot: 'Negociacao',      sub: 'Esteira de proposta, follow up e fechamento', fn: telaEsteira },
+  { k: 'vendas',  rot: 'Vendas e receita', sub: 'Fechamentos, honorarios, ticket e prazo', fn: telaVendas },
+  { grupo: 'Aquisicao' },
+  { k: 'trafego', rot: 'Trafego Meta Ads', sub: 'Investimento, CPL, campanhas e retorno', fn: telaTrafego },
+  { grupo: 'Gestao' },
+  { k: 'equipe',  rot: 'Equipe',          sub: 'Desempenho por closer e por SDR', fn: telaEquipe },
+  { k: 'metas',   rot: 'Metas e OKRs',    sub: 'Metas do mes, plano de acao e acumulado do ano', fn: telaMetas },
+  { k: 'fontes',  rot: 'Fontes e dados',  sub: 'De onde vem cada numero e o que falhou', fn: telaFontes }
+];
+
+let TELA_ATIVA = 'visao';
+
+function montarNav() {
+  const nav = document.getElementById('nav');
+  let h = ''; let primeiro = true;
+  TELAS.forEach(t => {
+    if (t.grupo) { h += '<div class="nav-grupo-titulo' + (primeiro ? ' primeiro' : '') + '">' + esc(t.grupo) + '</div>'; primeiro = false; return; }
+    h += '<button class="nav-item" type="button" data-tela="' + t.k + '">' + (IC[t.k] || '') + '<span>' + esc(t.rot) + '</span></button>';
+  });
+  nav.innerHTML = h;
+}
+
+function irPara(k, forcar) {
+  const t = TELAS.find(x => x.k === k);
+  if (!t) return;
+  if (TELA_ATIVA === k && !forcar) { fecharSidebar(); return; }
+  TELA_ATIVA = k;
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('ativo', b.dataset.tela === k));
+  document.getElementById('tituloTela').textContent = t.rot;
+  document.getElementById('subTela').textContent = t.sub;
+  TELAS.forEach(x => { if (x.k) { const el = document.getElementById('tela-' + x.k); if (el) el.classList.toggle('oculto', x.k !== k); } });
+  desenharTela(k);
+  fecharSidebar();
+  document.getElementById('conteudo').scrollTop = 0;
+}
+
+function desenharTela(k) {
+  const t = TELAS.find(x => x.k === k);
+  const el = document.getElementById('tela-' + k);
+  if (!t || !el) return;
+  TABELA_ATIVA = null;
+  try {
+    el.innerHTML = t.fn();
+  } catch (e) {
+    el.innerHTML = aviso('critico', '<b>Erro ao montar esta tela:</b> ' + esc(e.message) +
+      '<br>As outras telas continuam funcionando. Detalhe tecnico no console.');
+    /* eslint-disable-next-line no-console */
+    console.error('[painel] tela ' + k, e);
+  }
+}
+const redesenhar = () => desenharTela(TELA_ATIVA);
+
+function fecharSidebar() {
+  document.getElementById('sidebar').classList.remove('aberta');
+  document.getElementById('sidebarOverlay').classList.remove('vis');
+}
+
+/* ==========================================================================
+   FILTROS
+   ========================================================================== */
+function opcoesDe(campo, fontes) {
+  const m = new Map();
+  (fontes || []).forEach(lista => (lista || []).forEach(r => {
+    const v = r[campo];
+    if (!v) return;
+    m.set(v, (m.get(v) || 0) + 1);
+  }));
+  return Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(([k, n]) => ({ k: k, n: n }));
+}
+
+const DIMS = [
+  { k: 'produtos', rot: 'Produto juridico', campo: 'produto' },
+  { k: 'closers',  rot: 'Closer',           campo: 'closer' },
+  { k: 'sdrs',     rot: 'SDR',              campo: 'sdr' },
+  { k: 'origens',  rot: 'Origem',           campo: 'origem' }
+];
+
+function montarFiltros() {
+  const at = DADOS.atend ? DADOS.atend.reg : [];
+  const cli = DADOS.clientes ? DADOS.clientes.reg : [];
+  const kk = DADOS.kommo ? DADOS.kommo.reg : [];
+
+  let h = '';
+  h += '<div class="filtro"><label class="filtro-rotulo" for="fPeriodo">Periodo</label>' +
+       '<select id="fPeriodo">' + PERIODOS.map(p =>
+         '<option value="' + p.k + '"' + (F.periodo === p.k ? ' selected' : '') + '>' + esc(p.rot) + '</option>').join('') +
+       '</select></div>';
+
+  DIMS.forEach(d => {
+    const ops = opcoesDe(d.campo, d.campo === 'origem' ? [cli, kk] : [at, cli]);
+    if (!ops.length) return;
+    const sel = F[d.k];
+    h += '<div class="filtro chip-multi" data-dim="' + d.k + '">' +
+         '<label class="filtro-rotulo">' + esc(d.rot) + '</label>' +
+         '<button class="chip-botao" type="button" data-abre="' + d.k + '">' +
+           '<span>' + (sel.size ? n0(sel.size) + ' selecionado(s)' : 'Todos') + '</span>' +
+           (sel.size ? '<span class="cnt">' + n0(sel.size) + '</span>' : '<span style="opacity:.5">&#9662;</span>') +
+         '</button>' +
+         '<div class="chip-lista oculto" data-lista="' + d.k + '">' +
+           '<div class="cl-acoes"><button type="button" data-todos="' + d.k + '">Todos</button>' +
+           '<button type="button" data-nenhum="' + d.k + '">Limpar</button></div>' +
+           ops.map(o => '<label><input type="checkbox" data-dimv="' + d.k + '" value="' + esc(o.k) + '"' +
+             (sel.has(o.k) ? ' checked' : '') + '><span>' + esc(o.k) + '</span><span class="cl-qtd">' + n0(o.n) + '</span></label>').join('') +
+         '</div></div>';
+  });
+
+  h += '<div class="filtro"><label class="filtro-rotulo" for="fBusca">Pesquisar</label>' +
+       '<input type="search" id="fBusca" placeholder="lead, cliente, campanha, etapa…" value="' + esc(F.busca) + '" /></div>';
+  h += '<div class="filtro"><label class="filtro-rotulo">&nbsp;</label>' +
+       '<button class="btn-acao" id="btnLimpar" type="button">Limpar filtros</button></div>';
+
+  document.getElementById('filtros').innerHTML = h;
+}
+
+function ligarFiltros() {
+  const f = document.getElementById('filtros');
+
+  f.addEventListener('change', ev => {
+    const t = ev.target;
+    if (t.id === 'fPeriodo') { F.periodo = t.value; redesenhar(); return; }
+    if (t.dataset.dimv) {
+      const s = F[t.dataset.dimv];
+      if (t.checked) s.add(t.value); else s.delete(t.value);
+      atualizarBotaoDim(t.dataset.dimv);
+      redesenhar();
+    }
+  });
+
+  f.addEventListener('click', ev => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    if (b.dataset.abre) {
+      const lista = f.querySelector('[data-lista="' + b.dataset.abre + '"]');
+      const jaAberta = !lista.classList.contains('oculto');
+      f.querySelectorAll('.chip-lista').forEach(x => x.classList.add('oculto'));
+      lista.classList.toggle('oculto', jaAberta);
+      ev.stopPropagation();
+      return;
+    }
+    if (b.dataset.todos || b.dataset.nenhum) {
+      const dim = b.dataset.todos || b.dataset.nenhum;
+      const marcar = !!b.dataset.todos;
+      F[dim].clear();
+      f.querySelectorAll('[data-dimv="' + dim + '"]').forEach(c => {
+        c.checked = marcar;
+        if (marcar) F[dim].add(c.value);
+      });
+      atualizarBotaoDim(dim);
+      redesenhar();
+      return;
+    }
+    if (b.id === 'btnLimpar') {
+      F.periodo = 'u6'; F.busca = '';
+      DIMS.forEach(d => F[d.k].clear());
+      montarFiltros(); redesenhar();
+    }
+  });
+
+  let deb;
+  f.addEventListener('input', ev => {
+    if (ev.target.id !== 'fBusca') return;
+    clearTimeout(deb);
+    deb = setTimeout(() => { F.busca = ev.target.value.trim(); redesenhar(); }, 220);
+  });
+
+  document.addEventListener('click', ev => {
+    if (!ev.target.closest('.chip-multi')) f.querySelectorAll('.chip-lista').forEach(x => x.classList.add('oculto'));
+  });
+}
+
+function atualizarBotaoDim(dim) {
+  const b = document.querySelector('[data-abre="' + dim + '"]');
+  if (!b) return;
+  const s = F[dim];
+  b.innerHTML = '<span>' + (s.size ? n0(s.size) + ' selecionado(s)' : 'Todos') + '</span>' +
+    (s.size ? '<span class="cnt">' + n0(s.size) + '</span>' : '<span style="opacity:.5">&#9662;</span>');
+}
+
+/* ==========================================================================
+   DICA (camada de hover) - um balao para todos os graficos e selos
+   ========================================================================== */
+(function () {
+  const d = document.getElementById('dica');
+  let alvo = null;
+  document.addEventListener('mousemove', ev => {
+    const el = ev.target.closest ? ev.target.closest('[data-tip]') : null;
+    if (!el) { if (alvo) { alvo = null; d.classList.remove('vis'); } return; }
+    if (el !== alvo) { alvo = el; d.innerHTML = el.getAttribute('data-tip'); d.classList.add('vis'); }
+    const m = 14;
+    let x = ev.clientX + m, y = ev.clientY + m;
+    const r = d.getBoundingClientRect();
+    if (x + r.width > window.innerWidth - 8) x = ev.clientX - r.width - m;
+    if (y + r.height > window.innerHeight - 8) y = ev.clientY - r.height - m;
+    d.style.left = Math.max(8, x) + 'px';
+    d.style.top = Math.max(8, y) + 'px';
+  }, { passive: true });
+  document.addEventListener('mouseleave', () => d.classList.remove('vis'));
+  /* No toque, o balao atrapalha mais do que ajuda. */
+  document.addEventListener('touchstart', () => d.classList.remove('vis'), { passive: true });
+})();
+
+/* ==========================================================================
+   TABELAS - ordenar e mostrar mais
+   ========================================================================== */
+document.addEventListener('click', ev => {
+  const th = ev.target.closest('th[data-col]');
+  if (th) {
+    const id = th.dataset.tabela, col = th.dataset.col;
+    const t = TABELAS[id];
+    if (!t) return;
+    if (t.ord === col) t.dir = -t.dir; else { t.ord = col; t.dir = -1; }
+    repintarTabela(id);
+    return;
+  }
+  const mais = ev.target.closest('[data-mais]');
+  if (mais) {
+    const t = TABELAS[mais.dataset.mais];
+    if (t) { t.limite += t.passo; repintarTabela(mais.dataset.mais); }
+    return;
+  }
+  const ir = ev.target.closest('[data-ir]');
+  if (ir) { ev.preventDefault(); irPara(ir.dataset.ir); return; }
+  const g = ev.target.closest('[data-grupo]');
+  if (g) { F.grupo = g.dataset.grupo; redesenhar(); }
+});
+
+/* ==========================================================================
+   EXPORTAR CSV - leva o recorte inteiro, na ordem da tela
+   ========================================================================== */
+function exportarCSV() {
+  const id = TABELA_ATIVA;
+  const t = id && TABELAS[id];
+  if (!t) { alert('Esta tela nao tem tabela para exportar. Abra Negociacao, Vendas, Trafego ou Metas.'); return; }
+  const d = linhasOrdenadas(id);
+  const tiraTag = s => String(s).replace(/<[^>]*>/g, '').replace(/&mdash;/g, '').replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+  const campo = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+
+  const linhas = [t.cols.map(c => campo(c.rot)).join(';')];
+  d.forEach(r => linhas.push(t.cols.map(c => {
+    const v = typeof c.v === 'function' ? c.v(r) : r[c.k];
+    if (v instanceof Date) return campo(v.toLocaleDateString('pt-BR'));
+    if (typeof v === 'number') return campo(String(v).replace('.', ','));
+    if (typeof v === 'boolean') return campo(v ? 'Sim' : 'Nao');
+    if (v == null || v === '') return campo(tiraTag(celula(r, c)));
+    return campo(v);
+  }).join(';')));
+
+  /* BOM para o Excel em pt-BR abrir com acento certo. */
+  const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bm-' + id + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+/* ==========================================================================
+   SEGURANCA DA SESSAO
+   --------------------------------------------------------------------------
+   O que este bloco garante de verdade:
+     . a pagina so mostra numero depois de abrir o cofre com login + senha;
+     . a sessao vive na ABA (sessionStorage), morre ao fechar e expira sozinha
+       depois de 30 minutos sem uso;
+     . a SENHA nunca e guardada - o que fica na aba e o conteudo ja decifrado,
+       para o F5 nao exigir login de novo;
+     . tentativa errada custa tempo (PBKDF2 de 310 mil iteracoes ja e lento) e
+       o contador trava por 30s depois de 5 erros;
+     . a pagina se recusa a rodar dentro de iframe de terceiro.
+   O que ele NAO garante: privacidade dos dados na origem. As planilhas lidas
+   estao compartilhadas por link no Google - quem tiver o ID de uma delas le
+   direto, sem passar por aqui. Ver a nota em "Fontes e dados".
+   ========================================================================== */
+const INATIVIDADE_MIN = 30;
+let tmrInatividade = null;
+
+function marcarAtividade() {
+  clearTimeout(tmrInatividade);
+  tmrInatividade = setTimeout(() => sair('Sessao encerrada por inatividade.'), INATIVIDADE_MIN * 60000);
+}
+
+function sair(msg) {
+  try { sessionStorage.removeItem(K_AUTH); sessionStorage.removeItem(K_CRED); } catch (e) {}
+  CONFIG.SHEETS = null; CONFIG.perfil = null;
+  Object.keys(DADOS).forEach(k => delete DADOS[k]);
+  clearTimeout(tmrInatividade);
+  if (msg) {
+    const el = document.getElementById('loginErro');
+    el.textContent = msg; el.classList.remove('oculto');
+  }
+  document.getElementById('app').classList.add('oculto');
+  document.getElementById('loginOverlay').classList.remove('oculto');
+  document.getElementById('campoSenha').value = '';
+}
+
+function entrar(segredo, doCache) {
+  CONFIG.SHEETS = segredo.SHEETS;
+  CONFIG.perfil = segredo.perfil || 'Gestor Comercial';
+  if (!doCache) {
+    try { sessionStorage.setItem(K_AUTH, '1'); sessionStorage.setItem(K_CRED, JSON.stringify(segredo)); } catch (e) {}
+  }
+  document.getElementById('loginOverlay').classList.add('oculto');
+  document.getElementById('app').classList.remove('oculto');
+  marcarAtividade();
+  montarNav();
+  iniciar();
+}
+
+let erros = 0, travadoAte = 0;
+
+document.getElementById('loginForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const btn = document.getElementById('btnEntrar');
+  const erroEl = document.getElementById('loginErro');
+  const usuario = document.getElementById('campoUsuario').value;
+  const senha = document.getElementById('campoSenha').value;
+
+  if (Date.now() < travadoAte) {
+    erroEl.textContent = 'Muitas tentativas. Aguarde ' + Math.ceil((travadoAte - Date.now()) / 1000) + 's.';
+    erroEl.classList.remove('oculto');
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Verificando…';
+  erroEl.classList.add('oculto');
+  try {
+    const segredo = await abrirCofre(usuario, senha);
+    erros = 0;
+    document.getElementById('campoSenha').value = '';
+    entrar(segredo);
+  } catch (e) {
+    erros++;
+    if (erros >= 5) { travadoAte = Date.now() + 30000; erros = 0; }
+    await new Promise(r => setTimeout(r, 400));
+    erroEl.textContent = e.message || 'Login ou senha invalidos.';
+    erroEl.classList.remove('oculto');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+});
+
+document.getElementById('btnSair').addEventListener('click', () => sair(null));
+['click', 'keydown', 'wheel', 'touchstart'].forEach(e =>
+  document.addEventListener(e, () => { if (CONFIG.SHEETS) marcarAtividade(); }, { passive: true }));
+
+/* ==========================================================================
+   CARGA E ATUALIZACAO
+   ========================================================================== */
+let carregando = false;
+
+async function iniciar(recarregar) {
+  if (carregando) return;
+  carregando = true;
+  const btn = document.getElementById('btnAtualizar');
+  btn.disabled = true;
+  const alvo = document.getElementById('carregando');
+  if (!recarregar) { alvo.classList.remove('oculto'); }
+
+  try {
+    await carregarTudo();
+    alvo.classList.add('oculto');
+    montarFiltros();
+    irPara(TELA_ATIVA, true);
+    const quantas = FONTES.length - Object.keys(ERROS).length;
+    document.getElementById('rodapeAtualizado').innerHTML =
+      'Leitura de ' + ULTIMA_LEITURA.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
+      '<br>' + quantas + ' de ' + FONTES.length + ' fontes lidas' +
+      (Object.keys(ERROS).length ? ' &middot; <a href="#" data-ir="fontes" style="color:var(--atencao)">ver falhas</a>' : '');
+  } catch (e) {
+    alvo.innerHTML = aviso('critico', '<b>Nao consegui ler as planilhas:</b> ' + esc(e.message));
+    alvo.classList.remove('oculto');
+  } finally {
+    carregando = false;
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('btnAtualizar').addEventListener('click', () => iniciar(true));
+document.getElementById('btnExportar').addEventListener('click', exportarCSV);
+document.getElementById('btnPlanilhas').addEventListener('click', () => irPara('fontes'));
+document.getElementById('btnMenu').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.add('aberta');
+  document.getElementById('sidebarOverlay').classList.add('vis');
+});
+document.getElementById('sidebarOverlay').addEventListener('click', fecharSidebar);
+document.getElementById('nav').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-tela]');
+  if (b) irPara(b.dataset.tela);
+});
+
+/* Releitura automatica enquanto a aba esta a vista. */
+setInterval(() => {
+  if (CONFIG.SHEETS && document.visibilityState === 'visible' && !carregando) iniciar(true);
+}, CONFIG.AUTO_MIN * 60000);
+
+ligarFiltros();
+
+/* Sessao da aba: volta sem pedir senha de novo, sem nunca ter guardado a senha. */
+(async function () {
+  let cred = null;
+  try {
+    if (sessionStorage.getItem(K_AUTH) === '1') cred = JSON.parse(sessionStorage.getItem(K_CRED) || 'null');
+  } catch (e) {}
+  if (cred && cred.SHEETS) { entrar(cred, true); return; }
+  document.getElementById('campoUsuario').focus();
+})();
+</script>
+</body>
+</html>
