@@ -742,6 +742,14 @@ if (window.self !== window.top) {
     font-variant-numeric: tabular-nums lining-nums; color: var(--texto); white-space: nowrap;
   }
   .met-barra { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+  /* Nota ocupando a coluna da barra: mesma tinta discreta que ela tinha
+     debaixo do rotulo, mas podendo quebrar em duas linhas sem apertar o
+     titulo do indicador. */
+  .met-barra.met-nota {
+    font-size: 0.655rem; color: #6b7a93; line-height: 1.35;
+    white-space: normal; display: block;
+  }
+  .met-barra.met-nota.larga { grid-column: 3 / -1; }
   .met-trilha { flex: 1; height: 5px; background: var(--bg4); border-radius: 99px; overflow: hidden; min-width: 34px; }
   .met-fill { height: 100%; border-radius: 99px; }
   .met-pct { font-size: 0.68rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -750,7 +758,7 @@ if (window.self !== window.top) {
 
   @media (max-width: 760px) {
     .met-linha { grid-template-columns: minmax(0, 1fr) auto; padding: 0.7rem 0.9rem; }
-    .met-barra { grid-column: 1 / -1; }
+    .met-barra, .met-barra.met-nota.larga { grid-column: 1 / -1; }
     .met-fim { grid-column: 1 / -1; text-align: left; }
   }
 
@@ -5694,15 +5702,24 @@ function metLinha(k) {
   }
   const nv = nivelK(k), a = atingK(k), v = varK(k);
   const cor = CORNV[nv] === 'transparent' ? 'var(--s1)' : CORNV[nv];
+  /* Sem barra de atingimento, a coluna ao lado do numero esta vazia: e la
+     que a nota cabe melhor. Quando a ultima coluna tambem esta livre (sem
+     meta e sem comparacao), a nota se estende por ela. */
+  const temFim = (k.meta != null && k.meta !== 0) || v != null;
+  const notaAoLado = !!k.nota && a == null;
+  const sobRotulo = notaAoLado ? (k.inverso ? 'menos \u00e9 melhor' : '')
+                               : (k.nota || (k.inverso ? 'menos \u00e9 melhor' : ''));
   let h = '<div class="met-linha">';
   h += '<div class="met-rot"><b>' + esc(k.rot) + '</b>' +
-       (k.nota ? '<i>' + k.nota + '</i>' : (k.inverso ? '<i>menos \u00e9 melhor</i>' : '')) + '</div>';
+       (sobRotulo ? '<i>' + sobRotulo + '</i>' : '') + '</div>';
   h += '<div class="met-val">' + (k.valor == null ? '&mdash;' : f(k.valor)) + '</div>';
-  h += '<div class="met-barra">';
+  h += '<div class="met-barra' + (notaAoLado ? ' met-nota' + (temFim ? '' : ' larga') : '') + '">';
   if (a != null) {
     h += '<div class="met-trilha"><div class="met-fill" style="width:' +
       Math.min(100, Math.max(2, a)).toFixed(0) + '%;background:' + cor + '"></div></div>' +
       '<span class="met-pct" style="color:' + CORTX[nv] + '">' + pct(a, 0) + '</span>';
+  } else if (notaAoLado) {
+    h += '<span>' + k.nota + '</span>';
   }
   h += '</div>';
   h += '<div class="met-fim">' +
