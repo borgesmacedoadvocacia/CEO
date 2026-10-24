@@ -3365,14 +3365,14 @@ function telaFunil(aba) {
       'e a contagem que o time mantem a mao. A percentagem ao lado de cada etapa e a conversao sobre a etapa anterior. ' +
       'As origens de lead entram somadas no topo (elas sao paralelas, nao etapas em sequencia).');
     h += '<div class="grid g-2">';
-    h += cartao('Funil realizado no mes', 'Volume por etapa e conversao etapa a etapa.', vizFunil(etapas));
+    h += cartao('Funil realizado no mês', 'Volume por etapa e conversão etapa a etapa.', vizFunil(etapas));
 
     if (origens.length > 1) {
-      h += cartao('De onde vieram os leads do mes', 'Origens somadas no topo do funil.',
+      h += cartao('De onde vieram os leads do mês', 'Origens somadas no topo do funil.',
         /* Barra horizontal ja carrega o proprio rotulo: legenda aqui seria
            repetir a mesma lista duas vezes. */
         vizBarras({ dados: origens.map((o, i) => ({ k: o.k, v: o.v, cor: corSerie(i),
-          extra: [{ rot: 'Participacao', val: pct(taxa(o.v, totalLeads), 1) }] })), nome: 'Leads' }));
+          extra: [{ rot: 'Participação', val: pct(taxa(o.v, totalLeads), 1) }] })), nome: 'Leads' }));
     }
 
     /* Real x projetado: a planilha ja traz as duas projecoes. Mostro o texto
@@ -3387,7 +3387,7 @@ function telaFunil(aba) {
     })).filter(l => l.realTxt || l.projMesTxt);
     const txtOuNum = (txt, n) => txt ? esc(txt) : (n ? n0(n) : '&mdash;');
 
-    h += cartao('Realizado x projetado', 'Comparacao com a projecao proporcional (ritmo esperado para hoje) e com a meta cheia do mes.',
+    h += cartao('Realizado x projetado', 'Comparacao com a projeção proporcional (ritmo esperado para hoje) e com a meta cheia do mês.',
       tabelaInterativa('funil-proj', [
         { k: 'etapa', rot: 'Etapa', tipo: 'txt', cls: 'forte' },
         { k: 'real', rot: 'Real', tipo: 'num',
@@ -3395,7 +3395,7 @@ function telaFunil(aba) {
         { k: 'projProp', rot: 'Proj. proporcional', tipo: 'num', html: r => txtOuNum(r.projPropTxt, r.projProp) },
         { k: 'atingProp', rot: 'vs proporcional', tipo: 'num', ord: false,
           html: r => { const t = taxa(r.real, r.projProp); return t == null ? '&mdash;' : selo(nivelMeta(t), pct(t, 0)); } },
-        { k: 'projMes', rot: 'Meta do mes', tipo: 'num', html: r => txtOuNum(r.projMesTxt, r.projMes) },
+        { k: 'projMes', rot: 'Meta do mês', tipo: 'num', html: r => txtOuNum(r.projMesTxt, r.projMes) },
         { k: 'atingMes', rot: 'vs meta', tipo: 'num', ord: false,
           html: r => { const t = taxa(r.real, r.projMes); return t == null ? '&mdash;' : pct(t, 0); } }
       ], linhas, { titulo: 'Funil realizado x projetado', limite: 25, ativa: false }));
@@ -3472,7 +3472,7 @@ function telaFunil(aba) {
       h += cartao('De onde vieram os leads', 'Campanha paga pelos insights do Meta, organico pela planilha de Metas.',
         vizBarras({ rotuloW: 230, nome: 'Leads', dados: topN(fatias.map(f =>
           ({ k: f.k, v: f.v, n: 1, cor: corTipo(f.tipo),
-             extra: [{ rot: 'Participacao', val: pct(taxa(f.v, totalFatias), 1) }] })), 9) }) +
+             extra: [{ rot: 'Participação', val: pct(taxa(f.v, totalFatias), 1) }] })), 9) }) +
         legenda([{ nome: 'Campanha paga', cor: 'var(--s1)', val: n0(leadsPagos) },
                  { nome: 'Organico', cor: 'var(--s3)', val: n0(organico) },
                  { nome: 'Outras origens', cor: 'var(--texto-muted)', val: n0(outras) }]));
@@ -3524,8 +3524,8 @@ function telaFunil(aba) {
         return { etapa: e.rot, real: numPct(r), proj: numPct(pj) };
       }).filter(Boolean);
       if (tx.length) {
-        h += '<div class="secao-titulo">Taxas de conversao &middot; real x projetada</div>';
-        h += cartao('Conversao por etapa', 'Onde a operacao esta acima e abaixo do que o modelo assume.',
+        h += '<div class="secao-titulo">Taxas de conversão &middot; real x projetada</div>';
+        h += cartao('Conversão por etapa', 'Onde a operação esta acima e abaixo do que o modelo assume.',
           vizLinhas({ x: tx.map(t => t.etapa.length > 14 ? t.etapa.slice(0, 13) + '…' : t.etapa), fmt: v => pct(v, 0),
             series: [{ nome: 'Projetada', vals: tx.map(t => t.proj), cor: 'var(--s4)' },
                      { nome: 'Real', vals: tx.map(t => t.real), cor: 'var(--s1)' }] }) +
@@ -3539,7 +3539,7 @@ function telaFunil(aba) {
   }
 
   /* ----- Pre-qualificacao lead a lead (Kommo) ----- */
-  h += '<div class="secao-titulo primeiro">Pre-qualificacao lead a lead &middot; Kommo</div>';
+  h += '<div class="secao-titulo primeiro">Pré-qualificação lead a lead &middot; Kommo</div>';
   if (ERROS.kommo) {
     h += aviso('critico', '<b>A planilha Leads Kommo [DASHBOARDS] nao pode ser lida pelo navegador.</b><br>' +
       esc(ERROS.kommo) + '<br><br>Das seis planilhas do painel, ela e a unica sem leitura por link. ' +
@@ -3557,13 +3557,13 @@ function telaFunil(aba) {
     }
     const preq = kk.filter(r => r.preQual);
     h += '<div class="grid g-kpi">';
-    h += kpi({ rotulo: 'Leads no recorte', valor: n0(kk.length), nota: 'Funil Processual fora: nao e lead comercial' });
+    h += kpi({ rotulo: 'Leads no recorte', valor: n0(kk.length), nota: 'Funil Processual fora: não e lead comercial' });
     h += kpi({ rotulo: 'Responderam a triagem', valor: n0(preq.length),
       nota: pctOuTraco(taxa(preq.length, kk.length), 1) + ' dos leads',
       dica: 'Conta quem respondeu ao menos um campo do formulario (plano, tipo, mensalidade ou tempo de plano).' });
     h += kpi({ rotulo: 'Marcados como perdidos', valor: n0(kk.filter(r => r.perdido).length),
       nota: pctOuTraco(taxa(kk.filter(r => r.perdido).length, kk.length), 1) + ' dos leads' });
-    h += kpi({ rotulo: 'Com reuniao agendada', valor: n0(kk.filter(r => r.reuniao).length) });
+    h += kpi({ rotulo: 'Com reunião agendada', valor: n0(kk.filter(r => r.reuniao).length) });
     h += '</div>';
 
     const evK = evolucao(kk, r => r.d);
@@ -3590,14 +3590,14 @@ function telaFunil(aba) {
       { k: 'lead', rot: 'Lead', tipo: 'txt', cls: 'forte' },
       { k: 'funil', rot: 'Funil', tipo: 'txt' },
       { k: 'etapa', rot: 'Etapa', tipo: 'txt' },
-      { k: 'situacao', rot: 'Situacao', tipo: 'txt' },
+      { k: 'situacao', rot: 'Situação', tipo: 'txt' },
       { k: 'produto', rot: 'Produto', tipo: 'txt' },
       { k: 'campanha', rot: 'Campanha', tipo: 'txt' },
       { k: 'tipoPlano', rot: 'Tipo de plano', tipo: 'txt' },
       { k: 'mensalidade', rot: 'Mensalidade', tipo: 'txt' },
       { k: 'preQual', rot: 'Triagem', tipo: 'txt', ord: false,
         html: r => r.preQual ? selo('ok', 'respondeu') : selo('neutro', 'sem resposta') },
-      { k: 'responsavel', rot: 'Responsavel', tipo: 'txt' }
+      { k: 'responsavel', rot: 'Responsável', tipo: 'txt' }
     ], kk, { ord: 'd', dir: -1, titulo: 'Leads Kommo', limite: 50 });
   }
   return h;
@@ -3617,44 +3617,44 @@ function telaEsteira() {
   const decididos = ganhos.length + perdidos.length;
 
   let h = '';
-  h += '<div class="secao-titulo primeiro">Esteira de negociacao &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += '<div class="secao-titulo primeiro">Esteira de negociação &middot; ' + esc(rotuloPeriodo()) + '</div>';
   h += '<div class="grid g-kpi">';
   h += kpi({ rotulo: 'Em aberto', valor: n0(abertos.length),
-    nota: 'Negociacoes vivas (fora ganho, perda e sem resposta)' });
+    nota: 'Negociações vivas (fora ganho, perda e sem resposta)' });
   h += kpi({ rotulo: 'Proposta em aberto', valor: brl0(soma(abertos, r => r.vInicial)), pequeno: true,
-    nota: 'Soma dos honorarios iniciais propostos nas negociacoes vivas',
-    dica: 'So conta quem tem valor de proposta preenchido na planilha.' });
+    nota: 'Soma dos honorários iniciais propostos nas negociações vivas',
+    dica: 'Só conta quem tem valor de proposta preenchido na planilha.' });
   h += kpi({ rotulo: 'Ganhos no recorte', valor: n0(ganhos.length),
-    nota: 'Etapa "Enviado a Triagem e Distribuicao"' });
+    nota: 'Etapa "Enviado a Triagem e Distribuição"' });
   h += kpi({ rotulo: 'Taxa de ganho', valor: pctOuTraco(taxa(ganhos.length, decididos), 1),
-    dica: 'Ganhos dividido por ganhos + perdidos. Quem esta sem resposta nao entra: ainda nao decidiu.',
+    dica: 'Ganhos dividido por ganhos + perdidos. Quem esta sem resposta não entra: ainda não decidiu.',
     nota: n0(ganhos.length) + ' de ' + n0(decididos) + ' decididos' });
   h += kpi({ rotulo: 'Sem resposta', valor: n0(semResp.length),
     nota: pctOuTraco(taxa(semResp.length, at.length), 0) + ' dos atendimentos do recorte',
     selo: taxa(semResp.length, at.length) > 40 ? selo('critico', 'maior gargalo') : null });
-  h += kpi({ rotulo: 'Tempo medio em negociacao', valor: (() => { const m = media(abertos, r => r.diasNeg); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true });
+  h += kpi({ rotulo: 'Tempo médio em negociação', valor: (() => { const m = media(abertos, r => r.diasNeg); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true });
   h += kpi({ rotulo: 'Paradas ha mais de 7 dias', valor: n0(abertos.filter(r => r.parado).length),
     selo: abertos.filter(r => r.parado).length ? selo('atencao', 'retomar contato') : selo('ok', 'em dia'),
-    dica: 'Dias desde o ultimo follow up registrado ou, na falta dele, desde o atendimento.' });
+    dica: 'Dias desde o último follow up registrado ou, na falta dele, desde o atendimento.' });
   h += kpi({ rotulo: 'FUP pendentes', valor: n0(soma(abertos, r => r.fupPendentes)),
     nota: n0(abertos.filter(r => r.fupPendentes > 0).length) + ' negociacoes com pendencia' });
   h += '</div>';
 
   /* ----- Distribuicao pela esteira ----- */
-  h += '<div class="secao-titulo">Como a esteira esta distribuida</div>';
+  h += '<div class="secao-titulo">Como a esteira está distribuída</div>';
   h += '<div class="grid g-2">';
   const etapas = agrupar(at, r => r.etapa).sort((a, b) => posEtapa(a.k) - posEtapa(b.k));
-  h += cartao('Etapas do funil de negociacao', 'Na ordem da esteira, do primeiro contato ao fechamento.',
+  h += cartao('Etapas do funil de negociação', 'Na ordem da esteira, do primeiro contato ao fechamento.',
     vizBarras({ dados: etapas.map((g, i) => ({
       k: g.k, v: g.n, cor: COR_GRUPO[grupoEtapa(g.k)],
       extra: [{ rot: 'Proposta somada', val: brl0(soma(g.itens, r => r.vInicial)) }]
-    })), nome: 'Negociacoes' }) +
+    })), nome: 'Negociações' }) +
     legenda(['ganho', 'aberto', 'semresposta', 'perdido'].map(g => ({ nome: ROTULO_GRUPO[g], cor: COR_GRUPO[g] }))));
 
   const sit = ['ganho', 'aberto', 'semresposta', 'perdido'].map(g => ({
     k: ROTULO_GRUPO[g], v: at.filter(r => r.grupo === g).length, cor: COR_GRUPO[g]
   }));
-  h += cartao('Desfecho dos atendimentos', 'Participacao de cada situacao no recorte.',
+  h += cartao('Desfecho dos atendimentos', 'Participação de cada situação no recorte.',
     vizDonut({ dados: sit, centro: n0(at.length), centroRot: 'atendimentos' }) + legenda(sit.map(s => ({ nome: s.k, cor: s.cor, val: n0(s.v) }))));
 
   /* Esteira de FUP: onde cada negociacao viva parou. */
@@ -3682,18 +3682,18 @@ function telaEsteira() {
   /* ----- Oferta e temperatura ----- */
   const comHon = at.filter(r => r.tipoHon);
   if (comHon.length) {
-    h += '<div class="secao-titulo">Formato de honorario oferecido</div>';
+    h += '<div class="secao-titulo">Formato de honorário oferecido</div>';
     h += '<div class="grid g-3">';
-    h += cartao('Tipo de contrato de honorarios', 'Reflete a esteira de oferta: inicial, liminar (D28) e exito.',
+    h += cartao('Tipo de contrato de honorários', 'Reflete a esteira de oferta: inicial, liminar (D28) e exito.',
       vizBarras({ dados: porN(agrupar(comHon, r => r.tipoHon)).map((g, i) => ({
         k: g.k, v: g.n, cor: corSerie(i),
-        extra: [{ rot: 'Proposta somada', val: brl0(soma(g.itens, r => r.vInicial)) }] })), nome: 'Negociacoes' }));
+        extra: [{ rot: 'Proposta somada', val: brl0(soma(g.itens, r => r.vInicial)) }] })), nome: 'Negociações' }));
     const temp = at.filter(r => r.temperatura);
-    h += cartao('Temperatura da negociacao', temp.length ? 'Preenchida em ' + n0(temp.length) + ' de ' + n0(at.length) + ' atendimentos.' : 'Campo pouco preenchido na planilha.',
+    h += cartao('Temperatura da negociação', temp.length ? 'Preenchida em ' + n0(temp.length) + ' de ' + n0(at.length) + ' atendimentos.' : 'Campo pouco preenchido na planilha.',
       temp.length ? vizBarras({ dados: porN(agrupar(temp, r => r.temperatura)).map(g => ({
-        k: g.k, v: g.n, cor: /quente/i.test(g.k) ? 'var(--s2)' : /fria/i.test(g.k) ? 'var(--s1)' : 'var(--s4)' })), nome: 'Negociacoes' })
+        k: g.k, v: g.n, cor: /quente/i.test(g.k) ? 'var(--s2)' : /fria/i.test(g.k) ? 'var(--s1)' : 'var(--s4)' })), nome: 'Negociações' })
         : '<div class="vazio">Sem temperatura registrada no recorte.</div>');
-    h += cartao('Proposta por faixa de valor', 'Honorarios iniciais propostos.',
+    h += cartao('Proposta por faixa de valor', 'Honorários iniciais propostos.',
       (() => {
         const faixas = [{ k: 'Ate R$ 1.000', t: v => v > 0 && v <= 1000 }, { k: 'R$ 1.000 a 2.000', t: v => v > 1000 && v <= 2000 },
           { k: 'R$ 2.000 a 3.000', t: v => v > 2000 && v <= 3000 }, { k: 'R$ 3.000 a 5.000', t: v => v > 3000 && v <= 5000 },
@@ -3705,7 +3705,7 @@ function telaEsteira() {
   }
 
   /* ----- Tabela operacional ----- */
-  h += '<div class="secao-titulo">Negociacoes &middot; ordene por dias sem toque para achar o que esfriou</div>';
+  h += '<div class="secao-titulo">Negociações &middot; ordene por dias sem toque para achar o que esfriou</div>';
   const TOG = [{ k: '', rot: 'Todas' }, { k: 'aberto', rot: 'Em aberto' }, { k: 'ganho', rot: 'Ganhos' },
                { k: 'semresposta', rot: 'Sem resposta' }, { k: 'perdido', rot: 'Perdidos' }];
   h += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem">' + TOG.map(g => {
@@ -3723,18 +3723,18 @@ function telaEsteira() {
     { k: 'sdr', rot: 'SDR', tipo: 'txt' },
     { k: 'produto', rot: 'Produto', tipo: 'txt' },
     { k: 'vInicial', rot: 'Proposta inicial', tipo: 'moeda0' },
-    { k: 'tipoHon', rot: 'Honorarios', tipo: 'txt' },
+    { k: 'tipoHon', rot: 'Honorários', tipo: 'txt' },
     { k: 'diasNeg', rot: 'Dias em neg.', tipo: 'num' },
     { k: 'diasSemToque', rot: 'Dias sem toque', tipo: 'num',
       html: r => r.diasSemToque == null ? '&mdash;' :
         (r.parado ? '<span style="color:#f3c45a;font-weight:700">' + n0(r.diasSemToque) + '</span>' : n0(r.diasSemToque)) },
     { k: 'etapaFup', rot: 'FUP feitos', tipo: 'num',
       html: r => barraCelula(r.fupFeitos, (DADOS.atend.fups || []).length || 9, 'var(--s1)', n0(r.fupFeitos) + '/' + ((DADOS.atend.fups || []).length || 9)) },
-    { k: 'proximoFup', rot: 'Proximo FUP', tipo: 'data' },
+    { k: 'proximoFup', rot: 'Próximo FUP', tipo: 'data' },
     { k: 'temperatura', rot: 'Temp.', tipo: 'txt' },
     { k: 'motivoPerda', rot: 'Motivo da perda', tipo: 'txt' },
     { k: 'telefone', rot: 'Telefone', tipo: 'txt' }
-  ], linhasTab, { ord: 'diasSemToque', dir: -1, titulo: 'Esteira de negociacao', limite: 60 });
+  ], linhasTab, { ord: 'diasSemToque', dir: -1, titulo: 'Esteira de negociação', limite: 60 });
 
   return h;
 }
@@ -3760,21 +3760,21 @@ function telaVendas(modo) {
   h += '<div class="secao-titulo primeiro">Vendas &middot; ' + esc(rotuloPeriodo()) + '</div>';
   h += '<div class="grid g-kpi">';
   h += kpi({ rotulo: 'Clientes fechados', valor: n0(cli.length) });
-  h += kpi({ rotulo: 'Honorarios iniciais', valor: brl0(hon), pequeno: true });
-  h += kpi({ rotulo: 'Ticket medio', valor: ticketMedio(cli) == null ? '&mdash;' : brl0(ticketMedio(cli)), pequeno: true,
-    dica: 'Media dos honorarios iniciais entre os clientes que tiveram honorario inicial.',
+  h += kpi({ rotulo: 'Honorários iniciais', valor: brl0(hon), pequeno: true });
+  h += kpi({ rotulo: 'Ticket médio', valor: ticketMedio(cli) == null ? '&mdash;' : brl0(ticketMedio(cli)), pequeno: true,
+    dica: 'Média dos honorários iniciais entre os clientes que tiveram honorário inicial.',
     nota: semTicket(cli) ? 'Entre os ' + n0(comValor.length) + ' com honorario inicial &mdash; ' +
       n0(semTicket(cli)) + ' condicionado(s) a liminar ficam fora' : 'Sobre os ' + n0(cli.length) + ' clientes do recorte' });
-  h += kpi({ rotulo: 'Fechados com honorario inicial', valor: n0(comValor.length), pequeno: true,
+  h += kpi({ rotulo: 'Fechados com honorário inicial', valor: n0(comValor.length), pequeno: true,
     nota: pctOuTraco(taxa(comValor.length, cli.length), 0) + ' dos clientes do recorte',
-    dica: 'Os demais fecharam com honorario condicionado a liminar: contam como cliente, mas nao entram no ticket medio.' });
+    dica: 'Os demais fecharam com honorário condicionado a liminar: contam como cliente, mas não entram no ticket médio.' });
   h += kpi({ rotulo: 'Entrada recebida', valor: brl0(entrada), pequeno: true,
     nota: pctOuTraco(taxa(entrada, hon), 0) + ' dos honorarios iniciais' });
   h += kpi({ rotulo: 'Pagamento confirmado', valor: pctOuTraco(taxa(cli.filter(r => r.pagoOk).length, cli.length), 0),
     nota: n0(cli.filter(r => r.pagoOk).length) + ' de ' + n0(cli.length) + ' clientes' });
-  h += kpi({ rotulo: 'Dias para fechar (medio)', valor: (() => { const m = media(cli, r => r.diasFechar); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true,
-    dica: 'Da reuniao ao fechamento, pela coluna DIAS PARA FECHAR.' });
-  h += kpi({ rotulo: 'Jornada completa (media)', valor: (() => { const m = media(cli, r => r.jornada); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true,
+  h += kpi({ rotulo: 'Dias para fechar (médio)', valor: (() => { const m = media(cli, r => r.diasFechar); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true,
+    dica: 'Da reunião ao fechamento, pela coluna DIAS PARA FECHAR.' });
+  h += kpi({ rotulo: 'Jornada completa (média)', valor: (() => { const m = media(cli, r => r.jornada); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true,
     dica: 'Do primeiro contato ao fechamento.' });
   h += '</div>';
 
@@ -3784,21 +3784,21 @@ function telaVendas(modo) {
     'mas <b>ficam fora do ticket medio</b>: e venda, nao e preco. O ticket mede por quanto o escritorio negocia.');
 
   const eixoVd = eixoTempo();
-  h += '<div class="secao-titulo' + (soEvolucao ? ' primeiro' : '') + '">Evolucao' +
+  h += '<div class="secao-titulo' + (soEvolucao ? ' primeiro' : '') + '">Evolução' +
     '<span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--texto-muted)">&middot; ' +
     rotuloEixo(eixoVd) + '</span></div>';
   h += '<div class="grid g-2">';
-  h += cartao('Honorarios iniciais', 'Por data de fechamento.',
+  h += cartao('Honorários iniciais', 'Por data de fechamento.',
     vizColunas({ dados: evolucao(cli, r => r.dFecha, r => r.honIni),
-      cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorarios', rotulos: false }));
+      cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorários', rotulos: false }));
   h += cartao('Clientes fechados', 'Duas escalas diferentes, dois graficos: aqui o volume.',
     vizColunas({ dados: evolucao(cli, r => r.dFecha), cor: 'var(--s3)', nome: 'Clientes' }));
   const evTk = evolucaoRazao(cli, r => r.dFecha, ticketMedio);
-  h += cartao('Ticket medio', 'Honorarios iniciais divididos por quem teve honorario inicial.' + notaAcum(evTk),
+  h += cartao('Ticket médio', 'Honorários iniciais divididos por quem teve honorário inicial.' + notaAcum(evTk),
     vizLinhas({ x: evTk.x, fmt: brl0, area: true, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k',
-      series: [{ nome: 'Ticket medio', vals: evTk.vals, cor: 'var(--s4)' }] }));
+      series: [{ nome: 'Ticket médio', vals: evTk.vals, cor: 'var(--s4)' }] }));
   const evDias = evolucaoRazao(cli, r => r.dFecha, l => media(l, r => r.diasFechar));
-  h += cartao('Tempo para fechar', 'Media de dias da reuniao ao fechamento.' + notaAcum(evDias),
+  h += cartao('Tempo para fechar', 'Média de dias da reunião ao fechamento.' + notaAcum(evDias),
     vizLinhas({ x: evDias.x, fmt: v => n0(v) + ' d', area: true,
       series: [{ nome: 'Dias para fechar', vals: evDias.vals, cor: 'var(--s7)' }] }));
   h += '</div>';
@@ -3808,9 +3808,9 @@ function telaVendas(modo) {
   h += '<div class="grid g-3">';
   [['closer', 'Closer'], ['sdr', 'SDR'], ['produto', 'Produto juridico'], ['origem', 'Origem'], ['tipoPag', 'Tipo de pagamento']].forEach(([campo, rot]) => {
     const g = semZero(porVolume(topN(agrupar(cli, r => r[campo], r => r.honIni), 7)));
-    h += cartao(rot, 'Honorarios iniciais no recorte.',
+    h += cartao(rot, 'Honorários iniciais no recorte.',
       vizBarras({ dados: g.map((x, i) => ({ k: x.k, v: x.v, cor: x.cor || corSerie(i),
-        extra: [{ rot: 'Clientes', val: n0(x.n) }, { rot: 'Ticket medio', val: ticketMedio(x.itens) == null ? '—' : brl0(ticketMedio(x.itens)) }] })), fmt: brl0, nome: 'Honorarios' }));
+        extra: [{ rot: 'Clientes', val: n0(x.n) }, { rot: 'Ticket médio', val: ticketMedio(x.itens) == null ? '—' : brl0(ticketMedio(x.itens)) }] })), fmt: brl0, nome: 'Honorários' }));
   });
   h += '</div>';
   }
@@ -3904,7 +3904,7 @@ function telaTrafego(aba) {
   if (aba === 'ind') return h;
 
   if (aba === 'camp') {
-  h += '<div class="secao-titulo primeiro">Evolucao &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += '<div class="secao-titulo primeiro">Evolução &middot; ' + esc(rotuloPeriodo()) + '</div>';
   h += aviso('info', 'Daqui para baixo o recorte volta a ser o <b>filtro de período</b> da barra de cima (' +
     esc(rotuloPeriodo()) + '), não o mês do painel: é a parte de investigar campanha e criativo.');
   h += '<div class="grid g-2">';
@@ -3917,7 +3917,7 @@ function telaTrafego(aba) {
   h += cartao('CPL', 'Investimento dividido pelos leads do mesmo recorte. Linha subindo = lead encarecendo.' + notaAcum(evCpl),
     vizLinhas({ x: evCpl.x, fmt: brl, area: true, fmtEixo: v => 'R$' + n0(v),
       series: [{ nome: 'CPL', vals: evCpl.vals, cor: 'var(--s4)' }] }));
-  h += cartao('Retorno sobre a midia', 'Honorarios iniciais por real investido.' + (eixoTempo().tipo === 'dia' ? ' Acumulado no recorte, dia a dia.' : ''),
+  h += cartao('Retorno sobre a mídia', 'Honorários iniciais por real investido.' + (eixoTempo().tipo === 'dia' ? ' Acumulado no recorte, dia a dia.' : ''),
     (() => {
       /* As duas pontas vivem em fontes diferentes: os baldes sao montados em
          separado e casados pela posicao do eixo. No dia a dia, as duas somas
@@ -4023,7 +4023,7 @@ function telaTrafego(aba) {
   const atribuicaoFraca = cobReun != null && cobReun < 60;
 
   if (aba === 'camp') {
-  h += '<div class="secao-titulo">Campanhas &middot; do investimento ao honorario</div>';
+  h += '<div class="secao-titulo">Campanhas &middot; do investimento ao honorário</div>';
   if (atribuicaoFraca) {
     h += aviso('critico', '<b>A atribuicao de reuniao por campanha esta incompleta.</b> ' +
       'So <b>' + pctOuTraco(cobReun, 0) + '</b> das ' + n0(reun.length) + ' reunioes do recorte tem a coluna ' +
@@ -4046,26 +4046,26 @@ function telaTrafego(aba) {
   ]);
 
   h += '<div class="grid g-2">';
-  h += cartao('Conversao em reuniao por campanha', 'Reunioes marcadas dividido pelos leads da campanha. So campanhas com 10 leads ou mais &mdash; abaixo disso a taxa e ruido.',
+  h += cartao('Conversão em reunião por campanha', 'Reuniões marcadas dividido pelos leads da campanha. Só campanhas com 10 leads ou mais &mdash; abaixo disso a taxa e ruido.',
     (() => {
       const d = campVis.filter(c => c.leads >= 10 && c.convReuniao != null)
         .sort((a, b) => b.convReuniao - a.convReuniao).slice(0, 10);
-      return d.length ? vizBarras({ rotuloW: 230, fmt: v => pct(v, 2), nome: 'Conversao em reuniao',
+      return d.length ? vizBarras({ rotuloW: 230, fmt: v => pct(v, 2), nome: 'Conversão em reunião',
         dados: d.map(c => ({ k: c.campanha, v: c.convReuniao,
           cor: c.convReuniao >= 2 ? 'var(--s3)' : c.convReuniao >= 1 ? 'var(--s4)' : 'var(--s2)',
-          extra: [{ rot: 'Leads', val: n0(c.leads) }, { rot: 'Reunioes', val: n0(c.reunioes) },
+          extra: [{ rot: 'Leads', val: n0(c.leads) }, { rot: 'Reuniões', val: n0(c.reunioes) },
                   { rot: 'CPL', val: c.cpl == null ? '—' : brl(c.cpl) }] })) })
         : '<div class="vazio">Nenhuma campanha com 10 ou mais leads no recorte.</div>';
     })());
 
-  h += cartao('Custo por reuniao marcada', 'Investimento da campanha dividido pelas reunioes que ela gerou. Mais direto que o CPL para decidir verba.',
+  h += cartao('Custo por reunião marcada', 'Investimento da campanha dividido pelas reuniões que ela gerou. Mais direto que o CPL para decidir verba.',
     (() => {
       const d = campVis.filter(c => c.custoReuniao != null && c.reunioes >= 2)
         .sort((a, b) => a.custoReuniao - b.custoReuniao).slice(0, 10);
-      return d.length ? vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Custo por reuniao',
+      return d.length ? vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Custo por reunião',
         dados: d.map(c => ({ k: c.campanha, v: c.custoReuniao,
           cor: c.custoReuniao <= 300 ? 'var(--s3)' : c.custoReuniao <= 600 ? 'var(--s4)' : 'var(--s2)',
-          extra: [{ rot: 'Reunioes', val: n0(c.reunioes) }, { rot: 'Investimento', val: brl0(c.gasto) }] })) })
+          extra: [{ rot: 'Reuniões', val: n0(c.reunioes) }, { rot: 'Investimento', val: brl0(c.gasto) }] })) })
         : '<div class="vazio">Nenhuma campanha com 2 ou mais reunioes no recorte.</div>';
     })());
 
@@ -4074,7 +4074,7 @@ function telaTrafego(aba) {
       dados: topN(campVis.slice(0, 9).map(c => ({ k: c.campanha, v: c.gasto, n: 1 })), 8)
         .map((x, i) => ({ k: x.k, v: x.v, cor: x.cor || corSerie(i) })) }));
 
-  h += cartao('CPL por campanha', 'So campanhas com 3 leads ou mais.',
+  h += cartao('CPL por campanha', 'Só campanhas com 3 leads ou mais.',
     (() => {
       const d = campVis.filter(c => c.cpl != null && c.leads >= 3).sort((a, b) => a.cpl - b.cpl).slice(0, 10);
       return d.length ? vizBarras({ rotuloW: 230, fmt: brl, nome: 'CPL',
@@ -4149,25 +4149,25 @@ function telaTrafego(aba) {
     const jan = DADOS.metaAnuncios.janelas[0] || '';
     const ads = DADOS.metaAnuncios.reg.filter(r => !jan || r.janela === jan)
       .filter(r => !F.soAtivas || campanhas.some(c => c.ativa && chaveBusca(c.campanha) === chaveBusca(r.campanha)));
-    h += '<div class="secao-titulo primeiro">Anuncios &middot; qual criativo esta ganhando' +
+    h += '<div class="secao-titulo primeiro">Anúncios &middot; qual criativo esta ganhando' +
       (jan ? ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(janela de ' + esc(jan) + ')</span>' : '') + '</div>';
     h += aviso('info', 'A campanha pode ir bem na media e carregar um criativo que so queima verba. ' +
       'Esta aba mede por peca, na janela recente &mdash; nao no historico inteiro.');
     h += tabelaInterativa('trafego-ads', [
-      { k: 'anuncio', rot: 'Anuncio', tipo: 'txt', cls: 'forte' },
+      { k: 'anuncio', rot: 'Anúncio', tipo: 'txt', cls: 'forte' },
       { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'wrap' },
       { k: 'gasto', rot: 'Investimento', tipo: 'moeda0' },
       { k: 'leads', rot: 'Leads', tipo: 'num' },
       { k: 'cpl', rot: 'CPL', tipo: 'moeda',
         html: r => !r.leads ? '<span style="color:var(--texto-muted)">sem lead</span>' : brl(r.gasto / r.leads) },
-      { k: 'impressoes', rot: 'Impressoes', tipo: 'num' },
+      { k: 'impressoes', rot: 'Impressões', tipo: 'num' },
       { k: 'ctrLink', rot: 'CTR do link', tipo: 'pct', casas: 2 },
       { k: 'cpc', rot: 'CPC', tipo: 'moeda' },
       { k: 'cpm', rot: 'CPM', tipo: 'moeda' },
-      { k: 'frequencia', rot: 'Frequencia', tipo: 'num1',
+      { k: 'frequencia', rot: 'Frequência', tipo: 'num1',
         html: r => !r.frequencia ? '&mdash;' : (r.frequencia >= 3
           ? '<span style="color:#f3c45a" title="publico saturando">' + n1(r.frequencia) + '</span>' : n1(r.frequencia)) }
-    ], ads, { ord: 'gasto', dir: -1, titulo: 'Anuncios Meta Ads', limite: 40, ativa: false });
+    ], ads, { ord: 'gasto', dir: -1, titulo: 'Anúncios Meta Ads', limite: 40, ativa: false });
   }
 
   /* ===== PONTOS DE ATENCAO ===== */
@@ -4197,7 +4197,7 @@ function telaTrafego(aba) {
         ') esta com frequencia ' + n1(a.frequencia) + ': o mesmo publico ja viu a peca vezes demais.' }));
   }
   if (alertas.length) {
-    h += '<div class="secao-titulo">Pontos de atencao</div>';
+    h += '<div class="secao-titulo">Pontos de atenção</div>';
     h += alertas.slice(0, 12).map(a => aviso(a.nivel, a.txt)).join('');
   }
   return h;
@@ -4272,7 +4272,7 @@ function telaClientesFluxo() {
     dica: 'PJ e PF saem da contagem de d\u00edgitos do CPF/CNPJ. O identificador \u00e9 lido, classificado e descartado na mesma linha: n\u00e3o entra em nenhum registro, nem na tela, nem no CSV.' });
   h += kpi({ rotulo: 'Ticket m\u00e9dio (s\u00f3 com honor\u00e1rio)', valor: tk == null ? '&mdash;' : brl(tk), pequeno: true,
     nota: semTicket(cli) ? 'entre os ' + n0(cli.filter(r => r.honIni > 0).length) + ' com honor\u00e1rio inicial' : 'todos tiveram honor\u00e1rio',
-    dica: 'Fechamento com honor\u00e1rio condicionado a liminar entra como R$ 0: \u00e9 venda, mas n\u00e3o \u00e9 pre\u00e7o.' });
+    dica: 'Fechamento com honor\u00e1rio condicionado a liminar entra como R$ 0: \u00e9 venda, mas n\u00e3o \u00e9 pré\u00e7o.' });
   h += '</div>';
   if (semTicket(cli)) {
     h += aviso('info', 'Os dois tickets medem a mesma planilha de jeitos diferentes: <b>' +
@@ -4287,11 +4287,11 @@ function telaClientesFluxo() {
   const colsQuebra = rotulo => [
     { k: 'chave', rot: rotulo, tipo: 'txt', cls: 'forte wrap' },
     { k: 'clientes', rot: 'Clientes', tipo: 'num' },
-    { k: 'total', rot: 'Total honorarios', tipo: 'moeda0' },
+    { k: 'total', rot: 'Total honorários', tipo: 'moeda0' },
     { k: 'share', rot: '% do total', tipo: 'pct', casas: 1,
       html: r => pct(taxa(r.total, total), 1) },
-    { k: 'ticket', rot: 'Ticket medio', tipo: 'moeda0' },
-    { k: 'jornada', rot: 'Jornada media', tipo: 'num1',
+    { k: 'ticket', rot: 'Ticket médio', tipo: 'moeda0' },
+    { k: 'jornada', rot: 'Jornada média', tipo: 'num1',
       html: r => r.jornada == null ? '&mdash;' : n0(r.jornada) + ' d' },
     { k: 'diasFechar', rot: 'Dias p/ fechar', tipo: 'num1',
       html: r => r.diasFechar == null ? '&mdash;' : n0(r.diasFechar) + ' d' },
@@ -4306,7 +4306,7 @@ function telaClientesFluxo() {
   h += '<div class="secao-titulo">KPIs por Origem</div>';
   h += '<div class="grid g-2">';
   h += cartao('Distribui\u00e7\u00e3o por Canal', 'De onde vem a receita.',
-    vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Honorarios',
+    vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Honorários',
       dados: topN(porOrigem.map(g => ({ k: g.chave, v: g.total, n: g.clientes })), 9)
         .map((g, i) => ({ k: g.k, v: g.v, cor: g.cor || corSerie(i),
           extra: [{ rot: 'Clientes', val: n0(g.n) }] })) }));
@@ -4335,14 +4335,14 @@ function telaClientesFluxo() {
     vizBarras({ rotuloW: 150, nome: 'Clientes',
       dados: porParc.slice().sort((a, b) => (a.chave === 'A vista' ? -1 : b.chave === 'A vista' ? 1 : num(a.chave) - num(b.chave)))
         .map((g, i) => ({ k: g.chave, v: g.clientes, cor: corRampa(i, porParc.length),
-          extra: [{ rot: 'Ticket medio', val: g.ticket == null ? '—' : brl0(g.ticket) }] })) }));
+          extra: [{ rot: 'Ticket médio', val: g.ticket == null ? '—' : brl0(g.ticket) }] })) }));
   h += '</div>';
   h += tabelaInterativa('cli-pag', [
     { k: 'chave', rot: 'Tipo', tipo: 'txt', cls: 'forte' },
     { k: 'clientes', rot: 'Qtd', tipo: 'num' },
     { k: 'pctCli', rot: '% clientes', tipo: 'pct', casas: 1, html: r => pct(taxa(r.clientes, cli.length), 1) },
     { k: 'total', rot: 'Total', tipo: 'moeda0' },
-    { k: 'ticket', rot: 'Ticket medio', tipo: 'moeda0' },
+    { k: 'ticket', rot: 'Ticket médio', tipo: 'moeda0' },
     { k: 'confirmado', rot: '% confirm.', tipo: 'pct', casas: 0 }
   ], porPag, { ord: 'total', dir: -1, titulo: 'Meios de pagamento', limite: 20, ativa: false, total: totQuebra });
 
@@ -4350,7 +4350,7 @@ function telaClientesFluxo() {
   const porProduto = quebraClientes(cli, r => r.produto);
   h += '<div class="secao-titulo">Produtos Jur\u00eddicos</div>';
   h += cartao('Honor\u00e1rios por Produto', 'Concentra\u00e7\u00e3o da receita por tese.',
-    vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Honorarios',
+    vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Honorários',
       dados: semZero(topN(porProduto.map(g => ({ k: g.chave, v: g.total, n: g.clientes })), 8))
         .map((g, i) => ({ k: g.k, v: g.v, cor: g.cor || corSerie(i),
           extra: [{ rot: 'Clientes', val: n0(g.n) }] })) }));
@@ -4367,12 +4367,12 @@ function telaClientesFluxo() {
   } else {
     const porTipo = quebraClientes(cli.filter(r => r.tipoPessoa), r => r.tipoPessoa);
     h += '<div class="grid g-2">';
-    h += cartao('PJ x PF', 'Participacao no numero de clientes.',
+    h += cartao('PJ x PF', 'Participação no número de clientes.',
       vizDonut({ centro: n0(soma(porTipo, g => g.clientes)), centroRot: 'clientes',
         dados: porTipo.map((g, i) => ({ k: g.chave, v: g.clientes, cor: corSerie(i) })) }) +
       legenda(porTipo.map((g, i) => ({ nome: g.chave, cor: corSerie(i), val: n0(g.clientes) }))));
-    h += cartao('Ticket medio por natureza', 'Onde o contrato vale mais.',
-      vizBarras({ rotuloW: 120, fmt: brl0, nome: 'Ticket medio',
+    h += cartao('Ticket médio por natureza', 'Onde o contrato vale mais.',
+      vizBarras({ rotuloW: 120, fmt: brl0, nome: 'Ticket médio',
         dados: porTipo.filter(g => g.ticket != null).map((g, i) => ({ k: g.chave, v: g.ticket, cor: corSerie(i),
           extra: [{ rot: 'Clientes', val: n0(g.clientes) }, { rot: 'Total', val: brl0(g.total) }] })) }));
     h += '</div>';
@@ -4380,9 +4380,9 @@ function telaClientesFluxo() {
       { k: 'chave', rot: 'Tipo', tipo: 'txt', cls: 'forte' },
       { k: 'clientes', rot: 'Qtd', tipo: 'num' },
       { k: 'pct', rot: '%', tipo: 'pct', casas: 1, html: r => pct(taxa(r.clientes, soma(porTipo, g => g.clientes)), 1) },
-      { k: 'total', rot: 'Total honorarios', tipo: 'moeda0' },
-      { k: 'ticket', rot: 'Ticket medio', tipo: 'moeda0' },
-      { k: 'jornada', rot: 'Jornada media', tipo: 'num1', html: r => r.jornada == null ? '&mdash;' : n0(r.jornada) + ' d' }
+      { k: 'total', rot: 'Total honorários', tipo: 'moeda0' },
+      { k: 'ticket', rot: 'Ticket médio', tipo: 'moeda0' },
+      { k: 'jornada', rot: 'Jornada média', tipo: 'num1', html: r => r.jornada == null ? '&mdash;' : n0(r.jornada) + ' d' }
     ], porTipo, { ord: 'total', dir: -1, titulo: 'PJ x PF', limite: 10, ativa: false });
   }
 
@@ -4391,14 +4391,14 @@ function telaClientesFluxo() {
   h += '<div class="secao-titulo">Performance por Closer</div>';
   h += '<div class="grid g-2">';
   h += cartao('Honor\u00e1rios por Closer', 'Receita fechada no recorte.',
-    vizBarras({ rotuloW: 150, fmt: brl0, nome: 'Honorarios',
+    vizBarras({ rotuloW: 150, fmt: brl0, nome: 'Honorários',
       dados: semZero(porCloser.map(g => ({ k: g.chave, v: g.total })))
         .map((g, i) => ({ k: g.k, v: g.v, cor: corSerie(i) })) }));
-  h += cartao('Radar de Performance &mdash; Closers', 'Cada eixo normalizado pelo melhor do recorte. Em jornada e dias para fechar, menos e melhor &mdash; o eixo ja considera isso.',
+  h += cartao('Radar de Performance &mdash; Closers', 'Cada eixo normalizado pelo melhor do recorte. Em jornada e dias para fechar, menos e melhor &mdash; o eixo já considera isso.',
     vizRadar({
       eixos: [
         { rot: 'Clientes', fmt: n0 },
-        { rot: 'Honorarios', fmt: brl0 },
+        { rot: 'Honorários', fmt: brl0 },
         { rot: 'Ticket', fmt: brl0 },
         { rot: 'Rapidez', fmt: v => n0(v) + ' d', inverso: true },
         { rot: '% pago', fmt: v => pct(v, 0) }
@@ -4421,7 +4421,7 @@ function telaClientesFluxo() {
     vizBarras({ rotuloW: 150, nome: 'Clientes',
       dados: porSdr.slice().sort((a, b) => b.clientes - a.clientes).map((g, i) => ({
         k: g.chave, v: g.clientes, cor: corSerie(i),
-        extra: [{ rot: 'Honorarios', val: brl0(g.total) }, { rot: 'Ticket medio', val: g.ticket == null ? '—' : brl0(g.ticket) }] })) }));
+        extra: [{ rot: 'Honorários', val: brl0(g.total) }, { rot: 'Ticket médio', val: g.ticket == null ? '—' : brl0(g.ticket) }] })) }));
   h += tabelaInterativa('cli-sdr', [
     { k: 'pos', rot: '#', tipo: 'num', ord: false, html: r => n0(porSdr.indexOf(r) + 1) }
   ].concat(colsQuebra('SDR').slice(1)), porSdr,
@@ -4432,7 +4432,7 @@ function telaClientesFluxo() {
   h += '<div class="grid g-2">';
   h += cartao('Evolu\u00e7\u00e3o &mdash; Honor\u00e1rios', 'Duas escalas, dois gr\u00e1ficos. Aqui a receita.',
     vizColunas({ dados: evolucao(cli, r => r.dFecha, r => r.honIni),
-      cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorarios', rotulos: false }));
+      cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorários', rotulos: false }));
   h += cartao('Evolu\u00e7\u00e3o &mdash; Clientes', 'E aqui o volume.',
     vizColunas({ dados: evolucao(cli, r => r.dFecha), cor: 'var(--s3)', nome: 'Clientes' }));
 
@@ -4444,13 +4444,13 @@ function telaClientesFluxo() {
     { k: 'Acima de R$ 5.000', t: v => v > 5000 },
     { k: 'Condicionado (R$ 0)', t: v => !v }
   ];
-  h += cartao('Distribuicao por faixa de honorario', 'Onde o ticket se concentra.',
+  h += cartao('Distribuição por faixa de honorário', 'Onde o ticket se concentra.',
     vizBarras({ rotuloW: 170, nome: 'Clientes',
       dados: faixas.map((f, i) => ({ k: f.k, v: cli.filter(r => f.t(r.honIni)).length,
         cor: f.k.indexOf('Condicionado') === 0 ? 'var(--texto-muted)' : corRampa(i, faixas.length) })) }));
 
-  h += cartao('Ticket medio por canal', 'Canal que traz volume nem sempre traz valor.',
-    vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Ticket medio',
+  h += cartao('Ticket médio por canal', 'Canal que traz volume nem sempre traz valor.',
+    vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Ticket médio',
       dados: porOrigem.filter(g => g.ticket != null && g.clientes >= 3)
         .sort((a, b) => b.ticket - a.ticket).slice(0, 9)
         .map((g, i) => ({ k: g.chave, v: g.ticket, cor: corSerie(i),
@@ -4514,33 +4514,33 @@ function telaFinanceiro() {
 
   h += '<div class="grid g-kpi">';
   h += kpi({ rotulo: 'Receita (caixa)', valor: brl0(receita), pequeno: true,
-    nota: 'Honorarios iniciais recebidos na DRE' });
+    nota: 'Honorários iniciais recebidos na DRE' });
   h += kpi({ rotulo: 'Custo do setor comercial', valor: brl0(custoCom), pequeno: true,
-    nota: 'Pessoas + midia + ferramentas' });
-  h += kpi({ rotulo: 'Lucro liquido do comercial', valor: brl0(lucro), pequeno: true,
+    nota: 'Pessoas + mídia + ferramentas' });
+  h += kpi({ rotulo: 'Lucro líquido do comercial', valor: brl0(lucro), pequeno: true,
     selo: selo(lucro > 0 ? 'ok' : lucro === 0 ? 'neutro' : 'critico', lucro > 0 ? 'positivo' : 'no vermelho'),
-    nota: 'Ja descontados rateio, impostos e taxas' });
+    nota: 'Já descontados rateio, impostos e taxas' });
   h += kpi({ rotulo: 'Margem liquida', valor: pctOuTraco(taxa(lucro, receita), 1),
-    dica: 'Lucro liquido do setor sobre a receita de caixa do setor.' });
+    dica: 'Lucro líquido do setor sobre a receita de caixa do setor.' });
   h += kpi({ rotulo: 'CAC real', valor: cacReal == null ? '&mdash;' : brl0(cacReal), pequeno: true,
-    dica: 'Custo do setor comercial inteiro dividido pelos clientes fechados no mesmo periodo. Inclui SDR, closer, lider, estagiarios, CRM, automacoes e midia.',
+    dica: 'Custo do setor comercial inteiro dividido pelos clientes fechados no mesmo período. Inclui SDR, closer, lider, estagiarios, CRM, automações e mídia.',
     nota: n0(clientes) + ' clientes no periodo' });
-  h += kpi({ rotulo: 'CAC de midia', valor: cacMidia == null ? '&mdash;' : brl0(cacMidia), pequeno: true,
+  h += kpi({ rotulo: 'CAC de mídia', valor: cacMidia == null ? '&mdash;' : brl0(cacMidia), pequeno: true,
     nota: cacReal && cacMidia ? 'Midia e ' + pct(taxa(custoMidia, custoCom), 0) + ' do custo comercial' : '' });
-  h += kpi({ rotulo: 'Ticket medio', valor: tk == null ? '&mdash;' : brl0(tk), pequeno: true,
-    nota: 'So quem teve honorario inicial' });
+  h += kpi({ rotulo: 'Ticket médio', valor: tk == null ? '&mdash;' : brl0(tk), pequeno: true,
+    nota: 'Só quem teve honorário inicial' });
   h += kpi({ rotulo: 'Margem por cliente', valor: (tk != null && cacReal != null) ? brl0(tk - cacReal) : '&mdash;', pequeno: true,
     selo: (tk != null && cacReal != null) ? selo(tk - cacReal > 0 ? 'ok' : 'critico',
       tk - cacReal > 0 ? 'ticket cobre o CAC' : 'CAC acima do ticket') : null,
-    dica: 'Ticket medio menos CAC real. Nao inclui honorario de exito, que entra depois e muda esta conta.' });
+    dica: 'Ticket médio menos CAC real. Não inclui honorário de exito, que entra depois e muda esta conta.' });
   h += kpi({ rotulo: 'Retorno sobre o custo', valor: custoCom ? n1(receita / custoCom) + 'x' : '&mdash;', pequeno: true,
     selo: custoCom ? selo(receita / custoCom >= 2 ? 'ok' : receita / custoCom >= 1 ? 'atencao' : 'critico',
       receita / custoCom >= 2 ? 'saudavel' : receita / custoCom >= 1 ? 'no limite' : 'queima caixa') : null,
-    dica: 'Receita de caixa dividida pelo custo do setor comercial. Diferente do ROI de midia, que olha so o anuncio.' });
+    dica: 'Receita de caixa dividida pelo custo do setor comercial. Diferente do ROI de mídia, que olha só o anúncio.' });
   h += '</div>';
 
   /* ----- Evolucao ----- */
-  h += '<div class="secao-titulo">Evolucao mes a mes</div>';
+  h += '<div class="secao-titulo">Evolução mês a mês</div>';
   if (mesesGraf !== meses) {
     h += aviso('info', 'Os numeros acima seguem o recorte de <b>' + esc(rotuloPeriodo()) +
       '</b>. Os graficos abaixo olham os <b>ultimos ' + n0(mesesGraf.length) +
@@ -4556,7 +4556,7 @@ function telaFinanceiro() {
     ] }) + legenda([{ nome: 'Receita (caixa)', cor: 'var(--s1)' }, { nome: 'Custo do comercial', cor: 'var(--s2)' }]));
 
   /* Lucro: positivo x negativo pede par divergente, nao rampa. */
-  h += cartao('Lucro liquido do comercial', 'Barra abaixo de zero e mes em que o setor consumiu caixa.',
+  h += cartao('Lucro líquido do comercial', 'Barra abaixo de zero e mês em que o setor consumiu caixa.',
     vizColunas({ dados: mesesGraf.map(k => {
       const v = somaMes(f.lucro, [k]);
       return { k: rotuloMesCurto(k), rot: rotuloMes(k), v: Math.abs(v),
@@ -4565,23 +4565,23 @@ function telaFinanceiro() {
                        { rot: 'Receita', val: brl0(somaMes(f.receita, [k])) },
                        { rot: 'Custo comercial', val: brl0(somaMes(f.comercial, [k])) }] };
     }), fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Resultado', rotulos: false }) +
-    legenda([{ nome: 'Mes com lucro', cor: 'var(--s1)' }, { nome: 'Mes com prejuizo', cor: 'var(--s8)' }]));
+    legenda([{ nome: 'Mês com lucro', cor: 'var(--s1)' }, { nome: 'Mês com prejuizo', cor: 'var(--s8)' }]));
 
-  h += cartao('CAC real x ticket medio', 'As duas em R$ por cliente: quando o CAC encosta no ticket, cada venda nova para de pagar a operacao.',
+  h += cartao('CAC real x ticket médio', 'As duas em R$ por cliente: quando o CAC encosta no ticket, cada venda nova para de pagar a operação.',
     vizLinhas({ x: eixo, fmt: brl0, fmtEixo: v => 'R$' + n0(v), series: [
       { nome: 'CAC real', vals: mesesGraf.map(k => { const n = nClientes([k]); return n ? somaMes(f.comercial, [k]) / n : null; }), cor: 'var(--s2)' },
-      { nome: 'CAC de midia', vals: mesesGraf.map(k => { const n = nClientes([k]); return n ? soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k])) / n : null; }), cor: 'var(--s4)' },
-      { nome: 'Ticket medio', vals: mesesGraf.map(k => ticketMedio(cli.filter(r => r.mes === k))), cor: 'var(--s3)' }
-    ] }) + legenda([{ nome: 'CAC real', cor: 'var(--s2)' }, { nome: 'CAC de midia', cor: 'var(--s4)' }, { nome: 'Ticket medio', cor: 'var(--s3)' }]));
+      { nome: 'CAC de mídia', vals: mesesGraf.map(k => { const n = nClientes([k]); return n ? soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k])) / n : null; }), cor: 'var(--s4)' },
+      { nome: 'Ticket médio', vals: mesesGraf.map(k => ticketMedio(cli.filter(r => r.mes === k))), cor: 'var(--s3)' }
+    ] }) + legenda([{ nome: 'CAC real', cor: 'var(--s2)' }, { nome: 'CAC de mídia', cor: 'var(--s4)' }, { nome: 'Ticket médio', cor: 'var(--s3)' }]));
 
-  h += cartao('Estrutura do custo comercial', 'Quanto do custo e gente, quanto e midia e quanto e ferramenta.',
+  h += cartao('Estrutura do custo comercial', 'Quanto do custo e gente, quanto e mídia e quanto e ferramenta.',
     vizEmpilhado({ x: eixo, fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', series: [
       { nome: 'Pessoas', vals: mesesGraf.map(k => soma(f.itens.filter(i => i.bucket === 'pessoas'), i => somaMes(i, [k]))), cor: 'var(--s1)' },
-      { nome: 'Midia', vals: mesesGraf.map(k => soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k]))), cor: 'var(--s2)' },
+      { nome: 'Mídia', vals: mesesGraf.map(k => soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k]))), cor: 'var(--s2)' },
       { nome: 'Ferramentas', vals: mesesGraf.map(k => soma(f.itens.filter(i => i.bucket === 'ferramentas'), i => somaMes(i, [k]))), cor: 'var(--s3)' }
     ] }) + legenda([
       { nome: 'Pessoas', cor: 'var(--s1)', val: brl0(custoPessoas) },
-      { nome: 'Midia', cor: 'var(--s2)', val: brl0(custoMidia) },
+      { nome: 'Mídia', cor: 'var(--s2)', val: brl0(custoMidia) },
       { nome: 'Ferramentas', cor: 'var(--s3)', val: brl0(custoFerr) }]));
   h += '</div>';
 
@@ -4590,13 +4590,13 @@ function telaFinanceiro() {
   const leads = nLeads(), reun = nReunioes();
   h += '<div class="grid g-kpi">';
   h += kpi({ rotulo: 'Custo por lead', valor: leads ? brl(custoCom / leads) : '&mdash;', pequeno: true,
-    nota: n0(leads) + ' leads de midia no periodo', dica: 'Custo comercial inteiro por lead, nao so o anuncio. O CPL da tela de trafego usa so a midia.' });
-  h += kpi({ rotulo: 'Custo por reuniao', valor: reun ? brl0(custoCom / reun) : '&mdash;', pequeno: true,
+    nota: n0(leads) + ' leads de midia no periodo', dica: 'Custo comercial inteiro por lead, não só o anúncio. O CPL da tela de tráfego usa só a mídia.' });
+  h += kpi({ rotulo: 'Custo por reunião', valor: reun ? brl0(custoCom / reun) : '&mdash;', pequeno: true,
     nota: n0(reun) + ' reunioes realizadas' });
   h += kpi({ rotulo: 'Custo por cliente', valor: cacReal == null ? '&mdash;' : brl0(cacReal), pequeno: true,
     nota: n0(clientes) + ' clientes fechados' });
   h += kpi({ rotulo: 'Rateio do processual', valor: brl0(rateio), pequeno: true,
-    dica: 'Parte do custo do setor processual, liderancas e despesas extraordinarias atribuida ao comercial na DRE. Nao entra no CAC: e custo de entrega, nao de aquisicao.' });
+    dica: 'Parte do custo do setor processual, liderancas e despesas extraordinarias atribuida ao comercial na DRE. Não entra no CAC: e custo de entrega, não de aquisicao.' });
   h += kpi({ rotulo: 'Impostos', valor: brl0(impostos), pequeno: true });
   h += kpi({ rotulo: 'Taxas bancarias', valor: brl0(bancarias), pequeno: true,
     nota: pctOuTraco(taxa(bancarias, receita), 1) + ' da receita',
@@ -4604,24 +4604,24 @@ function telaFinanceiro() {
   h += '</div>';
 
   /* ----- Reconciliacao caixa x competencia ----- */
-  h += '<div class="secao-titulo">Caixa x competencia &middot; onde os dois numeros divergem</div>';
+  h += '<div class="secao-titulo">Caixa x competência &middot; onde os dois números divergem</div>';
   const recon = meses.map(k => {
     const caixa = somaMes(f.receita, [k]);
     const comp = honComp([k]);
     return { mes: rotuloMes(k), caixa: caixa, comp: comp, dif: caixa - comp,
              difPct: comp ? ((caixa - comp) / comp) * 100 : null, clientes: nClientes([k]) };
   });
-  h += cartao('Receita na DRE x honorarios assinados', 'Diferenca grande e sinal de contrato assinado que ainda nao virou caixa &mdash; ou de lancamento faltando em uma das duas planilhas.',
+  h += cartao('Receita na DRE x honorários assinados', 'Diferenca grande e sinal de contrato assinado que ainda não virou caixa &mdash; ou de lancamento faltando em uma das duas planilhas.',
     tabelaInterativa('fin-recon', [
-      { k: 'mes', rot: 'Mes', tipo: 'txt', cls: 'forte' },
+      { k: 'mes', rot: 'Mês', tipo: 'txt', cls: 'forte' },
       { k: 'clientes', rot: 'Clientes', tipo: 'num' },
-      { k: 'comp', rot: 'Assinado (competencia)', tipo: 'moeda0' },
+      { k: 'comp', rot: 'Assinado (competência)', tipo: 'moeda0' },
       { k: 'caixa', rot: 'Recebido (caixa)', tipo: 'moeda0' },
       { k: 'dif', rot: 'Diferenca', tipo: 'moeda0',
         html: r => '<span style="color:' + (Math.abs(r.difPct || 0) > 15 ? '#f3c45a' : 'var(--texto-2)') + '">' + brl0(r.dif) + '</span>' },
       { k: 'difPct', rot: '%', tipo: 'num', ord: false,
         html: r => r.difPct == null ? '&mdash;' : delta(r.difPct, { fmt: v => pct(v, 0) }) }
-    ], recon, { titulo: 'Caixa x competencia', limite: 24, ativa: false }));
+    ], recon, { titulo: 'Caixa x competência', limite: 24, ativa: false }));
 
   /* ----- Linhas de custo ----- */
   h += '<div class="secao-titulo">Linhas de custo do setor comercial</div>';
@@ -4638,10 +4638,10 @@ function telaFinanceiro() {
     { k: 'rotulo', rot: 'Linha de custo', tipo: 'txt', cls: 'forte wrap' },
     { k: 'bucket', rot: 'Grupo', tipo: 'txt', ord: false,
       html: r => '<span style="color:' + COR_BUCKET[r.bucket] + '">&#9679;</span> ' + esc(ROT_BUCKET[r.bucket] || r.bucket) },
-    { k: 'valor', rot: 'Total no periodo', tipo: 'moeda0',
+    { k: 'valor', rot: 'Total no período', tipo: 'moeda0',
       html: r => barraCelula(r.valor, maxItem, COR_BUCKET[r.bucket], brl0(r.valor)) },
     { k: 'share', rot: '% do custo', tipo: 'pct', casas: 1 },
-    { k: 'media', rot: 'Media mensal', tipo: 'moeda0' },
+    { k: 'media', rot: 'Média mensal', tipo: 'moeda0' },
     { k: 'porCliente', rot: 'Por cliente', tipo: 'moeda0' }
   ], itens, { ord: 'valor', dir: -1, titulo: 'Linhas de custo do comercial', limite: 30,
     total: { valor: d => brl0(soma(d, r => r.valor)), porCliente: d => clientes ? brl0(soma(d, r => r.valor) / clientes) : '' } });
@@ -4666,14 +4666,14 @@ const METAS_PADRAO = {
   leadsAds:    { rot: 'Leads (Meta Ads)',       meta: 1500,  tipo: 'num',   acumula: true },
   leadsAbord:  { rot: 'Leads Abordados',        meta: 900,   tipo: 'num',   acumula: true },
   leadsQual:   { rot: 'Leads Qualificados',     meta: 300,   tipo: 'num',   acumula: true },
-  reunioes:    { rot: 'Reunioes Realizadas',    meta: 100,   tipo: 'num',   acumula: true },
+  reunioes:    { rot: 'Reuniões Realizadas',    meta: 100,   tipo: 'num',   acumula: true },
   clientes:    { rot: 'Clientes Fechados',      meta: 32,    tipo: 'num',   acumula: true },
   faturamento: { rot: 'Faturamento',            meta: 80000, tipo: 'moeda', acumula: true },
-  ticket:      { rot: 'Ticket Medio',           meta: 2500,  tipo: 'moeda', acumula: false },
+  ticket:      { rot: 'Ticket Médio',           meta: 2500,  tipo: 'moeda', acumula: false },
   investimento:{ rot: 'Investimento (Ads)',     meta: 16000, tipo: 'moeda', acumula: true },
   cac:         { rot: 'CAC',                    meta: 500,   tipo: 'moeda', acumula: false, inverso: true },
-  convReunCli: { rot: 'Conv. Reuniao → Cliente', meta: 20, tipo: 'pct', acumula: false },
-  convLeadReun:{ rot: 'Conv. Lead → Reuniao',    meta: 12, tipo: 'pct', acumula: false },
+  convReunCli: { rot: 'Conv. Reunião → Cliente', meta: 20, tipo: 'pct', acumula: false },
+  convLeadReun:{ rot: 'Conv. Lead → Reunião',    meta: 12, tipo: 'pct', acumula: false },
   convLeadCli: { rot: 'Conv. Lead → Cliente',    meta: 2.5, tipo: 'pct', acumula: false },
   roi:         { rot: 'ROI',                    meta: 5,     tipo: 'mult',  acumula: false }
 };
@@ -4724,27 +4724,27 @@ function telaEquipe(modo) {
 
   h += '<div class="secao-titulo">Closers</div>';
   h += '<div class="grid g-3">';
-  h += cartao('Honorarios por closer', 'Receita inicial fechada no recorte.',
+  h += cartao('Honorários por closer', 'Receita inicial fechada no recorte.',
     vizBarras({ dados: linhasCloser.filter(c => c.hon > 0).map((c, i) => ({ k: c.nome, v: c.hon, cor: corSerie(i),
-      extra: [{ rot: 'Clientes', val: n0(c.clientes) }, { rot: 'Ticket medio', val: c.ticket == null ? '—' : brl0(c.ticket) }] })), fmt: brl0, nome: 'Honorarios' }));
-  h += cartao('Conversao reuniao → cliente', 'Clientes sobre reunioes realizadas.',
+      extra: [{ rot: 'Clientes', val: n0(c.clientes) }, { rot: 'Ticket médio', val: c.ticket == null ? '—' : brl0(c.ticket) }] })), fmt: brl0, nome: 'Honorários' }));
+  h += cartao('Conversão reunião → cliente', 'Clientes sobre reuniões realizadas.',
     vizBarras({ dados: linhasCloser.filter(c => c.conv != null).map((c, i) => ({ k: c.nome, v: c.conv, cor: corSerie(i),
-      extra: [{ rot: 'Reunioes', val: n0(c.reun) }, { rot: 'Clientes', val: n0(c.clientes) }] })), fmt: v => pct(v, 1), nome: 'Conversao' }));
-  h += cartao('Taxa de ganho na negociacao', 'Ganhos sobre ganhos + perdidos. Sem resposta nao entra.',
+      extra: [{ rot: 'Reuniões', val: n0(c.reun) }, { rot: 'Clientes', val: n0(c.clientes) }] })), fmt: v => pct(v, 1), nome: 'Conversão' }));
+  h += cartao('Taxa de ganho na negociação', 'Ganhos sobre ganhos + perdidos. Sem resposta não entra.',
     vizBarras({ dados: linhasCloser.filter(c => c.taxaGanho != null).map((c, i) => ({ k: c.nome, v: c.taxaGanho, cor: corSerie(i),
       extra: [{ rot: 'Ganhos', val: n0(c.ganhos) }, { rot: 'Perdidos', val: n0(c.perdidos) }] })), fmt: v => pct(v, 1), nome: 'Taxa de ganho' }));
   h += '</div>';
 
   h += tabelaInterativa('closer-tab', [
     { k: 'nome', rot: 'Closer', tipo: 'txt', cls: 'forte' },
-    { k: 'reun', rot: 'Reunioes', tipo: 'num' },
+    { k: 'reun', rot: 'Reuniões', tipo: 'num' },
     { k: 'clientes', rot: 'Clientes', tipo: 'num' },
-    { k: 'conv', rot: 'Conversao', tipo: 'pct', casas: 1 },
+    { k: 'conv', rot: 'Conversão', tipo: 'pct', casas: 1 },
     { k: 'ganhos', rot: 'Ganhos', tipo: 'num' },
     { k: 'perdidos', rot: 'Perdidos', tipo: 'num' },
     { k: 'taxaGanho', rot: 'Taxa de ganho', tipo: 'pct', casas: 1 },
-    { k: 'hon', rot: 'Honorarios', tipo: 'moeda0' },
-    { k: 'ticket', rot: 'Ticket medio', tipo: 'moeda0' },
+    { k: 'hon', rot: 'Honorários', tipo: 'moeda0' },
+    { k: 'ticket', rot: 'Ticket médio', tipo: 'moeda0' },
     { k: 'dias', rot: 'Dias p/ fechar', tipo: 'num1' },
     { k: 'abertos', rot: 'Em aberto', tipo: 'num' },
     { k: 'propAberta', rot: 'Proposta em aberto', tipo: 'moeda0' },
@@ -4771,26 +4771,26 @@ function telaEquipe(modo) {
 
   h += '<div class="secao-titulo">SDR &middot; agendamento e comparecimento</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Reunioes agendadas x realizadas', 'A diferenca e o no-show da agenda.',
+  h += cartao('Reuniões agendadas x realizadas', 'A diferenca e o no-show da agenda.',
     vizEmpilhado({ x: linhasSdr.map(s => s.nome), fmt: n0, series: [
       { nome: 'Realizadas', vals: linhasSdr.map(s => s.realizadas), cor: 'var(--s3)' },
-      { nome: 'Nao realizadas', vals: linhasSdr.map(s => s.noShow), cor: 'var(--s4)' }
-    ] }) + legenda([{ nome: 'Realizadas', cor: 'var(--s3)' }, { nome: 'Nao realizadas', cor: 'var(--s4)' }]));
+      { nome: 'Não realizadas', vals: linhasSdr.map(s => s.noShow), cor: 'var(--s4)' }
+    ] }) + legenda([{ nome: 'Realizadas', cor: 'var(--s3)' }, { nome: 'Não realizadas', cor: 'var(--s4)' }]));
   h += cartao('Clientes gerados por SDR', 'Fechamentos atribuidos ao SDR que originou.',
     vizBarras({ dados: linhasSdr.map((s, i) => ({ k: s.nome, v: s.clientes, cor: corSerie(i),
-      extra: [{ rot: 'Honorarios', val: brl0(s.hon) }] })), nome: 'Clientes' }));
+      extra: [{ rot: 'Honorários', val: brl0(s.hon) }] })), nome: 'Clientes' }));
   h += '</div>';
 
   h += tabelaInterativa('sdr-tab', [
     { k: 'nome', rot: 'SDR', tipo: 'txt', cls: 'forte' },
     { k: 'agendadas', rot: 'Agendadas', tipo: 'num' },
     { k: 'realizadas', rot: 'Realizadas', tipo: 'num' },
-    { k: 'noShow', rot: 'Nao realizadas', tipo: 'num' },
+    { k: 'noShow', rot: 'Não realizadas', tipo: 'num' },
     { k: 'presenca', rot: 'Comparecimento', tipo: 'pct', casas: 1 },
     { k: 'semResposta', rot: 'Sem resposta', tipo: 'num' },
     { k: 'clientes', rot: 'Clientes', tipo: 'num' },
-    { k: 'conv', rot: 'Conversao', tipo: 'pct', casas: 1 },
-    { k: 'hon', rot: 'Honorarios', tipo: 'moeda0' }
+    { k: 'conv', rot: 'Conversão', tipo: 'pct', casas: 1 },
+    { k: 'hon', rot: 'Honorários', tipo: 'moeda0' }
   ], linhasSdr, { ord: 'realizadas', dir: -1, titulo: 'Desempenho por SDR', limite: 30, ativa: false });
   return h;
 }
@@ -4809,7 +4809,7 @@ function telaMetas() {
   const atual = m.meses && m.meses[nomeAtual] && !m.meses[nomeAtual].erro ? m.meses[nomeAtual] : null;
   const ant = m.meses && m.meses[nomeAnt] && !m.meses[nomeAnt].erro ? m.meses[nomeAnt] : null;
 
-  h += '<div class="secao-titulo primeiro">Metas do mes &middot; ' + esc(nomeAtual) + '</div>';
+  h += '<div class="secao-titulo primeiro">Metas do mês &middot; ' + esc(nomeAtual) + '</div>';
   if (!atual) {
     h += aviso('atencao', 'Nao encontrei a aba <code>KPIS ' + esc(nomeAtual) + '</code> na planilha de Metas. ' +
       'Quando o time criar a aba do mes, ela aparece aqui sozinha.');
@@ -4820,18 +4820,18 @@ function telaMetas() {
 
     const fmtKr = k => k.tipo === 'moeda' ? brl0 : (k.tipo === 'pct' ? (v => pct(v, 0)) : n0);
     h += tabelaInterativa('metas-tab', [
-      { k: 'resp', rot: 'Responsavel', tipo: 'txt', cls: 'forte' },
+      { k: 'resp', rot: 'Responsável', tipo: 'txt', cls: 'forte' },
       { k: 'kr', rot: 'Resultado chave', tipo: 'txt', cls: 'wrap' },
-      { k: 'metaMes', rot: 'Meta do mes', tipo: 'num', html: r => fmtKr(r)(r.metaMes) },
+      { k: 'metaMes', rot: 'Meta do mês', tipo: 'num', html: r => fmtKr(r)(r.metaMes) },
       { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num', html: r => fmtKr(r)(r.metaProp) },
       { k: 'resultado', rot: 'Resultado', tipo: 'num', html: r => '<b style="color:var(--texto)">' + fmtKr(r)(r.resultado) + '</b>' },
       { k: 'vsProp', rot: 'vs proporcional', tipo: 'num', ord: false,
         html: r => selo(nivelMeta(r.inverso ? (r.vsProp ? 200 - r.vsProp : null) : r.vsProp), pct(r.vsProp, 0)) },
-      { k: 'vsMes', rot: 'vs meta do mes', tipo: 'num', ord: false,
+      { k: 'vsMes', rot: 'vs meta do mês', tipo: 'num', ord: false,
         html: r => barraCelula(r.vsMes, 120, r.vsMes >= 100 ? 'var(--ok)' : r.vsMes >= 60 ? 'var(--atencao)' : 'var(--critico)', pct(r.vsMes, 0)) },
       { k: 'ritmo', rot: 'Ritmo', tipo: 'txt', ord: false,
         html: r => ritmo({ feito: r.resultado, meta: r.metaMes, alvoPct: rm.pct, fmt: fmtKr(r) }) }
-    ], atual.krs, { titulo: 'Metas do mes', limite: 40 });
+    ], atual.krs, { titulo: 'Metas do mês', limite: 40 });
 
     /* Comparacao com o mes anterior pelos KRs de mesmo nome. */
     if (ant) {
@@ -4846,21 +4846,21 @@ function telaMetas() {
           ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(' + esc(nomeAtual) + ' ainda em curso &mdash; compare com o ritmo, nao com o total)</span></div>';
         h += tabelaInterativa('metas-comp', [
           { k: 'kr', rot: 'Resultado chave', tipo: 'txt', cls: 'forte wrap' },
-          { k: 'resp', rot: 'Responsavel', tipo: 'txt' },
+          { k: 'resp', rot: 'Responsável', tipo: 'txt' },
           { k: 'ant', rot: esc(nomeAnt), tipo: 'num', html: r => (r.tipo === 'moeda' ? brl0 : r.tipo === 'pct' ? (v => pct(v, 0)) : n0)(r.ant) },
           { k: 'atual', rot: esc(nomeAtual) + ' (parcial)', tipo: 'num', html: r => (r.tipo === 'moeda' ? brl0 : r.tipo === 'pct' ? (v => pct(v, 0)) : n0)(r.atual) },
-          { k: 'var', rot: 'Variacao', tipo: 'num', ord: false, html: r => delta(r.var, { inverso: r.inverso }) }
+          { k: 'var', rot: 'Variação', tipo: 'num', ord: false, html: r => delta(r.var, { inverso: r.inverso }) }
         ], comp, { titulo: 'Comparativo de metas', limite: 40, ativa: false });
       }
     }
   }
 
   /* --- Plano de acao --- */
-  h += '<div class="secao-titulo">Plano de acao</div>';
+  h += '<div class="secao-titulo">Plano de ação</div>';
   if (m.okrs && m.okrs.length) {
     h += tabelaInterativa('okr-tab', [
-      { k: 'acao', rot: 'Acao', tipo: 'txt', cls: 'forte wrap' },
-      { k: 'resp', rot: 'Responsavel', tipo: 'txt' },
+      { k: 'acao', rot: 'Ação', tipo: 'txt', cls: 'forte wrap' },
+      { k: 'resp', rot: 'Responsável', tipo: 'txt' },
       { k: 'prazo', rot: 'Conclusao prevista', tipo: 'data' },
       { k: 'status', rot: 'Status', tipo: 'txt', ord: false,
         html: r => !r.status ? '&mdash;' : selo(/conclu|feito|pronto/i.test(r.status) ? 'ok' :
@@ -4870,8 +4870,8 @@ function telaMetas() {
           const d = diasEntre(r.prazo, hoje());
           if (/conclu|feito/i.test(r.status || '')) return selo('ok', 'concluida');
           return d > 0 ? selo('atencao', d + ' dia(s) em atraso') : d === 0 ? selo('atencao', 'vence hoje') : selo('neutro', 'em ' + (-d) + ' dia(s)'); } },
-      { k: 'obs', rot: 'Observacao', tipo: 'txt', cls: 'wrap' }
-    ], m.okrs, { titulo: 'Plano de acao', limite: 40, ativa: false });
+      { k: 'obs', rot: 'Observação', tipo: 'txt', cls: 'wrap' }
+    ], m.okrs, { titulo: 'Plano de ação', limite: 40, ativa: false });
   } else {
     h += '<div class="cartao"><div class="vazio">' +
       (m.okrsErro ? 'Nao consegui ler a aba OKRS: ' + esc(m.okrsErro) : 'Nenhuma acao cadastrada na aba OKRS.') + '</div></div>';
@@ -4885,7 +4885,7 @@ function telaMetas() {
       etapa: e.rot, real: num(ac.real[e.k]),
       proj: ac.projMes ? num(ac.projMes[e.k]) : null, bruto: ac.real[e.k]
     })).filter(l => l.real || l.proj);
-    h += cartao('Funil acumulado do ano', 'Vem da aba <b>Produtos Juridicos [Acumulado ' + new Date().getFullYear() +
+    h += cartao('Funil acumulado do ano', 'Vem da aba <b>Produtos Jurídicos [Acumulado ' + new Date().getFullYear() +
       ']</b> da planilha antiga. Use como referencia de ano, nao como numero do mes.',
       tabelaInterativa('hist-tab', [
         { k: 'etapa', rot: 'Etapa', tipo: 'txt', cls: 'forte' },
@@ -4939,7 +4939,7 @@ function telaFontes() {
       'Saia e entre de novo para que ela seja derivada.</div>') +
     '</div>';
 
-  h += '<div class="secao-titulo">Saude das fontes</div>';
+  h += '<div class="secao-titulo">Saúde das fontes</div>';
   h += aviso('info', 'Nao ha banco de dados: o painel le as planilhas e calcula tudo na hora. ' +
     'Cada fonte cai de pe sozinha &mdash; se uma falha, as outras telas seguem funcionando e a falha aparece aqui.');
 
@@ -4973,7 +4973,7 @@ function telaFontes() {
   ], linhas, { titulo: 'Fontes', limite: 20, ativa: false });
 
   if (AVISOS.length) {
-    h += '<div class="secao-titulo">Colunas que o painel nao achou</div>';
+    h += '<div class="secao-titulo">Colunas que o painel não achou</div>';
     AVISOS.forEach(a => { h += aviso(a.nivel, '<b>' + esc(a.fonte) + ':</b> ' + esc(a.txt)); });
   }
 
@@ -5680,7 +5680,7 @@ function kpisTrafego(c) {
     B({ k: 'alcance7', rot: 'Alcance (7 dias)', valor: alc7 || null,
         falta: alc7 ? null : 'A aba <b>Janelas</b> não trouxe a janela de 7 dias.',
         fonte: 'Soma do alcance por campanha na janela de 7d',
-        dica: 'E um teto, nao pessoas unicas: quem foi alcancado por duas campanhas conta duas vezes. A Meta so da o alcance unico por campanha, nao o da conta.' }),
+        dica: 'E um teto, não pessoas unicas: quem foi alcancado por duas campanhas conta duas vezes. A Meta só da o alcance único por campanha, não o da conta.' }),
     B({ k: 'freq7', rot: 'Frequência (7 dias)', tipo: 'mult', valor: freq7,
         falta: freq7 ? null : 'Depende da janela de 7 dias na aba Janelas.',
         fonte: 'Média das frequências por campanha, ponderada por impressão',
@@ -6053,7 +6053,7 @@ function kpisComercial(c) {
         meta: (krCli && krLeads && krLeads.metaMes) ? taxa(krCli.metaMes, krLeads.metaMes) : metas.convLeadCli,
         falta: krLeads ? null : 'Depende do KR Novos Leads da aba KPIS ' + esc(c.nomeMes) + '.',
         fonte: 'Clientes ÷ KR Novos Leads' + ((krCli && krLeads) ? ' · meta = ' + n0(krCli.metaMes) + ' ÷ ' + n0(krLeads.metaMes) : ''),
-        dica: 'Conversao de ponta a ponta: de cada 100 leads que o CRM registrou, quantos assinaram no mes.' }),
+        dica: 'Conversão de ponta a ponta: de cada 100 leads que o CRM registrou, quantos assinaram no mês.' }),
     B({ k: 'tempoReuniao', rot: 'Entrada do lead até a reunião', tipo: 'dias',
         valor: media(cli, r => (r.primeiro && r.dReuniao) ? diasEntre(r.primeiro, r.dReuniao) : null),
         fonte: 'Planilha de clientes: 1º CONTATO até DATA DA REUNIÃO',
