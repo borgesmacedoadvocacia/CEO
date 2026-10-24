@@ -158,6 +158,13 @@ dados*, não como zero silencioso. Releitura automática a cada 10 minutos.
   atribuição e suspende os alertas de conversão por campanha quando a coluna
   Campanha está vazia na maioria das reuniões — campanha com zero reunião pode
   só não ter sido anotada.
+- **Dedução de campanha, quando só há uma resposta possível.** O Kommo grava
+  em `fonte_id` qual integração criou o lead. Quando, naquele mês e naquela
+  integração, todos os leads nomeados (dez ou mais) apontam para a mesma
+  campanha, o painel atribui a ela os leads que chegaram com o campo vazio ou
+  com `-`, e marca quantos foram. Integração que serve duas campanhas não
+  deduz nada — seria chute. Em outubro/2026 isso recuperou 74 leads da
+  campanha de WhatsApp e levou a cobertura de 86,3% para 95,8%.
 - **Caixa ≠ competência.** A DRE é de caixa, a planilha de clientes é de
   competência. O painel mostra os dois e a diferença, em vez de escolher um.
 - **Taxa de ganho exclui quem não respondeu.** Ganhos sobre ganhos + perdidos.

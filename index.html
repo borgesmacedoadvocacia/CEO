@@ -2216,6 +2216,43 @@ async function carregarHistorico() {
 const LEGADO_KOMMO = ['id','lead','criado','hora','funil','etapa','situacao','origem','campanha',
   'produto','plano','tipoPlano','mensalidade','tempo','responsavel','reuniao','atualizado'];
 
+/* ===== A CAMPANHA QUE O KOMMO DEIXOU CAIR =====
+   O campo fonte_id diz qual integracao criou o lead. Em outubro de 2026 duas
+   alimentam o funil comercial, e cada uma serve um anuncio so: a 85978 trouxe
+   599 leads, todos de [ENG] [FORM] Rev. Plano de Saude, e a 82488 trouxe 150,
+   dos quais 76 nomeiam [ENG] [WPP] [NOVOS ADS] Rev. Plano de Saude e 74
+   chegaram com o campo Campanha vazio ou com "-".
+
+   Esses 74 nao sao organicos: e o mesmo anuncio, com o campo perdido no
+   caminho. Sem eles, o custo por lead da campanha de WhatsApp aparece o dobro
+   do real e a cobertura de atribuicao cai de 96% para 86% sem que nada tenha
+   acontecido.
+
+   A regra e conservadora de proposito: a campanha so e deduzida quando, no
+   mes e na integracao, TODOS os leads nomeados apontam para a mesma campanha,
+   e ha pelo menos dez deles. Integracao que serve duas campanhas nao deduz
+   nada - seria chute. O lead deduzido carrega campanhaInferida, e a tela diz
+   quantos sao, para que ninguem confunda deducao com registro. */
+function inferirCampanhas(reg) {
+  const caixas = {};
+  reg.forEach(r => {
+    if (!r.fonteId || !r.mes) return;
+    const chave = r.mes + '|' + r.fonteId;
+    const b = caixas[chave] || (caixas[chave] = { nomes: {}, nomeados: 0, orfaos: [] });
+    const c = String(r.campanha || '').trim();
+    if (c && c !== '-') { b.nomes[c] = (b.nomes[c] || 0) + 1; b.nomeados++; }
+    else b.orfaos.push(r);
+  });
+  let n = 0;
+  Object.keys(caixas).forEach(chave => {
+    const b = caixas[chave];
+    const nomes = Object.keys(b.nomes);
+    if (nomes.length !== 1 || b.nomeados < 10 || !b.orfaos.length) return;
+    b.orfaos.forEach(r => { r.campanha = nomes[0]; r.campanhaInferida = true; n++; });
+  });
+  return n;
+}
+
 async function carregarKommo() {
   const linhas = await lerAba(CONFIG.SHEETS.kommo, 'Leads', { fonte: 'kommo', tq: 'select ' + letrasAte(57) });
   const t = tabela(linhas);
@@ -2236,6 +2273,7 @@ async function carregarKommo() {
     mensalidade:['Qual o valor da mensalidade', 'mensalidade'],
     tempo:     ['Quanto tempo voce esta nele', 'tempo de plano'],
     responsavel:['responsavel'],
+    fonteId:   ['fonte_id'],
     reuniao:   ['Proximo agendamento', 'reuniao em'],
     valor:     ['valor'],
     motivoPerda:['motivo_perda'],
@@ -2268,6 +2306,7 @@ async function carregarKommo() {
       plano: pega('plano'), tipoPlano: pega('tipoPlano'),
       mensalidade: pega('mensalidade'), tempo: pega('tempo'),
       responsavel: pega('responsavel') || 'Sem responsavel',
+      fonteId: pega('fonteId'),
       reuniao: parseData(pega('reuniao')),
       valor: num(pega('valor')),
       motivoPerda: pega('motivoPerda'),
@@ -2283,9 +2322,10 @@ async function carregarKommo() {
 
   /* O funil Processual nao e comercial: sao clientes que ja estao na casa. */
   const comercial = reg.filter(r => !/processual/i.test(r.funil));
+  const inferidas = inferirCampanhas(comercial);
 
   return {
-    reg: comercial, todos: reg, legadas: legadas,
+    reg: comercial, todos: reg, legadas: legadas, inferidas: inferidas,
     formato: largo ? 'largo' : 'antigo', faltando: m.faltando, linhas: t.linhas.length
   };
 }
@@ -5751,6 +5791,10 @@ function ctxArea() {
     koCom: koCom(mes), koComAnt: koComAnt_(ant),
     koSoc: koSoc(mes), koSocAnt: koSoc(ant),
     koMes: todosKo.filter(r => r.mes === mes && passaKo(r)),
+    /* Quantos dos leads atribuidos tiveram a campanha deduzida pela
+       integracao de origem em vez de lida do campo. Fica a vista: deducao
+       nao e registro. */
+    koInfer: koAds(mes).filter(r => r.campanhaInferida).length,
     temKommo: !ERROS.kommo && todosKo.length > 0,
     todosCli: todosCli, todosAt: todosAt, todosMd: todosMd,
     serieCli: k => noMes(todosCli, k),
@@ -6080,9 +6124,10 @@ function kpisTrafego(c) {
     B({ k: 'cobKommo', rot: 'Cobertura: campanha anotada no lead', tipo: 'pct',
         valor: c.temKommo ? taxa(c.koAds.length, c.koCom.length) : null,
         falta: semKommo, meta: 90,
-        nota: c.temKommo ? n0(c.koAds.length) + ' de ' + n0(c.koCom.length) + ' leads do funil comercial' : null,
-        fonte: 'Leads do funil comercial com o campo Campanha preenchido',
-        dica: 'O divisor exclui o funil Instagram: direct e comentário não vêm de campanha por natureza, e contá-los aqui derrubava a cobertura de 86% para 45% sem que nada estivesse errado. Todo indicador deste módulo sai do lead com campanha anotada — o que chega sem ela some da conta, e o custo por elegível sobe sem motivo real.' }),
+        nota: c.temKommo ? n0(c.koAds.length) + ' de ' + n0(c.koCom.length) + ' leads do funil comercial' +
+          (c.koInfer ? ' &middot; ' + n0(c.koInfer) + ' por dedução da integração' : '') : null,
+        fonte: 'Leads do funil comercial com campanha anotada ou deduzida',
+        dica: 'Quando o campo Campanha chega vazio mas a integração de origem (fonte_id) serviu uma campanha só naquele mês, o painel deduz qual foi — são os leads contados como "por dedução". Integração que serve duas campanhas não deduz nada. O divisor exclui o funil Instagram: direct e comentário não vêm de campanha por natureza, e contá-los aqui derrubava a cobertura de 86% para 45% sem que nada estivesse errado. Todo indicador deste módulo sai do lead com campanha anotada — o que chega sem ela some da conta, e o custo por elegível sobe sem motivo real.' }),
     B({ k: 'pixel', rot: 'Qualidade do pixel e da API', falta:
         'Precisa da nota de correspondência de eventos do Gerenciador de Eventos — nenhuma aba traz isso hoje.' }),
     B({ k: 'eventosCrm', rot: 'Eventos de CRM devolvidos à Meta', falta:
