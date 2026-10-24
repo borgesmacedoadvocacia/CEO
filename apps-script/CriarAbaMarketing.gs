@@ -55,7 +55,17 @@ var KRS_MARKETING = [
   ['Marca',          'Avaliações Novas',                           'numero'],
   ['Marca',          'Menções e Marcações da BM',                  'numero'],
 
-  ['Ética',          'Peças Revisadas pela Regra da OAB (%)',      'pct']
+  ['Ética',          'Peças Revisadas pela Regra da OAB (%)',      'pct'],
+
+  /* SEO e site. Os tres primeiros so existem fora das planilhas: Search
+     Console e Perfil da Empresa no Google. Os dois ultimos o painel calcula
+     sozinho quando tem com que - a linha aqui e a rede de seguranca para o
+     mes em que a DRE ou o CRM nao der conta. */
+  ['SEO e Site',     'Sessões Orgânicas do Google',                'numero'],
+  ['SEO e Site',     'Palavras-chave na 1ª Página',                'numero'],
+  ['SEO e Site',     'Perfil da Empresa no Google (visualizações)','numero'],
+  ['SEO e Site',     'Custo por Lead Orgânico',                    'moeda'],
+  ['SEO e Site',     'Taxa de Qualificação Orgânica (%)',          'pct']
 ];
 
 var LINHA_CABEC = 5;
@@ -63,10 +73,8 @@ var LINHA_CABEC = 5;
 function criarAbaMarketing() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (ss.getSheetByName('KPIS Marketing')) {
-    SpreadsheetApp.getUi().alert(
-      'A aba "KPIS Marketing" ja existe.\n\n' +
-      'Para refazer do zero, renomeie ou apague a atual e rode de novo. ' +
-      'O script nao sobrescreve para nao apagar o que ja foi preenchido.');
+    /* Rodar de novo nao e erro: e a forma de por a aba em dia. */
+    atualizarAbaMarketing();
     return;
   }
 
@@ -141,7 +149,10 @@ function criarAbaMarketing() {
   for (var j = 0; j < n; j++) {
     var linha = primeira + j;
     var tipo = KRS_MARKETING[j][2];
-    var fmt = tipo === 'pct' ? '0.0%' : (tipo === 'decimal' ? '0.0' : '#,##0');
+    var fmt = tipo === 'pct' ? '0.0%'
+            : tipo === 'decimal' ? '0.0'
+            : tipo === 'moeda' ? 'R$ #,##0.00'
+            : '#,##0';
     aba.getRange(linha, 4).setNumberFormat(fmt);   /* Meta Mensal       */
     aba.getRange(linha, 5).setNumberFormat(fmt);   /* Meta Proporcional */
     aba.getRange(linha, 6).setNumberFormat(fmt);   /* Resultado do Mes  */
@@ -230,4 +241,70 @@ function corrigirFormulasMarketing() {
   SpreadsheetApp.getActive().toast(
     n + ' linhas de formula reescritas com ";". Confira a coluna Meta Proporcional.',
     'KPIS Marketing', 8);
+}
+
+
+/**
+ * POE A ABA EM DIA, SEM NUNCA APAGAR O QUE FOI DIGITADO.
+ * ---------------------------------------------------------------------------
+ * E o que roda quando criarAbaMarketing encontra a aba ja criada. Tres casos:
+ *
+ *   1. A aba tem o mesmo numero de linhas da lista: so reescreve as formulas.
+ *   2. A lista cresceu (indicador novo) e ninguem digitou nada ainda: apaga e
+ *      refaz, que e mais seguro do que remendar linha a linha.
+ *   3. A lista cresceu mas ja ha numeros digitados: NAO apaga. Avisa quais
+ *      linhas tem conteudo e deixa a decisao com quem preencheu.
+ *
+ * Colunas D (Meta Mensal) e F (Resultado do Mes) sao as unicas que a mao
+ * humana preenche - E, G e H sao formula, e B e C sao o contrato com o painel.
+ */
+function atualizarAbaMarketing() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var aba = ss.getSheetByName('KPIS Marketing');
+  if (!aba) { criarAbaMarketing(); return; }
+
+  var n = KRS_MARKETING.length;
+  var primeira = LINHA_CABEC + 1;
+  var linhasHoje = contarLinhasDeKr(aba, primeira);
+
+  if (linhasHoje === n) { corrigirFormulasMarketing(); return; }
+
+  var digitado = linhasDigitadas(aba, primeira, linhasHoje);
+  if (digitado.length) {
+    SpreadsheetApp.getUi().alert(
+      'A lista de indicadores mudou (' + linhasHoje + ' na aba, ' + n + ' no script), ' +
+      'mas a aba ja tem numeros digitados em ' + digitado.length + ' linha(s): ' +
+      digitado.slice(0, 6).join('; ') + '. Nada foi apagado. ' +
+      'Para refazer do zero, renomeie a aba atual e rode de novo - a nova nasce vazia ' +
+      'e voce copia os numeros da antiga.');
+    return;
+  }
+
+  ss.deleteSheet(aba);
+  criarAbaMarketing();
+}
+
+/* Quantas linhas de Resultado Chave a aba tem hoje: conta a coluna C a partir
+   da primeira linha de dados ate a primeira celula vazia. O rodape (Ultima
+   Atualizacao, Dias no Mes, Dias Computados) fica na coluna G e nao entra. */
+function contarLinhasDeKr(aba, primeira) {
+  var ate = aba.getLastRow();
+  if (ate < primeira) return 0;
+  var col = aba.getRange(primeira, 3, ate - primeira + 1, 1).getValues();
+  var i = 0;
+  while (i < col.length && String(col[i][0]).trim() !== '') i++;
+  return i;
+}
+
+/* Nomes dos Resultados Chaves que ja tem Meta Mensal ou Resultado do Mes. */
+function linhasDigitadas(aba, primeira, linhas) {
+  if (linhas <= 0) return [];
+  var vals = aba.getRange(primeira, 3, linhas, 4).getValues();  /* C a F */
+  var fora = [];
+  for (var i = 0; i < vals.length; i++) {
+    var meta = String(vals[i][1]).trim();      /* D */
+    var res  = String(vals[i][3]).trim();      /* F */
+    if (meta !== '' || res !== '') fora.push(String(vals[i][0]).trim());
+  }
+  return fora;
 }

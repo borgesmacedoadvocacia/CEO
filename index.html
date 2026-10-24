@@ -6285,9 +6285,15 @@ function kpisMarketing(c) {
     B({ k: 'cliSite', rot: 'Clientes vindos do site', valor: c.cli.filter(r => /site|calculadora/.test(chaveBusca(r.origem))).length,
         fonte: 'ORIGEM = Site ou Calculadora',
         dica: 'É o que a planilha de clientes registra. Sessões e leads do site exigiriam uma fonte de analytics.' }),
-    B({ k: 'sessoes', rot: 'Sessões orgânicas do Google', falta: 'Nenhuma fonte de site conectada ao painel.' }),
-    B({ k: 'palavras', rot: 'Palavras-chave na 1ª página', falta: 'Nenhuma fonte de SEO conectada.' }),
-    B({ k: 'gbp', rot: 'Perfil da Empresa no Google', falta: 'Nenhuma fonte do Google Business Profile conectada.' })
+    /* Search Console e Perfil da Empresa no Google nao tem planilha e nao
+       terao: sao painel de terceiro. A aba KPIS Marketing e onde esses tres
+       passam a existir, digitados uma vez por mes como os de audiencia. */
+    kMkt('sessoes', 'Sessões orgânicas do Google', 'sessoes organicas',
+      { dica: 'Sessões vindas da busca do Google, lidas no Search Console.' }),
+    kMkt('palavras', 'Palavras-chave na 1ª página', 'palavras chave',
+      { acumula: false, dica: 'Quantos termos a BM posiciona entre os dez primeiros resultados. Não acumula: é uma fotografia do mês.' }),
+    kMkt('gbp', 'Perfil da Empresa no Google', 'perfil da empresa',
+      { dica: 'Visualizações do Perfil da Empresa no Google — a ficha que aparece na busca e no Maps.' })
   ];
   const demanda = [
     B({ k: 'clientesOrg', rot: 'Clientes de origem orgânica', valor: cliOrg.length, ant: cliOrgAnt.length,
@@ -6297,18 +6303,29 @@ function kpisMarketing(c) {
     B({ k: 'ticketOrg', rot: 'Ticket médio orgânico', tipo: 'moeda', valor: ticketMedio(cliOrg),
         fonte: 'Honorários iniciais dos clientes orgânicos',
         nota: ticketMedio(cliAds) != null ? 'Campanha paga: ' + brl0(ticketMedio(cliAds)) : null }),
-    B({ k: 'custoLeadOrg', rot: 'Custo por lead orgânico', tipo: 'moeda2', inverso: true,
-        valor: (custoMkt && organicoLeads) ? custoMkt / organicoLeads : null,
-        falta: custoMkt ? null : 'Depende das linhas <b>SOCIAL MEDIA</b> e <b>OUTRAS DESPESAS DE MARKETING</b> da DRE.',
-        fonte: 'Custo de marketing (DRE) ÷ leads orgânicos',
-        nota: custoMkt ? brl0(custoMkt) + ' de custo de marketing no mês' : null }),
+    /* Este o painel calcula sozinho quando a DRE traz o custo de marketing.
+       So quando ela nao traz e que a linha da aba vale - assim o numero
+       digitado nunca concorre com a contabilidade, so cobre o buraco dela. */
+    (custoMkt && organicoLeads)
+      ? B({ k: 'custoLeadOrg', rot: 'Custo por lead orgânico', tipo: 'moeda2', inverso: true,
+            valor: custoMkt / organicoLeads,
+            fonte: 'Custo de marketing (DRE) ÷ leads orgânicos',
+            nota: brl0(custoMkt) + ' de custo de marketing no mês' })
+      : kMkt('custoLeadOrg', 'Custo por lead orgânico', 'custo por lead organico',
+          { tipo: 'moeda2', inverso: true, acumula: false,
+            dica: 'O painel calcula este número sozinho quando a DRE traz as linhas SOCIAL MEDIA e OUTRAS DESPESAS DE MARKETING. Sem elas, vale o que estiver digitado na aba KPIS Marketing.' }),
     B({ k: 'dependencia', rot: 'Dependência de mídia paga', tipo: 'pct', inverso: true,
         valor: taxa(cliAds.length, c.cli.length),
         serie: c.serie.map(k => taxa(porNat(c.serieCli(k), 'ads').length, c.serieCli(k).length)),
         fonte: 'Clientes de campanha ÷ clientes do mês',
         dica: 'Quanto maior, mais o resultado do mês depende de verba. Menos é melhor.' }),
-    B({ k: 'qualOrg', rot: 'Taxa de qualificação orgânica', falta:
-        'A planilha mede elegibilidade e qualificação no total, sem separar por origem. O corte existiria se o CRM marcasse a origem em cada etapa.' })
+    /* O CRM nao separa qualificacao por origem: ele guarda so a etapa atual
+       do lead, e o campo Origem fica vazio em boa parte dos leads sem
+       campanha. Calcular daria um numero com base pequena e ambigua, entao
+       a casa digita o dela na aba em vez de o painel inventar um. */
+    kMkt('qualOrg', 'Taxa de qualificação orgânica', 'qualificacao organica',
+      { tipo: 'pct', acumula: false,
+        dica: 'Dos leads que chegam sem campanha, quantos passam na qualificação. O CRM não dá esse corte sozinho — guarda só a etapa atual e deixa a Origem vazia em parte dos leads —, por isso o número vem da aba KPIS Marketing.' })
   ];
   const marca = [
     B({ k: 'clientesInd', rot: 'Clientes por indicação', valor: cliInd.length, ant: cliIndAnt.length,
