@@ -718,10 +718,77 @@ async function abrirCofre(usuario, senha) {
   throw new Error('Login ou senha invalidos para este painel.');
 }
 
-const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10 };
+const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 
-const K_AUTH = 'bm_ceo_auth';
-const K_CRED = 'bm_ceo_cred';
+const K_AUTH  = 'bm_ceo_auth';
+const K_CRED  = 'bm_ceo_cred';
+const K_TOKEN = 'bm_ceo_tok';
+const K_PROXY = 'bm_ceo_proxy';
+
+/* ==========================================================================
+   TRANSPORTE
+   --------------------------------------------------------------------------
+   Dois caminhos para o mesmo dado, e a diferenca entre eles e de seguranca,
+   nao de desempenho:
+
+   . PROXY (preferido) - um web app Apps Script que roda com a conta dona das
+     planilhas. As planilhas ficam PRIVADAS, a senha e conferida no servidor e
+     CPF/CNPJ nem sai do Google. E o unico caminho que protege o dado, e nao
+     so a descoberta dele.
+
+   . GVIZ (retaguarda) - le a planilha direto do navegador. So funciona com
+     planilha compartilhada por link, o que significa que quem tiver o ID le
+     sem senha nenhuma. Fica aqui para o painel nao parar durante a virada.
+
+   Qual esta em uso aparece declarado na tela "Fontes e dados".
+   ========================================================================== */
+let TOKEN = null;          /* derivado do login; credencial, nunca a senha */
+let PROXY_DADOS = null;    /* resposta do proxy na carga atual */
+let PROXY_ERROS = {};
+let TRANSPORTE = 'gviz';
+let PROXY_FALHA = null;
+
+/* O navegador deriva PBKDF2-SHA256(login + senha) e manda so o resultado.
+   A senha em si nunca trafega e nunca e guardada. O servidor compara o
+   SHA-256 disto com o hash que ele guarda. */
+async function derivarToken(usuario, senha) {
+  const enc = new TextEncoder();
+  const material = await crypto.subtle.importKey(
+    'raw', enc.encode(normUsuario(usuario) + '\n' + senha), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: enc.encode('bm-painel-comercial-v1'), iterations: 310000, hash: 'SHA-256' },
+    material, 256);
+  let s = '';
+  new Uint8Array(bits).forEach(b => { s += String.fromCharCode(b); });
+  return btoa(s);
+}
+
+function proxySalvo() {
+  try { return localStorage.getItem(K_PROXY) || null; } catch (e) { return null; }
+}
+function salvarProxy(url) {
+  try {
+    if (url) localStorage.setItem(K_PROXY, url); else localStorage.removeItem(K_PROXY);
+  } catch (e) {}
+  CONFIG.PROXY = url || null;
+}
+
+async function proxyLer(fontes) {
+  /* text/plain de proposito: mantem a requisicao "simples" e evita o
+     preflight OPTIONS, que o Apps Script nao responde. */
+  const resp = await fetch(CONFIG.PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ auth: TOKEN, fontes: fontes }),
+    cache: 'no-store'
+  });
+  if (!resp.ok) throw new Error('o proxy respondeu HTTP ' + resp.status);
+  let j;
+  try { j = await resp.json(); }
+  catch (e) { throw new Error('o endereco respondeu algo que nao e JSON - confira se termina em /exec'); }
+  if (!j.ok) throw new Error(j.erro || 'o proxy recusou a credencial');
+  return j;
+}
 
 /* ===================== FORMATACAO ===================== */
 const fmtBRL  = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -876,6 +943,25 @@ function corpoEErro(txt) {
 
 async function lerAba(id, aba, opc) {
   const o = opc || {};
+
+  /* Com o proxy em uso, a leitura ja veio toda numa resposta so. */
+  if (PROXY_DADOS && o.fonte) {
+    if (PROXY_DADOS[o.fonte]) {
+      const linhas = PROXY_DADOS[o.fonte].linhas || [];
+      if (!linhas.length) throw new Error('aba vazia');
+      conferirCabecalho(linhas, PROXY_DADOS[o.fonte].aba || aba, o);
+      return linhas;
+    }
+    if (PROXY_ERROS[o.fonte]) throw new Error(PROXY_ERROS[o.fonte]);
+    throw new Error('o proxy nao devolveu a fonte "' + o.fonte + '"');
+  }
+  /* Fontes que so existem pelo proxy (planilha privada). */
+  if (o.soProxy) {
+    throw new Error(CONFIG.PROXY
+      ? 'esta planilha so e lida pelo proxy, e o proxy nao respondeu'
+      : 'esta planilha e privada: so e lida pelo proxy Apps Script. Configure em "Fontes e dados".');
+  }
+
   let resp;
   try {
     resp = await fetch(urlGviz(id, aba, o.tq, o.headers), { cache: 'no-store', credentials: 'omit' });
@@ -896,19 +982,21 @@ async function lerAba(id, aba, opc) {
 
   const linhas = parseCSV(txt).filter(l => l.some(c => String(c).trim() !== ''));
   if (!linhas.length) throw new Error('aba vazia');
-
-  /* O gviz devolve a PRIMEIRA aba da planilha quando o nome pedido nao existe,
-     em vez de dar erro. Conferir o cabecalho e o que separa "aba renomeada"
-     de "numeros errados em silencio". */
-  if (o.esperado && o.esperado.length) {
-    const cab = linhas[o.linhaCab || 0].map(normCab);
-    const faltando = o.esperado.filter(e => !cab.some(c => c.includes(normCab(e))));
-    if (faltando.length) {
-      throw new Error('a aba "' + aba + '" nao tem as colunas esperadas (' +
-        faltando.slice(0, 3).join(', ') + '). Foi renomeada ou reestruturada?');
-    }
-  }
+  conferirCabecalho(linhas, aba, o);
   return linhas;
+}
+
+/* O gviz devolve a PRIMEIRA aba da planilha quando o nome pedido nao existe,
+   em vez de dar erro. Conferir o cabecalho e o que separa "aba renomeada" de
+   "numeros errados em silencio". */
+function conferirCabecalho(linhas, aba, o) {
+  if (!o.esperado || !o.esperado.length) return;
+  const cab = (linhas[o.linhaCab || 0] || []).map(normCab);
+  const faltando = o.esperado.filter(e => !cab.some(c => c.includes(normCab(e))));
+  if (faltando.length) {
+    throw new Error('a aba "' + aba + '" nao tem as colunas esperadas (' +
+      faltando.slice(0, 3).join(', ') + '). Foi renomeada ou reestruturada?');
+  }
 }
 
 /* Cabecalho + linhas, com indice por nome de coluna (aceita apelidos). */
@@ -1034,7 +1122,7 @@ const posEtapa = e => {
 
 async function carregarAtend() {
   const linhas = await lerAba(CONFIG.SHEETS.atend, 'Fluxo de Atendimentos', {
-    esperado: ['ID', 'Lead', 'Etapa do Funil', 'Closer']
+    fonte: 'atend', esperado: ['ID', 'Lead', 'Etapa do Funil', 'Closer']
   });
   const t = tabela(linhas);
   const m = mapear(t, CAMPOS_ATEND);
@@ -1150,7 +1238,7 @@ const CAMPOS_CLI = {
 
 async function carregarClientes() {
   const linhas = await lerAba(CONFIG.SHEETS.clientes, 'DADOS', {
-    tq: 'select ' + letrasAte(17),
+    fonte: 'clientes', tq: 'select ' + letrasAte(17),
     esperado: ['DATA DO FECHAMENTO', 'HONORARIOS INICIAIS', 'CLOSER']
   });
   const t = tabela(linhas);
@@ -1192,7 +1280,7 @@ async function carregarClientes() {
 async function carregarMetaDia() {
   /* A:N de proposito: a coluna "Acoes (JSON)" sozinha e 85% do peso da aba
      (4,5 MB contra 540 KB) e nada aqui depende dela. */
-  const opc = { tq: 'select ' + letrasAte(14), esperado: ['Data', 'Campanha', 'Gasto'] };
+  const opc = { fonte: 'metaDia', tq: 'select ' + letrasAte(14), esperado: ['Data', 'Campanha', 'Gasto'] };
   const linhas = await lerAba(CONFIG.SHEETS.meta, 'Insights diários', opc)
     .catch(() => lerAba(CONFIG.SHEETS.meta, 'Insights diarios', opc));
   const t = tabela(linhas);
@@ -1226,7 +1314,7 @@ async function carregarMetaDia() {
 }
 
 async function carregarMetaCamp() {
-  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Campanhas', { esperado: ['Campanha', 'Status'] });
+  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Campanhas', { fonte: 'metaCamp', esperado: ['Campanha', 'Status'] });
   const t = tabela(linhas);
   const m = mapear(t, {
     idCamp: ['ID da campanha'], campanha: ['Campanha'], status: ['Status'],
@@ -1249,8 +1337,9 @@ async function carregarMetaCamp() {
 }
 
 async function carregarMetaReun() {
-  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Reuniões', { esperado: ['Data', 'Lead'] })
-    .catch(() => lerAba(CONFIG.SHEETS.meta, 'Reunioes', { esperado: ['Data', 'Lead'] }));
+  const opcR = { fonte: 'metaReun', esperado: ['Data', 'Lead'] };
+  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Reuniões', opcR)
+    .catch(() => lerAba(CONFIG.SHEETS.meta, 'Reunioes', opcR));
   const t = tabela(linhas);
   const m = mapear(t, {
     data: ['Data'], hora: ['Hora'], funil: ['Funil'], idLead: ['ID do lead'],
@@ -1414,10 +1503,10 @@ const MES_ABA  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 const MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-async function tentarAbas(sheet, nomes, leitor, headers) {
+async function tentarAbas(sheet, nomes, leitor, headers, fonte) {
   let ultimo = null;
   for (const aba of nomes) {
-    try { return { ok: leitor(await lerAba(sheet, aba, { headers: headers })) }; }
+    try { return { ok: leitor(await lerAba(sheet, aba, { headers: headers, fonte: fonte })) }; }
     catch (e) { ultimo = e; }
   }
   return { erro: ultimo ? ultimo.message : 'aba nao encontrada' };
@@ -1431,7 +1520,8 @@ async function carregarMetas() {
   /* Nas abas KPIS o cabecalho esta na linha 5 (linhas 1-4 sao titulo). */
   for (const i of [mi, (mi + 11) % 12]) {
     const nome = MES_ABA[i];
-    const r = await tentarAbas(CONFIG.SHEETS.metas, ['KPIS ' + nome, 'KPIS ' + semAcento(nome)], lerKpis, 5);
+    const r = await tentarAbas(CONFIG.SHEETS.metas, ['KPIS ' + nome, 'KPIS ' + semAcento(nome)], lerKpis, 5,
+      i === mi ? 'kpisAtual' : 'kpisAnterior');
     out.meses[nome] = r.ok || { erro: r.erro };
   }
 
@@ -1441,13 +1531,13 @@ async function carregarMetas() {
     return ['Produtos Jurídicos' + base, 'Produtos Juridicos' + base];
   };
   /* Nas abas de Produtos Juridicos o cabecalho esta na linha 2. */
-  const pa = await tentarAbas(CONFIG.SHEETS.metas, abasProd(mi), lerProdutos, 2);
+  const pa = await tentarAbas(CONFIG.SHEETS.metas, abasProd(mi), lerProdutos, 2, 'prodAtual');
   if (pa.ok) out.produtos.atual = pa.ok; else out.produtos.atualErro = pa.erro;
-  const pb = await tentarAbas(CONFIG.SHEETS.metas, abasProd((mi + 11) % 12), lerProdutos, 2);
+  const pb = await tentarAbas(CONFIG.SHEETS.metas, abasProd((mi + 11) % 12), lerProdutos, 2, 'prodAnterior');
   if (pb.ok) out.produtos.anterior = pb.ok;
   try {
     /* Na aba OKRS o cabecalho esta na linha 4. */
-    const l = await lerAba(CONFIG.SHEETS.metas, 'OKRS', { headers: 4 });
+    const l = await lerAba(CONFIG.SHEETS.metas, 'OKRS', { headers: 4, fonte: 'okrs' });
     const t = tabela(l, 0);
     const m = mapear(t, { acao: ['Acao'], resp: ['Responsavel'], prazo: ['Data Conclusao (prevista)'], status: ['Status'], obs: ['Observacao do Resultado'] });
     out.okrs = t.linhas.map(x => ({
@@ -1490,7 +1580,7 @@ function bucketDe(rotulo) {
 
 async function carregarFinanceiro() {
   const linhas = await lerAba(CONFIG.SHEETS.financeiro, 'DRE COMERCIAL', {
-    esperado: ['JANEIRO', 'DEZEMBRO']
+    fonte: 'fin', esperado: ['JANEIRO', 'DEZEMBRO']
   });
   const t = tabela(linhas, 0);
   const ano = new Date().getFullYear();
@@ -1554,7 +1644,7 @@ async function carregarHistorico() {
   const r = await tentarAbas(CONFIG.SHEETS.antiga, [
     'Produtos Jurídicos [Acumulado ' + ano + ']',
     'Produtos Juridicos [Acumulado ' + ano + ']'
-  ], lerProdutos, 2);
+  ], lerProdutos, 2, 'hist');
   if (!r.ok) throw new Error(r.erro);
   return { acumulado: r.ok };
 }
@@ -1569,7 +1659,7 @@ const LEGADO_KOMMO = ['id','lead','criado','hora','funil','etapa','situacao','or
   'produto','plano','tipoPlano','mensalidade','tempo','responsavel','reuniao','atualizado'];
 
 async function carregarKommo() {
-  const linhas = await lerAba(CONFIG.SHEETS.kommo, 'Leads', { tq: 'select ' + letrasAte(57) });
+  const linhas = await lerAba(CONFIG.SHEETS.kommo, 'Leads', { fonte: 'kommo', tq: 'select ' + letrasAte(57) });
   const t = tabela(linhas);
   const largo = t.norm.includes('lead_id');
   const m = mapear(t, {
@@ -1642,6 +1732,115 @@ async function carregarKommo() {
   };
 }
 
+/* --------------------------------------------------- 7. CEREBRO COMERCIAL
+   "TODOS OS LEADS [CEREBRO COMERCIAL]", aba TODOS OS LEADS: a espinha dorsal
+   que ja junta Kommo, Fluxo de Atendimentos e Fluxo de Clientes (2025 e 2026)
+   numa so tabela, um registro por linha, colunas padronizadas.
+
+   Vale por duas coisas que as fontes separadas nao dao: 2025 inteiro e a
+   JORNADA do mesmo lead atravessando os estagios. Em compensacao, o mesmo
+   lead aparece em mais de uma linha - e o funil. Para contagem unica, agrupe
+   por nome.
+
+   So e lida pelo proxy: a planilha e privada, e e assim que deve ficar. */
+async function carregarCerebro() {
+  const linhas = await lerAba(CONFIG.SHEETS.cerebro, 'TODOS OS LEADS', {
+    fonte: 'cerebro', soProxy: true, esperado: ['ESTAGIO', 'NOME']
+  });
+  const t = tabela(linhas, 0);
+  const m = mapear(t, {
+    estagio:   ['ESTAGIO'],
+    fonte:     ['FONTE'],
+    id:        ['ID'],
+    nome:      ['NOME'],
+    telefone:  ['TELEFONE'],
+    produto:   ['PRODUTO JURIDICO'],
+    origem:    ['ORIGEM'],
+    campanha:  ['CAMPANHA'],
+    funil:     ['FUNIL'],
+    etapa:     ['ETAPA / SITUACAO', 'ETAPA'],
+    motivoPerda:['MOTIVO DE PERDA'],
+    temperatura:['TEMPERATURA'],
+    sdr:       ['SDR'],
+    closer:    ['CLOSER'],
+    responsavel:['RESPONSAVEL'],
+    primeiro:  ['DATA 1 CONTATO', 'DATA 1o CONTATO'],
+    dReuniao:  ['DATA DA REUNIAO'],
+    dFecha:    ['DATA DO FECHAMENTO'],
+    diasFechar:['DIAS PARA FECHAR'],
+    jornada:   ['JORNADA COMPLETA (DIAS)', 'JORNADA COMPLETA'],
+    honIni:    ['HONORARIOS INICIAIS'],
+    honFim:    ['HONORARIOS DE EXITO (%)', 'HONORARIOS DE EXITO'],
+    entrada:   ['VALOR DA ENTRADA'],
+    pagoOk:    ['PAGAMENTO CONFIRMADO'],
+    tipoPag:   ['TIPO DE PAGAMENTO'],
+    tipoHon:   ['TIPO DE CONTRATO (HONORARIOS)'],
+    tipoPlano: ['TIPO DE PLANO'],
+    mensalidade:['MENSALIDADE']
+  });
+
+  /* "1. Pre-qualificacao" / "2. Reuniao" / "3. Cliente" - o numero na frente
+     e a ordem do funil, e e por ele que ordeno em vez de alfabetico. */
+  const ordemEstagio = e => {
+    const n = String(e || '').match(/^\s*(\d+)/);
+    return n ? +n[1] : 99;
+  };
+
+  const reg = t.linhas.map(l => {
+    const dF = parseData(m.cel(l, 'dFecha'));
+    const dR = parseData(m.cel(l, 'dReuniao'));
+    const d1 = parseData(m.cel(l, 'primeiro'));
+    const estagio = m.cel(l, 'estagio') || 'Sem estagio';
+    const r = {
+      estagio: estagio, ordem: ordemEstagio(estagio),
+      fonteOrig: m.cel(l, 'fonte'),
+      id: m.cel(l, 'id'),
+      nome: m.cel(l, 'nome') || 'Sem nome',
+      chave: chaveBusca(m.cel(l, 'nome')),
+      telefone: m.cel(l, 'telefone'),
+      produto: m.cel(l, 'produto') || 'Sem produto',
+      origem: m.cel(l, 'origem') || 'Sem origem',
+      campanha: m.cel(l, 'campanha'),
+      funil: m.cel(l, 'funil'),
+      etapa: m.cel(l, 'etapa'),
+      motivoPerda: m.cel(l, 'motivoPerda'),
+      temperatura: m.cel(l, 'temperatura'),
+      sdr: m.cel(l, 'sdr') || 'Sem SDR',
+      closer: m.cel(l, 'closer') || 'Sem closer',
+      primeiro: d1, dReuniao: dR, dFecha: dF,
+      /* A data que situa o registro no tempo muda com o estagio. */
+      d: dF || dR || d1,
+      mes: (dF || dR || d1) ? chaveMes(dF || dR || d1) : '',
+      diasFechar: num(m.cel(l, 'diasFechar')),
+      jornada: num(m.cel(l, 'jornada')),
+      honIni: num(m.cel(l, 'honIni')),
+      honFim: numPct(m.cel(l, 'honFim')),
+      entrada: num(m.cel(l, 'entrada')),
+      pagoOk: /^(sim|s|true|1)$/i.test(m.cel(l, 'pagoOk').replace(/â/g, 'a')),
+      tipoPag: m.cel(l, 'tipoPag'),
+      tipoHon: m.cel(l, 'tipoHon'),
+      tipoPlano: m.cel(l, 'tipoPlano'),
+      mensalidade: m.cel(l, 'mensalidade')
+    };
+    r.cliente = r.ordem === 3;
+    r.reuniao = r.ordem === 2;
+    r.prequal = r.ordem === 1;
+    return r;
+  }).filter(r => r.nome !== 'Sem nome' || r.id);
+
+  /* Pessoas unicas: o mesmo nome aparece em ate tres estagios. */
+  const porPessoa = new Map();
+  reg.forEach(r => {
+    if (!r.chave) return;
+    if (!porPessoa.has(r.chave)) porPessoa.set(r.chave, { nome: r.nome, estagios: new Set(), registros: [] });
+    const p = porPessoa.get(r.chave);
+    p.estagios.add(r.ordem);
+    p.registros.push(r);
+  });
+
+  return { reg: reg, pessoas: porPessoa, faltando: m.faltando, linhas: t.linhas.length };
+}
+
 /* ===================== ORQUESTRACAO ===================== */
 const FONTES = [
   { k: 'atend',    nome: 'Fluxo de Atendimentos [NOVA]',      papel: 'Reunioes, proposta e esteira de negociacao', sheet: 'atend',    fn: carregarAtend,     critica: true },
@@ -1651,15 +1850,40 @@ const FONTES = [
   { k: 'metaCamp', nome: 'Campanhas Meta Ads - Campanhas',    papel: 'Status e orcamento das campanhas',           sheet: 'meta',     fn: carregarMetaCamp,  critica: false },
   { k: 'metaReun', nome: 'Campanhas Meta Ads - Reunioes',     papel: 'Reunioes marcadas vindas do CRM',            sheet: 'meta',     fn: carregarMetaReun,  critica: false },
   { k: 'fin',      nome: 'FLUXO FINANCEIRO 2026 - DRE COMERCIAL', papel: 'Custo real do setor comercial, CAC e margem', sheet: 'financeiro', fn: carregarFinanceiro, critica: false },
+  { k: 'cerebro',  nome: 'TODOS OS LEADS [CEREBRO COMERCIAL]',   papel: 'Jornada do lead e historico 2025+2026',       sheet: 'cerebro',  fn: carregarCerebro,   critica: false, soProxy: true },
   { k: 'kommo',    nome: 'Leads Kommo [DASHBOARDS]',          papel: 'Pre-qualificacao lead a lead',               sheet: 'kommo',    fn: carregarKommo,     critica: false },
   { k: 'hist',     nome: 'Metas e Resultados (antiga)',       papel: 'Acumulado do ano, base historica',           sheet: 'antiga',   fn: carregarHistorico, critica: false }
 ];
 
 let ULTIMA_LEITURA = null;
 
+/* As chaves que o proxy conhece. Uma fonte do painel pode precisar de varias
+   abas (Metas usa cinco), por isso esta lista nao e igual a FONTES. */
+const FONTES_PROXY = ['atend', 'clientes', 'metaDia', 'metaCamp', 'metaReun',
+  'kpisAtual', 'kpisAnterior', 'prodAtual', 'prodAnterior', 'okrs',
+  'hist', 'fin', 'kommo', 'cerebro'];
+
 async function carregarTudo() {
   Object.keys(ERROS).forEach(k => delete ERROS[k]);
   AVISOS.length = 0;
+  PROXY_DADOS = null; PROXY_ERROS = {}; PROXY_FALHA = null; TRANSPORTE = 'gviz';
+
+  /* Uma viagem so para tudo, quando o proxy esta configurado. Se ele nao
+     responder, o painel cai para a leitura direta em vez de ficar vazio - e
+     diz na tela de fontes que caiu. */
+  if (CONFIG.PROXY && TOKEN) {
+    try {
+      const j = await proxyLer(FONTES_PROXY);
+      PROXY_DADOS = j.dados || {};
+      PROXY_ERROS = j.erros || {};
+      TRANSPORTE = 'proxy';
+    } catch (e) {
+      PROXY_FALHA = e.message || String(e);
+      AVISOS.push({ nivel: 'critico', fonte: 'Proxy Apps Script',
+        txt: 'nao respondeu (' + PROXY_FALHA + '). O painel voltou a ler as planilhas direto, ' +
+             'o que so funciona nas que ainda estao compartilhadas por link.' });
+    }
+  }
 
   const res = await Promise.allSettled(FONTES.map(f => f.fn()));
   res.forEach((r, i) => {
@@ -3408,8 +3632,41 @@ function telaMetas() {
    ========================================================================== */
 function telaFontes() {
   let h = '';
-  h += '<div class="secao-titulo primeiro">Saude das fontes</div>';
-  h += aviso('info', 'O painel nao tem servidor nem banco: o navegador le as planilhas direto e calcula tudo na hora. ' +
+
+  /* ----- Transporte: e aqui que se confere se a barreira esta de pe ----- */
+  h += '<div class="secao-titulo primeiro">Como o painel le os dados</div>';
+  if (TRANSPORTE === 'proxy') {
+    h += aviso('info', '<b>Leitura pelo proxy Apps Script.</b> A senha e conferida no servidor, ' +
+      'as planilhas podem ficar privadas e CPF/CNPJ nem sai do Google. ' +
+      'E este o modo em que o login protege o dado, e nao so a descoberta dele.');
+  } else if (PROXY_FALHA) {
+    h += aviso('critico', '<b>O proxy esta configurado mas nao respondeu:</b> ' + esc(PROXY_FALHA) +
+      '<br>O painel voltou a ler as planilhas direto, o que so funciona nas que ainda estao ' +
+      'compartilhadas por link. Confira se o endereco termina em <code>/exec</code> e se a ' +
+      'implantacao esta como <i>Executar como: Eu</i> e <i>Acesso: Qualquer pessoa</i>.');
+  } else {
+    h += aviso('atencao', '<b>Leitura direta do navegador (sem proxy).</b> ' +
+      'Funciona so com planilha compartilhada como <i>qualquer pessoa com o link</i> &mdash; ' +
+      'ou seja, quem tiver o ID de uma delas le os dados <b>sem passar por esta senha</b>. ' +
+      'Para fechar as planilhas, publique o proxy (<code>apps-script/LEIA-ME.md</code> no repositorio) ' +
+      'e cole o endereco abaixo.');
+  }
+
+  h += '<div class="cartao"><div class="cartao-titulo">Endereco do proxy</div>' +
+    '<div class="cartao-sub">URL do app da Web do Apps Script, terminando em <code>/exec</code>. ' +
+    'Fica guardado neste navegador &mdash; nao e segredo: sem a senha ele nao devolve nada.</div>' +
+    '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">' +
+    '<input type="url" id="campoProxy" class="campo-texto" style="flex:1;min-width:260px;max-width:620px" ' +
+      'placeholder="https://script.google.com/macros/s/.../exec" value="' + esc(CONFIG.PROXY || '') + '" />' +
+    '<button class="btn-acao primario" id="btnUsarProxy" type="button">Usar o proxy</button>' +
+    (CONFIG.PROXY ? '<button class="btn-acao" id="btnTirarProxy" type="button">Remover</button>' : '') +
+    '</div>' +
+    (TOKEN ? '' : '<div class="kpi-nota" style="margin-top:0.6rem;color:#f3c45a">Esta sessao foi restaurada sem a credencial do proxy. ' +
+      'Saia e entre de novo para que ela seja derivada.</div>') +
+    '</div>';
+
+  h += '<div class="secao-titulo">Saude das fontes</div>';
+  h += aviso('info', 'Nao ha banco de dados: o painel le as planilhas e calcula tudo na hora. ' +
     'Cada fonte cai de pe sozinha &mdash; se uma falha, as outras telas seguem funcionando e a falha aparece aqui.');
 
   const contar = d => {
@@ -3433,6 +3690,8 @@ function telaFontes() {
     { k: 'status', rot: 'Status', tipo: 'txt', ord: false,
       html: r => r.erro ? selo(r.critica ? 'critico' : 'atencao', 'nao entrou') : selo('ok', 'lida') },
     { k: 'reg', rot: 'Registros', tipo: 'num', html: r => r.reg == null ? '&mdash;' : n0(r.reg) },
+    { k: 'via', rot: 'Lido via', tipo: 'txt', ord: false,
+      html: r => r.erro ? '&mdash;' : (TRANSPORTE === 'proxy' ? selo('ok', 'proxy') : selo('atencao', 'link direto')) },
     { k: 'erro', rot: 'Detalhe', tipo: 'txt', cls: 'wrap' },
     { k: 'abrir', rot: 'Planilha', tipo: 'txt', ord: false,
       html: r => r.sheet ? '<a href="https://docs.google.com/spreadsheets/d/' + esc(r.sheet) +
@@ -3458,11 +3717,22 @@ function telaFontes() {
   }
 
   h += '<div class="secao-titulo">Nota de seguranca</div>';
-  h += aviso('atencao', '<b>Este painel protege a descoberta, nao os dados.</b> ' +
-    'O login cifra os IDs das planilhas (AES-256-GCM, PBKDF2-SHA256 com 310 mil iteracoes): sem a senha, a pagina nao sabe o que ler. ' +
-    'Mas as planilhas que ele le estao compartilhadas como <i>qualquer pessoa com o link</i> &mdash; ' +
-    'quem tiver o ID de uma delas le os dados direto no Google, sem passar por aqui. ' +
-    'CPF/CNPJ dos clientes nao e lido por este painel.');
+  if (TRANSPORTE === 'proxy') {
+    h += aviso('info', '<b>A senha e conferida no servidor.</b> O navegador deriva ' +
+      'PBKDF2-SHA256 (310 mil iteracoes) do login e da senha e envia so o resultado &mdash; a senha nunca trafega ' +
+      'e nunca e guardada. O proxy compara com um hash que nao volta a ser senha, conta tentativa errada e ' +
+      'bloqueia por janela de tempo. As planilhas podem ficar <b>privadas</b>: quem nao tem a senha nao tem o dado. ' +
+      'CPF/CNPJ e recortado no servidor e nem sai do Google.' +
+      '<br><br>Confira na tabela acima se <b>todas</b> as fontes estao lidas via <i>proxy</i>. ' +
+      'Se alguma ainda aparece como <i>link direto</i>, aquela planilha continua legivel por quem tiver o ID.');
+  } else {
+    h += aviso('atencao', '<b>Neste modo o painel protege a descoberta, nao os dados.</b> ' +
+      'O login cifra os IDs das planilhas (AES-256-GCM, PBKDF2-SHA256 com 310 mil iteracoes): sem a senha, a pagina nao sabe o que ler. ' +
+      'Mas as planilhas estao compartilhadas como <i>qualquer pessoa com o link</i> e os IDs de algumas ja aparecem ' +
+      'em texto puro nos outros paineis publicos &mdash; quem os tiver le os dados direto no Google, sem senha. ' +
+      'CPF/CNPJ dos clientes nao e lido por este painel. ' +
+      '<b>Publique o proxy para fechar isso.</b>');
+  }
   return h;
 }
 
@@ -3777,8 +4047,13 @@ function marcarAtividade() {
 }
 
 function sair(msg) {
-  try { sessionStorage.removeItem(K_AUTH); sessionStorage.removeItem(K_CRED); } catch (e) {}
+  try {
+    sessionStorage.removeItem(K_AUTH);
+    sessionStorage.removeItem(K_CRED);
+    sessionStorage.removeItem(K_TOKEN);
+  } catch (e) {}
   CONFIG.SHEETS = null; CONFIG.perfil = null;
+  TOKEN = null; PROXY_DADOS = null; PROXY_ERROS = {}; TRANSPORTE = 'gviz';
   Object.keys(DADOS).forEach(k => delete DADOS[k]);
   clearTimeout(tmrInatividade);
   if (msg) {
@@ -3793,8 +4068,15 @@ function sair(msg) {
 function entrar(segredo, doCache) {
   CONFIG.SHEETS = segredo.SHEETS;
   CONFIG.perfil = segredo.perfil || 'Gestor Comercial';
+  CONFIG.PROXY = proxySalvo();
   if (!doCache) {
-    try { sessionStorage.setItem(K_AUTH, '1'); sessionStorage.setItem(K_CRED, JSON.stringify(segredo)); } catch (e) {}
+    /* Guarda o conteudo ja decifrado e a credencial derivada - nunca a senha.
+       sessionStorage e por aba: fechou a aba, acabou. */
+    try {
+      sessionStorage.setItem(K_AUTH, '1');
+      sessionStorage.setItem(K_CRED, JSON.stringify(segredo));
+      if (TOKEN) sessionStorage.setItem(K_TOKEN, TOKEN);
+    } catch (e) {}
   }
   document.getElementById('loginOverlay').classList.add('oculto');
   document.getElementById('app').classList.remove('oculto');
@@ -3820,7 +4102,13 @@ document.getElementById('loginForm').addEventListener('submit', async ev => {
   btn.disabled = true; btn.textContent = 'Verificando…';
   erroEl.classList.add('oculto');
   try {
-    const segredo = await abrirCofre(usuario, senha);
+    /* O cofre prova a senha neste navegador; o token e o que o proxy
+       confere no servidor. Os dois saem da mesma senha, em paralelo. */
+    const [segredo, tok] = await Promise.all([
+      abrirCofre(usuario, senha),
+      derivarToken(usuario, senha).catch(() => null)
+    ]);
+    TOKEN = tok;
     erros = 0;
     document.getElementById('campoSenha').value = '';
     entrar(segredo);
@@ -3885,6 +4173,24 @@ document.getElementById('btnMenu').addEventListener('click', () => {
   document.getElementById('sidebarOverlay').classList.add('vis');
 });
 document.getElementById('sidebarOverlay').addEventListener('click', fecharSidebar);
+
+/* Endereco do proxy: fica no navegador, nao no codigo. */
+document.addEventListener('click', ev => {
+  if (ev.target.closest('#btnUsarProxy')) {
+    const url = (document.getElementById('campoProxy').value || '').trim();
+    if (url && !/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(url)) {
+      alert('O endereco deve ser o do app da Web do Apps Script e terminar em /exec.');
+      return;
+    }
+    salvarProxy(url);
+    iniciar(true);
+    return;
+  }
+  if (ev.target.closest('#btnTirarProxy')) {
+    salvarProxy(null);
+    iniciar(true);
+  }
+});
 document.getElementById('nav').addEventListener('click', ev => {
   const b = ev.target.closest('[data-tela]');
   if (b) irPara(b.dataset.tela);
@@ -3899,9 +4205,13 @@ ligarFiltros();
 
 /* Sessao da aba: volta sem pedir senha de novo, sem nunca ter guardado a senha. */
 (async function () {
+  CONFIG.PROXY = proxySalvo();
   let cred = null;
   try {
-    if (sessionStorage.getItem(K_AUTH) === '1') cred = JSON.parse(sessionStorage.getItem(K_CRED) || 'null');
+    if (sessionStorage.getItem(K_AUTH) === '1') {
+      cred = JSON.parse(sessionStorage.getItem(K_CRED) || 'null');
+      TOKEN = sessionStorage.getItem(K_TOKEN) || null;
+    }
   } catch (e) {}
   if (cred && cred.SHEETS) { entrar(cred, true); return; }
   document.getElementById('campoUsuario').focus();
