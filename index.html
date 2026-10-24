@@ -2836,6 +2836,121 @@ function telaFunil() {
       ], linhas, { titulo: 'Funil realizado x projetado', limite: 25, ativa: false }));
     h += '</div>';
 
+    /* ----- Avanco etapa a etapa, em numero e em percentual -----
+       Duas taxas diferentes, e confundi-las e o erro classico de leitura de
+       funil: o AVANCO e sobre a etapa imediatamente anterior (mede aquela
+       passagem) e o ACUMULADO e sobre o topo (mede o funil inteiro ate ali).
+       A coluna de perda mostra quantos ficaram pelo caminho naquele degrau. */
+    if (etapas.length > 1) {
+      const passos = etapas.map((e, i) => {
+        const ant = i > 0 ? etapas[i - 1].v : null;
+        return {
+          etapa: e.k, ordem: i + 1, volume: e.v,
+          avanco: ant ? taxa(e.v, ant) : null,
+          perda: ant ? ant - e.v : null,
+          perdaPct: ant ? taxa(ant - e.v, ant) : null,
+          acumulado: taxa(e.v, etapas[0].v)
+        };
+      });
+      /* O degrau que mais sangra, para o olho ir direto nele. */
+      const pior = passos.filter(p => p.perda != null)
+        .sort((a, b) => b.perda - a.perda)[0];
+
+      h += '<div class="secao-titulo">Avanco etapa a etapa</div>';
+      if (pior && pior.perda > 0) {
+        h += aviso('atencao', 'O degrau que mais perde gente e <b>' + esc(pior.etapa) + '</b>: ' +
+          'entram ' + n0(pior.volume + pior.perda) + ', seguem ' + n0(pior.volume) + ' &mdash; ' +
+          '<b>' + n0(pior.perda) + ' ficam pelo caminho</b> (' + pct(pior.perdaPct, 0) + ' daquela etapa).');
+      }
+      h += tabelaInterativa('funil-passos', [
+        { k: 'ordem', rot: '#', tipo: 'num' },
+        { k: 'etapa', rot: 'Etapa', tipo: 'txt', cls: 'forte' },
+        { k: 'volume', rot: 'Volume', tipo: 'num',
+          html: r => barraCelula(r.volume, etapas[0].v, corRampa(r.ordem - 1, etapas.length), n0(r.volume)) },
+        { k: 'avanco', rot: 'Avanco da etapa anterior', tipo: 'num', ord: false,
+          html: r => r.avanco == null ? '<span style="color:var(--texto-muted)">topo do funil</span>'
+            : selo(r.avanco >= 80 ? 'ok' : r.avanco >= 50 ? 'atencao' : 'critico', pct(r.avanco, 1)) },
+        { k: 'perda', rot: 'Perda no degrau', tipo: 'num',
+          html: r => r.perda == null ? '&mdash;' : (r.perda > 0
+            ? '<span style="color:#e98a8a">-' + n0(r.perda) + '</span> <span style="color:var(--texto-muted)">(' + pct(r.perdaPct, 0) + ')</span>'
+            : n0(0)) },
+        { k: 'acumulado', rot: 'Do topo do funil', tipo: 'num', ord: false,
+          html: r => pct(r.acumulado, r.acumulado < 10 ? 2 : 1) }
+      ], passos, { titulo: 'Avanco do funil', limite: 20, ativa: false });
+    }
+
+    /* ----- Origem dos leads: campanha a campanha ----- */
+    /* Escopo do MES, nao do filtro de periodo: o organico e o total do CRM
+       vem da aba de Produtos Juridicos, que e mensal. Somar 6 meses de
+       campanha contra 1 mes de organico daria uma participacao mentirosa. */
+    h += '<div class="secao-titulo">Origem dos leads &middot; ' + rotuloMes(atual.medicao ? MES_ATUAL : MES_ATUAL) + '</div>';
+    const midiaMes = (DADOS.metaDia ? DADOS.metaDia.reg : []).filter(r => r.mes === MES_ATUAL);
+    const porCampanha = porN(agrupar(midiaMes.filter(r => r.leadsTotal > 0),
+      r => r.campanha, r => r.leadsTotal)).map(g => ({ k: g.k, v: g.v, tipo: 'Campanha paga' }));
+    const leadsPagos = soma(porCampanha, g => g.v);
+    const organico = valorDe('leads (organico)') || 0;
+    const totalCrm = valorDe('leads (kommo)') || 0;
+    /* O que o CRM registrou e a midia nao explica: parceria, indicacao,
+       recompra, direct. So entra se for positivo - numero negativo aqui
+       significaria atribuicao furada, e inventar uma fatia esconderia isso. */
+    const outras = Math.max(0, totalCrm - leadsPagos - organico);
+    const fatias = porCampanha.slice();
+    if (organico) fatias.push({ k: 'Organico', v: organico, tipo: 'Organico' });
+    if (outras)   fatias.push({ k: 'Outras origens (nao atribuido)', v: outras, tipo: 'Outras' });
+    const totalFatias = soma(fatias, f => f.v);
+
+    if (!fatias.length) {
+      h += '<div class="cartao"><div class="vazio">Sem leads com origem identificada no recorte.</div></div>';
+    } else {
+      const corTipo = t => t === 'Organico' ? 'var(--s3)' : t === 'Outras' ? 'var(--texto-muted)' : 'var(--s1)';
+      h += '<div class="grid g-2">';
+      h += cartao('De onde vieram os leads', 'Campanha paga pelos insights do Meta, organico pela planilha de Metas.',
+        vizBarras({ rotuloW: 230, nome: 'Leads', dados: topN(fatias.map(f =>
+          ({ k: f.k, v: f.v, n: 1, cor: corTipo(f.tipo),
+             extra: [{ rot: 'Participacao', val: pct(taxa(f.v, totalFatias), 1) }] })), 9) }) +
+        legenda([{ nome: 'Campanha paga', cor: 'var(--s1)', val: n0(leadsPagos) },
+                 { nome: 'Organico', cor: 'var(--s3)', val: n0(organico) },
+                 { nome: 'Outras origens', cor: 'var(--texto-muted)', val: n0(outras) }]));
+
+      h += cartao('Pago, organico e outras', 'Participacao de cada natureza de origem no total de leads.',
+        vizDonut({ centro: n0(totalFatias), centroRot: 'leads', dados: [
+          { k: 'Campanha paga', v: leadsPagos, cor: 'var(--s1)' },
+          { k: 'Organico', v: organico, cor: 'var(--s3)' },
+          { k: 'Outras origens', v: outras, cor: 'var(--texto-muted)' }
+        ] }));
+      h += '</div>';
+
+      /* Tabela com custo e CPL por campanha - a leitura que decide verba. */
+      const invPorCamp = {};
+      midiaMes.forEach(r => { invPorCamp[r.campanha] = (invPorCamp[r.campanha] || 0) + r.gasto; });
+      const tabOrigem = fatias.map(f => ({
+        origem: f.k, tipo: f.tipo, leads: f.v,
+        share: taxa(f.v, totalFatias),
+        gasto: f.tipo === 'Campanha paga' ? (invPorCamp[f.k] || 0) : null,
+        cpl: f.tipo === 'Campanha paga' && f.v ? (invPorCamp[f.k] || 0) / f.v : null
+      }));
+      h += tabelaInterativa('funil-origem', [
+        { k: 'origem', rot: 'Origem', tipo: 'txt', cls: 'forte wrap' },
+        { k: 'tipo', rot: 'Natureza', tipo: 'txt', ord: false,
+          html: r => '<span style="color:' + corTipo(r.tipo) + '">&#9679;</span> ' + esc(r.tipo) },
+        { k: 'leads', rot: 'Leads', tipo: 'num' },
+        { k: 'share', rot: '% do total', tipo: 'pct', casas: 1 },
+        { k: 'gasto', rot: 'Investimento', tipo: 'moeda0' },
+        { k: 'cpl', rot: 'CPL', tipo: 'moeda',
+          html: r => r.cpl == null ? '<span style="color:var(--texto-muted)">sem custo de midia</span>' : brl(r.cpl) }
+      ], tabOrigem, { ord: 'leads', dir: -1, titulo: 'Origem dos leads', limite: 40,
+        total: { leads: d => n0(soma(d, r => r.leads)), gasto: d => brl0(soma(d, r => r.gasto)),
+                 cpl: d => { const l = soma(d.filter(r => r.cpl != null), r => r.leads);
+                             return l ? brl(soma(d, r => r.gasto) / l) : ''; } } });
+
+      if (totalCrm && leadsPagos + organico > totalCrm) {
+        h += aviso('atencao', 'A soma de campanha paga (' + n0(leadsPagos) + ') com organico (' + n0(organico) +
+          ') passa o total de leads que o CRM registrou no mes (' + n0(totalCrm) + '). ' +
+          'Os insights do Meta contam lead por plataforma e o CRM conta lead criado &mdash; a diferenca costuma ser ' +
+          'lead duplicado ou que nao chegou a virar registro.');
+      }
+    }
+
     /* Taxas de conversao projetadas x reais, quando a planilha informa. */
     if (atual.taxasReal && atual.taxasProj) {
       const tx = atual.etapas.map(e => {
