@@ -653,6 +653,7 @@ if (window.self !== window.top) {
         Lendo as planilhas&hellip;
       </div>
       <section class="tela oculto" id="tela-visao"></section>
+      <section class="tela oculto" id="tela-kpis"></section>
       <section class="tela oculto" id="tela-funil"></section>
       <section class="tela oculto" id="tela-esteira"></section>
       <section class="tela oculto" id="tela-vendas"></section>
@@ -1549,6 +1550,62 @@ async function carregarMetas() {
   return out;
 }
 
+/* Anuncios: o nivel do criativo. Qual peca esta ganhando dentro da campanha -
+   a campanha pode ir bem na media e carregar um anuncio que so queima verba. */
+async function carregarMetaAnuncios() {
+  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Anúncios', { fonte: 'metaAnuncios', esperado: ['Anuncio', 'Gasto'] })
+    .catch(() => lerAba(CONFIG.SHEETS.meta, 'Anuncios', { fonte: 'metaAnuncios', esperado: ['Anuncio', 'Gasto'] }));
+  const t = tabela(linhas, 0);
+  const m = mapear(t, {
+    janela: ['Janela'], campanha: ['Campanha'], conjunto: ['Conjunto'], anuncio: ['Anuncio'],
+    gasto: ['Gasto'], impressoes: ['Impressoes'], alcance: ['Alcance'], frequencia: ['Frequencia'],
+    cpm: ['CPM'], ctr: ['CTR (%)'], cpc: ['CPC'], cliquesLink: ['Cliques no link'],
+    ctrLink: ['CTR do link (%)'], leads: ['Leads (total)'], cpl: ['Custo por lead']
+  });
+  const reg = t.linhas.map(l => ({
+    janela: m.cel(l, 'janela'),
+    campanha: m.cel(l, 'campanha') || 'Sem campanha',
+    conjunto: m.cel(l, 'conjunto'),
+    anuncio: m.cel(l, 'anuncio') || 'Sem anuncio',
+    gasto: num(m.cel(l, 'gasto')),
+    impressoes: num(m.cel(l, 'impressoes')),
+    alcance: num(m.cel(l, 'alcance')),
+    frequencia: num(m.cel(l, 'frequencia')),
+    cpm: num(m.cel(l, 'cpm')),
+    ctr: num(m.cel(l, 'ctr')),
+    cpc: num(m.cel(l, 'cpc')),
+    cliquesLink: num(m.cel(l, 'cliquesLink')),
+    ctrLink: num(m.cel(l, 'ctrLink')),
+    leads: num(m.cel(l, 'leads')),
+    cpl: num(m.cel(l, 'cpl'))
+  })).filter(r => r.gasto || r.impressoes);
+  return { reg: reg, janelas: Array.from(new Set(reg.map(r => r.janela).filter(Boolean))), faltando: m.faltando };
+}
+
+/* Janelas: a mesma campanha medida em recortes fechados (7d, 30d...). Serve
+   para ver a entrega RECENTE sem o peso do historico inteiro. */
+async function carregarMetaJanelas() {
+  const linhas = await lerAba(CONFIG.SHEETS.meta, 'Janelas', { fonte: 'metaJanelas', esperado: ['Janela', 'Campanha'] });
+  const t = tabela(linhas, 0);
+  const m = mapear(t, {
+    janela: ['Janela'], campanha: ['Campanha'], inicio: ['Inicio'], fim: ['Fim'],
+    gasto: ['Gasto'], impressoes: ['Impressoes'], alcance: ['Alcance'], frequencia: ['Frequencia'],
+    cpm: ['CPM'], ctr: ['CTR (%)'], cpc: ['CPC'], cliques: ['Cliques'],
+    ctrLink: ['CTR do link (%)'], leads: ['Leads (total)'], cpl: ['Custo por lead']
+  });
+  const reg = t.linhas.map(l => ({
+    janela: m.cel(l, 'janela'),
+    campanha: m.cel(l, 'campanha') || 'Sem campanha',
+    inicio: parseData(m.cel(l, 'inicio')), fim: parseData(m.cel(l, 'fim')),
+    gasto: num(m.cel(l, 'gasto')), impressoes: num(m.cel(l, 'impressoes')),
+    alcance: num(m.cel(l, 'alcance')), frequencia: num(m.cel(l, 'frequencia')),
+    cpm: num(m.cel(l, 'cpm')), ctr: num(m.cel(l, 'ctr')), cpc: num(m.cel(l, 'cpc')),
+    cliques: num(m.cel(l, 'cliques')), ctrLink: num(m.cel(l, 'ctrLink')),
+    leads: num(m.cel(l, 'leads')), cpl: num(m.cel(l, 'cpl'))
+  })).filter(r => r.campanha !== 'Sem campanha');
+  return { reg: reg, janelas: Array.from(new Set(reg.map(r => r.janela).filter(Boolean))), faltando: m.faltando };
+}
+
 /* ------------------------------------------------- 5. DRE COMERCIAL (custo)
    FLUXO FINANCEIRO 2026, aba "DRE COMERCIAL". E o que permite sair do CAC de
    midia (so Meta Ads) para o CAC real: custo do setor comercial inteiro -
@@ -1849,6 +1906,8 @@ const FONTES = [
   { k: 'metaDia',  nome: 'Campanhas Meta Ads - Insights diarios', papel: 'Investimento, CPL e desempenho diario',  sheet: 'meta',     fn: carregarMetaDia,   critica: false },
   { k: 'metaCamp', nome: 'Campanhas Meta Ads - Campanhas',    papel: 'Status e orcamento das campanhas',           sheet: 'meta',     fn: carregarMetaCamp,  critica: false },
   { k: 'metaReun', nome: 'Campanhas Meta Ads - Reunioes',     papel: 'Reunioes marcadas vindas do CRM',            sheet: 'meta',     fn: carregarMetaReun,  critica: false },
+  { k: 'metaAnuncios', nome: 'Campanhas Meta Ads - Anuncios', papel: 'Criativo a criativo: qual peca esta ganhando', sheet: 'meta', fn: carregarMetaAnuncios, critica: false },
+  { k: 'metaJanelas',  nome: 'Campanhas Meta Ads - Janelas',  papel: 'Entrega recente por janela fechada (7d, 30d)', sheet: 'meta', fn: carregarMetaJanelas,  critica: false },
   { k: 'fin',      nome: 'FLUXO FINANCEIRO 2026 - DRE COMERCIAL', papel: 'Custo real do setor comercial, CAC e margem', sheet: 'financeiro', fn: carregarFinanceiro, critica: false },
   { k: 'cerebro',  nome: 'TODOS OS LEADS [CEREBRO COMERCIAL]',   papel: 'Jornada do lead e historico 2025+2026',       sheet: 'cerebro',  fn: carregarCerebro,   critica: false, soProxy: true },
   { k: 'kommo',    nome: 'Leads Kommo [DASHBOARDS]',          papel: 'Pre-qualificacao lead a lead',               sheet: 'kommo',    fn: carregarKommo,     critica: false },
@@ -1860,6 +1919,7 @@ let ULTIMA_LEITURA = null;
 /* As chaves que o proxy conhece. Uma fonte do painel pode precisar de varias
    abas (Metas usa cinco), por isso esta lista nao e igual a FONTES. */
 const FONTES_PROXY = ['atend', 'clientes', 'metaDia', 'metaCamp', 'metaReun',
+  'metaAnuncios', 'metaJanelas',
   'kpisAtual', 'kpisAnterior', 'prodAtual', 'prodAnterior', 'okrs',
   'hist', 'fin', 'kommo', 'cerebro'];
 
@@ -2418,7 +2478,11 @@ const F = {
   /* Recorte de situacao, so da tabela da esteira. Comeca em "em aberto"
      porque e nela que da para agir - mas os botoes mostram todas as
      contagens, para nada ficar escondido sem o gestor ver. */
-  grupo: 'aberto'
+  grupo: 'aberto',
+  /* Recorte de campanhas ativas, so da tela de trafego. */
+  soAtivas: false,
+  /* Mes inspecionado na tela de KPIs. */
+  mesKpi: null
 };
 
 const MES_ATUAL = chaveMes(new Date());
@@ -3307,49 +3371,207 @@ function telaTrafego() {
       series: [{ nome: 'ROI', vals: meses.map(k => { const g = soma(md.filter(r => r.mes === k), x => x.gasto); return g ? soma(cli.filter(r => r.mes === k), x => x.honIni) / g : null; }), cor: 'var(--s3)' }] }));
   h += '</div>';
 
-  /* Campanhas: agrega os insights e cruza com o cadastro de campanhas. */
+  /* ===== FUNIL POR CAMPANHA =====
+     A cadeia inteira: investimento -> lead -> reuniao -> cliente -> honorario,
+     campanha a campanha. E possivel porque tres fontes falam o mesmo nome de
+     campanha: os insights do Meta, a coluna Campanha da aba Reunioes e a
+     coluna ORIGEM da planilha de clientes.
+
+     E a leitura que decide verba: CPL baixo com conversao em reuniao baixa e
+     lead barato que nao vira nada - gastar mais ali so compra volume ruim. */
   const porCamp = porVolume(agrupar(md, r => r.campanha, r => r.gasto));
   const cadastro = {};
   (DADOS.metaCamp ? DADOS.metaCamp.reg : []).forEach(c => { cadastro[chaveBusca(c.campanha)] = c; });
+
+  /* Reunioes e clientes indexados pelo nome da campanha / origem. */
+  const reunPorCamp = {}, cliPorCamp = {}, honPorCamp = {};
+  reun.forEach(r => { const k = chaveBusca(r.campanha); if (k) reunPorCamp[k] = (reunPorCamp[k] || 0) + 1; });
+  cli.forEach(r => {
+    const k = chaveBusca(r.origem);
+    if (!k) return;
+    cliPorCamp[k] = (cliPorCamp[k] || 0) + 1;
+    honPorCamp[k] = (honPorCamp[k] || 0) + r.honIni;
+  });
+
   const campanhas = porCamp.map(g => {
     const c = cadastro[chaveBusca(g.k)] || {};
+    const k = chaveBusca(g.k);
     const l = soma(g.itens, r => r.leadsTotal);
+    const rn = reunPorCamp[k] || 0;
+    const cl = cliPorCamp[k] || 0;
+    const hon = honPorCamp[k] || 0;
     return {
       campanha: g.k, gasto: g.v, leads: l, cpl: l ? g.v / l : null,
       impressoes: soma(g.itens, r => r.impressoes), cliques: soma(g.itens, r => r.cliques),
       ctr: taxa(soma(g.itens, r => r.cliques), soma(g.itens, r => r.impressoes)),
-      status: c.status || '', orcDia: c.orcDia || 0, dias: new Set(g.itens.map(r => chaveMes(r.d) + r.d.getDate())).size
+      reunioes: rn, convReuniao: taxa(rn, l),
+      clientes: cl, convCliente: taxa(cl, l), convReunCli: taxa(cl, rn),
+      honorarios: hon, cac: cl ? g.v / cl : null, roi: g.v ? hon / g.v : null,
+      custoReuniao: rn ? g.v / rn : null,
+      status: c.status || '', ativa: /^active$/i.test(c.status || ''),
+      orcDia: c.orcDia || 0, dias: new Set(g.itens.map(r => chaveMes(r.d) + r.d.getDate())).size
     };
   });
+  const campVis = F.soAtivas ? campanhas.filter(c => c.ativa) : campanhas;
 
-  h += '<div class="secao-titulo">Campanhas do recorte</div>';
+  /* ===== COBERTURA DA ATRIBUICAO =====
+     Antes de comparar campanhas, e preciso saber se da para comparar. Se a
+     coluna Campanha vem vazia na maioria das reunioes, "0 reuniao" nao
+     significa que a campanha nao converteu - significa que ninguem anotou.
+     Acusar a campanha por isso seria inventar um diagnostico. */
+  const reunComCamp = reun.filter(r => r.campanha).length;
+  const cobReun = taxa(reunComCamp, reun.length);
+  const cliComOrigem = cli.filter(r => r.origem && r.origem !== 'Sem origem').length;
+  const cobCli = taxa(cliComOrigem, cli.length);
+  const atribuicaoFraca = cobReun != null && cobReun < 60;
+
+  h += '<div class="secao-titulo">Campanhas &middot; do investimento ao honorario</div>';
+  if (atribuicaoFraca) {
+    h += aviso('critico', '<b>A atribuicao de reuniao por campanha esta incompleta.</b> ' +
+      'So <b>' + pctOuTraco(cobReun, 0) + '</b> das ' + n0(reun.length) + ' reunioes do recorte tem a coluna ' +
+      '<i>Campanha</i> preenchida na aba Reunioes. Entao a conversao em reuniao abaixo esta ' +
+      '<b>subestimada</b>, e campanha com zero reuniao pode so nao ter sido anotada. ' +
+      'Enquanto estiver assim, o painel nao acusa campanha por falta de reuniao &mdash; seria diagnostico inventado. ' +
+      'Para destravar esta leitura, o preenchimento da campanha na reuniao precisa virar regra.' +
+      (cobCli != null ? '<br>Na planilha de clientes a atribuicao esta melhor: ' + pct(cobCli, 0) +
+        ' dos fechamentos tem origem preenchida.' : ''));
+  } else {
+    h += aviso('info', 'A ligacao entre campanha, reuniao e cliente e feita pelo <b>nome da campanha</b>: ' +
+      'os insights do Meta, a aba Reunioes e a coluna ORIGEM da planilha de clientes usam o mesmo rotulo. ' +
+      'Cobertura hoje: ' + pctOuTraco(cobReun, 0) + ' das reunioes e ' + pctOuTraco(cobCli, 0) +
+      ' dos clientes com origem preenchida.');
+  }
+
+  /* Filtro de campanhas ativas, no padrao dos botoes da esteira. */
+  h += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem">' +
+    [{ k: false, rot: 'Todas' }, { k: true, rot: 'So campanhas ativas' }].map(o =>
+      '<button class="btn-acao' + (!!F.soAtivas === o.k ? ' primario' : '') + '" type="button" data-ativas="' + o.k + '">' +
+      esc(o.rot) + ' <b style="font-variant-numeric:tabular-nums">' +
+      n0(o.k ? campanhas.filter(c => c.ativa).length : campanhas.length) + '</b></button>').join('') + '</div>';
+
   h += '<div class="grid g-2">';
+  h += cartao('Conversao em reuniao por campanha', 'Reunioes marcadas dividido pelos leads da campanha. So campanhas com 10 leads ou mais &mdash; abaixo disso a taxa e ruido.',
+    (() => {
+      const d = campVis.filter(c => c.leads >= 10 && c.convReuniao != null)
+        .sort((a, b) => b.convReuniao - a.convReuniao).slice(0, 10);
+      return d.length ? vizBarras({ rotuloW: 230, fmt: v => pct(v, 2), nome: 'Conversao em reuniao',
+        dados: d.map(c => ({ k: c.campanha, v: c.convReuniao,
+          cor: c.convReuniao >= 2 ? 'var(--s3)' : c.convReuniao >= 1 ? 'var(--s4)' : 'var(--s2)',
+          extra: [{ rot: 'Leads', val: n0(c.leads) }, { rot: 'Reunioes', val: n0(c.reunioes) },
+                  { rot: 'CPL', val: c.cpl == null ? '—' : brl(c.cpl) }] })) })
+        : '<div class="vazio">Nenhuma campanha com 10 ou mais leads no recorte.</div>';
+    })());
+
+  h += cartao('Custo por reuniao marcada', 'Investimento da campanha dividido pelas reunioes que ela gerou. Mais direto que o CPL para decidir verba.',
+    (() => {
+      const d = campVis.filter(c => c.custoReuniao != null && c.reunioes >= 2)
+        .sort((a, b) => a.custoReuniao - b.custoReuniao).slice(0, 10);
+      return d.length ? vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Custo por reuniao',
+        dados: d.map(c => ({ k: c.campanha, v: c.custoReuniao,
+          cor: c.custoReuniao <= 300 ? 'var(--s3)' : c.custoReuniao <= 600 ? 'var(--s4)' : 'var(--s2)',
+          extra: [{ rot: 'Reunioes', val: n0(c.reunioes) }, { rot: 'Investimento', val: brl0(c.gasto) }] })) })
+        : '<div class="vazio">Nenhuma campanha com 2 ou mais reunioes no recorte.</div>';
+    })());
+
   h += cartao('Investimento por campanha', 'Onde o dinheiro foi.',
-    vizBarras({ dados: topN(campanhas.slice(0, 9).map(c => ({ k: c.campanha, v: c.gasto, n: 1 })), 8).map((x, i) => ({
-      k: x.k, v: x.v, cor: x.cor || corSerie(i) })), fmt: brl0, nome: 'Investimento', rotuloW: 44 }));
-  const comCPL = campanhas.filter(c => c.cpl != null && c.leads >= 3).sort((a, b) => a.cpl - b.cpl).slice(0, 9);
-  h += cartao('CPL por campanha', 'So campanhas com 3 leads ou mais &mdash; abaixo disso o CPL e ruido.',
-    comCPL.length ? vizBarras({ dados: comCPL.map(c => ({ k: c.campanha, v: c.cpl,
-      cor: c.cpl <= 15 ? 'var(--s3)' : c.cpl <= 30 ? 'var(--s4)' : 'var(--s2)',
-      extra: [{ rot: 'Leads', val: n0(c.leads) }, { rot: 'Gasto', val: brl0(c.gasto) }] })), fmt: brl, nome: 'CPL', rotuloW: 44 })
-      : '<div class="vazio">Nenhuma campanha com 3 ou mais leads no recorte.</div>');
+    vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Investimento',
+      dados: topN(campVis.slice(0, 9).map(c => ({ k: c.campanha, v: c.gasto, n: 1 })), 8)
+        .map((x, i) => ({ k: x.k, v: x.v, cor: x.cor || corSerie(i) })) }));
+
+  h += cartao('CPL por campanha', 'So campanhas com 3 leads ou mais.',
+    (() => {
+      const d = campVis.filter(c => c.cpl != null && c.leads >= 3).sort((a, b) => a.cpl - b.cpl).slice(0, 10);
+      return d.length ? vizBarras({ rotuloW: 230, fmt: brl, nome: 'CPL',
+        dados: d.map(c => ({ k: c.campanha, v: c.cpl,
+          cor: c.cpl <= 15 ? 'var(--s3)' : c.cpl <= 30 ? 'var(--s4)' : 'var(--s2)',
+          extra: [{ rot: 'Leads', val: n0(c.leads) }, { rot: 'Gasto', val: brl0(c.gasto) }] })) })
+        : '<div class="vazio">Nenhuma campanha com 3 ou mais leads no recorte.</div>';
+    })());
   h += '</div>';
 
   h += tabelaInterativa('trafego-tab', [
     { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap' },
-    { k: 'status', rot: 'Status', tipo: 'txt', html: r => !r.status ? '&mdash;' :
-      (/^active$/i.test(r.status) ? selo('ok', 'ativa') : selo('neutro', r.status.toLowerCase())) },
+    { k: 'status', rot: 'Status', tipo: 'txt', ord: false, html: r => !r.status ? '&mdash;' :
+      (r.ativa ? selo('ok', 'ativa') : selo('neutro', r.status.toLowerCase())) },
     { k: 'gasto', rot: 'Investimento', tipo: 'moeda0' },
     { k: 'leads', rot: 'Leads', tipo: 'num' },
     { k: 'cpl', rot: 'CPL', tipo: 'moeda' },
-    { k: 'impressoes', rot: 'Impressoes', tipo: 'num' },
-    { k: 'cliques', rot: 'Cliques', tipo: 'num' },
+    { k: 'reunioes', rot: 'Reunioes', tipo: 'num' },
+    { k: 'convReuniao', rot: 'Conv. reuniao', tipo: 'pct', casas: 2,
+      html: r => r.convReuniao == null ? '&mdash;' : barraCelula(r.convReuniao, 5,
+        r.convReuniao >= 2 ? 'var(--s3)' : r.convReuniao >= 1 ? 'var(--s4)' : 'var(--s2)', pct(r.convReuniao, 2)) },
+    { k: 'custoReuniao', rot: 'Custo / reuniao', tipo: 'moeda0' },
+    { k: 'clientes', rot: 'Clientes', tipo: 'num' },
+    { k: 'convReunCli', rot: 'Reuniao &rarr; cliente', tipo: 'pct', casas: 1 },
+    { k: 'honorarios', rot: 'Honorarios', tipo: 'moeda0' },
+    { k: 'cac', rot: 'CAC', tipo: 'moeda0' },
+    { k: 'roi', rot: 'ROI', tipo: 'num1', ord: true,
+      html: r => r.roi == null ? '&mdash;' : (r.roi >= 3 ? selo('ok', n1(r.roi) + 'x')
+        : r.roi >= 1 ? selo('atencao', n1(r.roi) + 'x') : selo('critico', n1(r.roi) + 'x')) },
     { k: 'ctr', rot: 'CTR', tipo: 'pct', casas: 2 },
     { k: 'orcDia', rot: 'Orc. diario', tipo: 'moeda0' },
     { k: 'dias', rot: 'Dias com gasto', tipo: 'num' }
-  ], campanhas, { ord: 'gasto', dir: -1, titulo: 'Campanhas Meta Ads', limite: 50,
+  ], campVis, { ord: 'gasto', dir: -1, titulo: 'Campanhas Meta Ads', limite: 50,
     total: { gasto: d => brl0(soma(d, r => r.gasto)), leads: d => n0(soma(d, r => r.leads)),
+             reunioes: d => n0(soma(d, r => r.reunioes)), clientes: d => n0(soma(d, r => r.clientes)),
+             honorarios: d => brl0(soma(d, r => r.honorarios)),
              cpl: d => { const l = soma(d, r => r.leads); return l ? brl(soma(d, r => r.gasto) / l) : ''; } } });
+
+  /* ===== CRIATIVO ===== */
+  if (DADOS.metaAnuncios && DADOS.metaAnuncios.reg.length) {
+    const jan = DADOS.metaAnuncios.janelas[0] || '';
+    const ads = DADOS.metaAnuncios.reg.filter(r => !jan || r.janela === jan)
+      .filter(r => !F.soAtivas || campanhas.some(c => c.ativa && chaveBusca(c.campanha) === chaveBusca(r.campanha)));
+    h += '<div class="secao-titulo">Anuncios &middot; qual criativo esta ganhando' +
+      (jan ? ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(janela de ' + esc(jan) + ')</span>' : '') + '</div>';
+    h += aviso('info', 'A campanha pode ir bem na media e carregar um criativo que so queima verba. ' +
+      'Esta aba mede por peca, na janela recente &mdash; nao no historico inteiro.');
+    h += tabelaInterativa('trafego-ads', [
+      { k: 'anuncio', rot: 'Anuncio', tipo: 'txt', cls: 'forte' },
+      { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'wrap' },
+      { k: 'gasto', rot: 'Investimento', tipo: 'moeda0' },
+      { k: 'leads', rot: 'Leads', tipo: 'num' },
+      { k: 'cpl', rot: 'CPL', tipo: 'moeda',
+        html: r => !r.leads ? '<span style="color:var(--texto-muted)">sem lead</span>' : brl(r.gasto / r.leads) },
+      { k: 'impressoes', rot: 'Impressoes', tipo: 'num' },
+      { k: 'ctrLink', rot: 'CTR do link', tipo: 'pct', casas: 2 },
+      { k: 'cpc', rot: 'CPC', tipo: 'moeda' },
+      { k: 'cpm', rot: 'CPM', tipo: 'moeda' },
+      { k: 'frequencia', rot: 'Frequencia', tipo: 'num1',
+        html: r => !r.frequencia ? '&mdash;' : (r.frequencia >= 3
+          ? '<span style="color:#f3c45a" title="publico saturando">' + n1(r.frequencia) + '</span>' : n1(r.frequencia)) }
+    ], ads, { ord: 'gasto', dir: -1, titulo: 'Anuncios Meta Ads', limite: 40, ativa: false });
+  }
+
+  /* ===== PONTOS DE ATENCAO ===== */
+  const alertas = [];
+  campVis.filter(c => c.gasto >= 500 && !c.leads).forEach(c =>
+    alertas.push({ nivel: 'critico', txt: '<b>' + esc(c.campanha) + '</b> gastou ' + brl0(c.gasto) + ' e nao registrou nenhum lead.' }));
+  /* Com a atribuicao furada, "nenhuma reuniao" e "retorno baixo" podem ser
+     falta de anotacao em vez de falta de resultado. Nesses casos o alerta
+     vira um so, sobre a atribuicao - nao uma lista acusando campanhas. */
+  if (!atribuicaoFraca) {
+    campVis.filter(c => c.leads >= 20 && c.reunioes === 0).forEach(c =>
+      alertas.push({ nivel: 'atencao', txt: '<b>' + esc(c.campanha) + '</b> trouxe ' + n0(c.leads) +
+        ' leads e nenhuma reuniao marcada &mdash; lead barato que nao avanca.' }));
+    campVis.filter(c => c.roi != null && c.roi < 1 && c.gasto >= 1000).forEach(c =>
+      alertas.push({ nivel: 'atencao', txt: '<b>' + esc(c.campanha) + '</b> tem retorno de ' + n1(c.roi) +
+        'x: ' + brl0(c.gasto) + ' investidos para ' + brl0(c.honorarios) + ' em honorarios atribuidos.' }));
+  } else {
+    alertas.push({ nivel: 'atencao', txt: 'Alertas de conversao por campanha estao <b>suspensos</b>: com ' +
+      pctOuTraco(cobReun, 0) + ' das reunioes sem campanha anotada, nao da para separar campanha ruim de ' +
+      'campanha mal atribuida. O investimento sem nenhum lead, esse sim, segue sendo acusado.' });
+  }
+  if (DADOS.metaAnuncios) {
+    const jan = DADOS.metaAnuncios.janelas[0] || '';
+    DADOS.metaAnuncios.reg.filter(r => (!jan || r.janela === jan) && r.frequencia >= 3.5 && r.gasto >= 200).forEach(a =>
+      alertas.push({ nivel: 'atencao', txt: 'O criativo <b>' + esc(a.anuncio) + '</b> (' + esc(a.campanha) +
+        ') esta com frequencia ' + n1(a.frequencia) + ': o mesmo publico ja viu a peca vezes demais.' }));
+  }
+  if (alertas.length) {
+    h += '<div class="secao-titulo">Pontos de atencao</div>';
+    h += alertas.slice(0, 12).map(a => aviso(a.nivel, a.txt)).join('');
+  }
   return h;
 }
 
@@ -3530,6 +3752,214 @@ function telaFinanceiro() {
     { k: 'porCliente', rot: 'Por cliente', tipo: 'moeda0' }
   ], itens, { ord: 'valor', dir: -1, titulo: 'Linhas de custo do comercial', limite: 30,
     total: { valor: d => brl0(soma(d, r => r.valor)), porCliente: d => clientes ? brl0(soma(d, r => r.valor) / clientes) : '' } });
+  return h;
+}
+
+/* ==========================================================================
+   TELA - KPIs DO COMERCIAL (ritmo e projecao)
+   --------------------------------------------------------------------------
+   Porte do painel "KPIs Comercial" da central: mesmo layout, fonte trocada.
+   Em vez de ler a planilha antiga, cada realizado vem das fontes vivas.
+
+   A leitura central e de RITMO, com tres numeros que respondem coisas
+   diferentes e vivem sendo confundidos:
+     . Realizado (MTD)      - o que ja entrou no mes ate hoje
+     . Meta proporcional    - o que DEVERIA ter entrado ate hoje
+     . Projecao do mes      - onde o mes termina se o ritmo de hoje continuar
+   Comparar realizado com meta MENSAL no dia 10 so produz panico; comparar com
+   a proporcional e o que diz se esta atrasado de verdade.
+   ========================================================================== */
+const METAS_PADRAO = {
+  leadsAds:    { rot: 'Leads (Meta Ads)',       meta: 1500,  tipo: 'num',   acumula: true },
+  leadsAbord:  { rot: 'Leads Abordados',        meta: 900,   tipo: 'num',   acumula: true },
+  leadsQual:   { rot: 'Leads Qualificados',     meta: 300,   tipo: 'num',   acumula: true },
+  reunioes:    { rot: 'Reunioes Realizadas',    meta: 100,   tipo: 'num',   acumula: true },
+  clientes:    { rot: 'Clientes Fechados',      meta: 32,    tipo: 'num',   acumula: true },
+  faturamento: { rot: 'Faturamento',            meta: 80000, tipo: 'moeda', acumula: true },
+  ticket:      { rot: 'Ticket Medio',           meta: 2500,  tipo: 'moeda', acumula: false },
+  investimento:{ rot: 'Investimento (Ads)',     meta: 16000, tipo: 'moeda', acumula: true },
+  cac:         { rot: 'CAC',                    meta: 500,   tipo: 'moeda', acumula: false, inverso: true },
+  convReunCli: { rot: 'Conv. Reuniao → Cliente', meta: 20, tipo: 'pct', acumula: false },
+  convLeadReun:{ rot: 'Conv. Lead → Reuniao',    meta: 12, tipo: 'pct', acumula: false },
+  convLeadCli: { rot: 'Conv. Lead → Cliente',    meta: 2.5, tipo: 'pct', acumula: false },
+  roi:         { rot: 'ROI',                    meta: 5,     tipo: 'mult',  acumula: false }
+};
+const K_METAS = 'bm_ceo_metas';
+
+function metasAtivas() {
+  const m = {};
+  Object.keys(METAS_PADRAO).forEach(k => { m[k] = METAS_PADRAO[k].meta; });
+  try {
+    const salvo = JSON.parse(localStorage.getItem(K_METAS) || 'null');
+    if (salvo) Object.keys(salvo).forEach(k => { if (m[k] != null && isFinite(salvo[k])) m[k] = Number(salvo[k]); });
+  } catch (e) {}
+  return m;
+}
+
+const fmtPorTipo = t => t === 'moeda' ? brl0 : t === 'pct' ? (v => pct(v, v < 10 ? 2 : 1))
+  : t === 'mult' ? (v => n1(v) + 'x') : n0;
+
+/* Um bloco de KPI: valor grande + as linhas de ritmo. */
+function blocoKpi(c) {
+  const f = fmtPorTipo(c.tipo);
+  const emCurso = c.emCurso;
+  const projecao = c.acumula && c.fracao > 0 ? c.valor / c.fracao : null;
+  const metaProp = c.acumula ? c.meta * c.fracao : c.meta;
+  const base = c.acumula ? (emCurso ? projecao : c.valor) : c.valor;
+  const vsProp = c.inverso
+    ? (c.valor > 0 ? taxa(metaProp, c.valor) : null)
+    : taxa(c.valor, metaProp);
+  const vsMeta = c.inverso
+    ? (base > 0 ? taxa(c.meta, base) : null)
+    : taxa(base, c.meta);
+
+  let h = '<div class="cartao">';
+  h += '<div class="cartao-titulo">' + esc(c.rot) +
+    (emCurso ? ' <span class="selo neutro" style="font-weight:600">em curso</span>' : '') + '</div>';
+  h += '<div class="kpi-valor" style="margin:0.35rem 0 0.7rem">' + (c.valor == null ? '&mdash;' : f(c.valor)) + '</div>';
+  h += '<div style="display:flex;flex-direction:column;gap:0.3rem;font-size:0.73rem">';
+  const linha = (rot, val, forte) =>
+    '<div style="display:flex;justify-content:space-between;gap:0.8rem;align-items:baseline">' +
+    '<span style="color:var(--texto-muted)">' + rot + '</span>' +
+    '<span style="font-variant-numeric:tabular-nums;' + (forte ? 'font-weight:700;color:var(--texto)' : 'color:var(--texto-2)') + '">' +
+    val + '</span></div>';
+  h += linha('Realizado' + (emCurso ? ' (MTD)' : ''), f(c.valor));
+  if (projecao != null && emCurso) h += linha('Projecao (mes)', f(projecao));
+  if (c.acumula) h += linha('Meta proporcional' + (emCurso ? ' (' + c.dias + 'd)' : ''), f(metaProp));
+  h += linha('Meta mensal', f(c.meta));
+  h += '</div><div class="ritmo"><div class="ritmo-trilha">';
+  const pTrilha = c.inverso
+    ? (c.valor > 0 ? Math.min(100, (c.meta / c.valor) * 100) : 0)
+    : Math.min(100, taxa(c.valor, c.meta) || 0);
+  const nv = nivelMeta(c.acumula ? vsProp : vsMeta);
+  const cor = nv === 'ok' ? 'var(--ok)' : nv === 'atencao' ? 'var(--atencao)' : nv === 'grave' ? 'var(--grave)' : 'var(--critico)';
+  h += '<div class="ritmo-fill" style="width:' + pTrilha.toFixed(1) + '%;background:' + cor + '"></div>';
+  if (c.acumula && emCurso) h += '<div class="ritmo-alvo" style="left:' + (c.fracao * 100).toFixed(1) + '%"></div>';
+  h += '</div><div class="ritmo-legenda">';
+  h += '<span>' + (c.acumula ? 'vs proporcional ' : 'vs meta ') + pctOuTraco(c.acumula ? vsProp : vsMeta, 1) + '</span>';
+  /* O painel original mostrava aqui "projecao vs meta", mas esse numero e
+     algebricamente IGUAL ao "vs proporcional" (valor/(meta*f) dos dois lados):
+     repetir o mesmo numero sob dois rotulos faz duvidar do resto da tela. No
+     lugar entra o que de fato falta e em que ritmo diario, que da para agir. */
+  if (c.acumula && emCurso && c.meta > c.valor) {
+    const faltam = c.meta - c.valor;
+    const diasRest = Math.max(1, c.diasMes - c.dias);
+    h += '<span>faltam ' + f(faltam) + ' &middot; ' + f(faltam / diasRest) + '/dia</span>';
+  } else if (c.acumula && emCurso) {
+    h += '<span style="color:#5fd35f">meta do mes ja batida</span>';
+  }
+  h += '</div></div></div>';
+  return { html: h, noVerde: (c.acumula ? vsProp : vsMeta) >= 100 };
+}
+
+function telaKpis() {
+  const mes = F.mesKpi || MES_ATUAL;
+  const emCurso = mes === MES_ATUAL;
+  const metas = metasAtivas();
+  const hoje_ = new Date();
+  const diasMes = new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0).getDate();
+  const dias = emCurso ? hoje_.getDate() : diasMes;
+  const fracao = dias / diasMes;
+
+  const cli = (DADOS.clientes ? DADOS.clientes.reg : []).filter(r => r.mes === mes);
+  const at  = (DADOS.atend ? DADOS.atend.reg : []).filter(r => r.mes === mes && r.dAtend);
+  const md  = (DADOS.metaDia ? DADOS.metaDia.reg : []).filter(r => r.mes === mes);
+  const nomeMes = MESES_ACENTO[+mes.slice(5, 7) - 1];
+  const kpisMes = DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nomeMes];
+  const krDe = txt => {
+    if (!kpisMes || !kpisMes.krs) return null;
+    const k = chaveBusca(txt);
+    const x = kpisMes.krs.find(y => chaveBusca(y.kr).includes(k));
+    return x ? x.resultado : null;
+  };
+
+  const leadsAds = soma(md, r => r.leadsTotal);
+  const invest = soma(md, r => r.gasto);
+  const reunioes = at.length;
+  const clientes = cli.length;
+  const faturamento = soma(cli, r => r.honIni);
+  const tk = ticketMedio(cli);
+  const leadsAbord = krDe('novos leads');
+  const leadsQual = krDe('leads qualificados');
+
+  let h = '';
+  h += '<div class="secao-titulo primeiro">KPIs do comercial &middot; ' + rotuloMes(mes) + '</div>';
+
+  /* Seletor de mes e botao de metas, no lugar do original. */
+  const meses12 = [];
+  for (let i = 0; i < 12; i++) meses12.push(mesMais(MES_ATUAL, -i));
+  h += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.9rem">' +
+    '<div class="filtro"><label class="filtro-rotulo">Mes</label><select id="selMesKpi">' +
+    meses12.filter(k => k >= '2026-01').map(k =>
+      '<option value="' + k + '"' + (k === mes ? ' selected' : '') + '>' + rotuloMes(k) + '</option>').join('') +
+    '</select></div>' +
+    '<button class="btn-acao" id="btnMetas" type="button">&#9881; Configurar metas</button></div>';
+
+  if (emCurso) {
+    h += aviso('info', '<b>Mes em andamento</b> &mdash; dados parciais ate ' + hoje_.toLocaleDateString('pt-BR') +
+      ' (' + dias + ' de ' + diasMes + ' dias). A <b>projecao</b> assume que o ritmo de hoje continua ate o fim do mes; ' +
+      'a <b>meta proporcional</b> e o quanto deveria estar entregue a esta altura.');
+  }
+
+  /* Blocos, na mesma ordem e agrupamento do painel original. */
+  const def = (chave, valor) => Object.assign({}, METAS_PADRAO[chave], {
+    valor: valor, meta: metas[chave], emCurso: emCurso, dias: dias, diasMes: diasMes, fracao: fracao
+  });
+  const blocos = {
+    'Volume de leads': [
+      blocoKpi(def('leadsAds', leadsAds)),
+      blocoKpi(def('leadsAbord', leadsAbord)),
+      blocoKpi(def('leadsQual', leadsQual))
+    ],
+    'Resultados comerciais': [
+      blocoKpi(def('reunioes', reunioes)),
+      blocoKpi(def('clientes', clientes))
+    ],
+    'Financeiro': [
+      blocoKpi(def('faturamento', faturamento)),
+      blocoKpi(def('ticket', tk)),
+      blocoKpi(def('investimento', invest)),
+      blocoKpi(def('cac', clientes ? invest / clientes : null))
+    ],
+    'Taxas de conversao': [
+      blocoKpi(def('convReunCli', taxa(clientes, reunioes))),
+      blocoKpi(def('convLeadReun', taxa(reunioes, leadsAds))),
+      blocoKpi(def('convLeadCli', taxa(clientes, leadsAds))),
+      blocoKpi(def('roi', invest ? faturamento / invest : null))
+    ]
+  };
+  const todos = Object.keys(blocos).reduce((a, k) => a.concat(blocos[k]), []);
+  const verdes = todos.filter(b => b.noVerde).length;
+
+  /* Linha de destaque, igual ao original. */
+  h += '<div class="grid g-kpi">';
+  h += kpi({ rotulo: 'Faturamento', valor: brl0(faturamento), pequeno: true,
+    nota: 'Meta: ' + brl0(metas.faturamento), selo: selo(nivelMeta(taxa(faturamento, metas.faturamento * fracao)),
+      pctOuTraco(taxa(faturamento, metas.faturamento), 1) + ' da meta') });
+  h += kpi({ rotulo: 'Clientes', valor: n0(clientes),
+    nota: 'Meta: ' + n0(metas.clientes), selo: selo(nivelMeta(taxa(clientes, metas.clientes * fracao)),
+      pctOuTraco(taxa(clientes, metas.clientes), 1) + ' da meta') });
+  h += kpi({ rotulo: 'ROI', valor: invest ? n1(faturamento / invest) + 'x' : '&mdash;', pequeno: true,
+    nota: 'Meta: ' + n1(metas.roi) + 'x',
+    selo: invest ? selo(nivelMeta(taxa(faturamento / invest, metas.roi)), pctOuTraco(taxa(faturamento / invest, metas.roi), 1)) : null });
+  h += kpi({ rotulo: 'Investimento', valor: brl0(invest), pequeno: true,
+    nota: 'Orcamento: ' + brl0(metas.investimento),
+    selo: selo(taxa(invest, metas.investimento) > 100 ? 'critico' : 'neutro',
+      pctOuTraco(taxa(invest, metas.investimento), 1) + ' do orcamento') });
+  h += kpi({ rotulo: 'KPIs no verde', valor: n0(verdes) + '/' + n0(todos.length),
+    nota: emCurso ? 'atingindo a meta proporcional' : 'atingindo a meta do mes',
+    selo: selo(nivelMeta(taxa(verdes, todos.length)), pctOuTraco(taxa(verdes, todos.length), 0)) });
+  h += '</div>';
+
+  Object.keys(blocos).forEach(secao => {
+    h += '<div class="secao-titulo">' + esc(secao) + '</div>';
+    h += '<div class="grid g-3">' + blocos[secao].map(b => b.html).join('') + '</div>';
+  });
+
+  if (!kpisMes || kpisMes.erro) {
+    h += aviso('atencao', 'Leads abordados e qualificados vem da aba <code>KPIS ' + esc(nomeMes) +
+      '</code> da planilha de Metas, que nao foi lida neste recorte &mdash; esses dois blocos ficam sem numero.');
+  }
   return h;
 }
 
@@ -3864,6 +4294,7 @@ function rotuloPeriodo() {
    ========================================================================== */
 const IC = {
   visao:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+  kpis:    '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
   funil:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>',
   esteira: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
   vendas:  '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
@@ -3877,6 +4308,7 @@ const IC = {
 const TELAS = [
   { grupo: 'Comando' },
   { k: 'visao',   rot: 'Visao Geral',     sub: 'Ritmo do mes, evolucao e onde o resultado se forma', fn: telaVisao },
+  { k: 'kpis',    rot: 'KPIs do comercial', sub: 'Realizado, meta proporcional e projecao do mes', fn: telaKpis },
   { grupo: 'Funil comercial' },
   { k: 'funil',   rot: 'Funil e pre-qualificacao', sub: 'Do lead ao cliente, etapa por etapa', fn: telaFunil },
   { k: 'esteira', rot: 'Negociacao',      sub: 'Esteira de proposta, follow up e fechamento', fn: telaEsteira },
@@ -4103,7 +4535,9 @@ document.addEventListener('click', ev => {
   const ir = ev.target.closest('[data-ir]');
   if (ir) { ev.preventDefault(); irPara(ir.dataset.ir); return; }
   const g = ev.target.closest('[data-grupo]');
-  if (g) { F.grupo = g.dataset.grupo; redesenhar(); }
+  if (g) { F.grupo = g.dataset.grupo; redesenhar(); return; }
+  const at = ev.target.closest('[data-ativas]');
+  if (at) { F.soAtivas = at.dataset.ativas === 'true'; redesenhar(); }
 });
 
 /* ==========================================================================
@@ -4288,6 +4722,28 @@ document.getElementById('btnMenu').addEventListener('click', () => {
   document.getElementById('sidebarOverlay').classList.add('vis');
 });
 document.getElementById('sidebarOverlay').addEventListener('click', fecharSidebar);
+
+/* Mes inspecionado e metas da tela de KPIs. */
+document.addEventListener('change', ev => {
+  if (ev.target.id === 'selMesKpi') { F.mesKpi = ev.target.value; redesenhar(); }
+});
+document.addEventListener('click', ev => {
+  if (!ev.target.closest('#btnMetas')) return;
+  const atuais = metasAtivas();
+  const novas = {};
+  let mudou = false;
+  for (const k of Object.keys(METAS_PADRAO)) {
+    const d = METAS_PADRAO[k];
+    const unidade = d.tipo === 'moeda' ? 'R$' : d.tipo === 'pct' ? '%' : d.tipo === 'mult' ? 'x' : '';
+    const r = prompt('Meta mensal — ' + d.rot + (unidade ? ' (' + unidade + ')' : ''), String(atuais[k]));
+    if (r === null) return;                 /* cancelou: nao salva nada */
+    const v = num(r);
+    novas[k] = v;
+    if (v !== atuais[k]) mudou = true;
+  }
+  try { localStorage.setItem(K_METAS, JSON.stringify(novas)); } catch (e) {}
+  if (mudou) redesenhar();
+});
 
 /* Endereco do proxy: fica no navegador, nao no codigo. */
 document.addEventListener('click', ev => {

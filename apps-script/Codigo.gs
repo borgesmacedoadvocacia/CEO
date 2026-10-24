@@ -125,9 +125,10 @@ function _fontes() {
       sheet: 'atend', abas: ['Fluxo de Atendimentos'], cabec: 1, colunas: null
     },
     clientes: {
-      /* A planilha tem CPF/CNPJ na coluna R (18). Paramos em Q (17). */
+      /* A planilha tem CPF/CNPJ na coluna R (18). Paramos em Q (17) e, no
+         lugar do identificador, devolvemos só PJ/PF derivado dele. */
       sheet: 'clientes', abas: ['DADOS'], cabec: 1,
-      colunas: _ate(17)
+      colunas: _ate(17), derivarTipoPessoa: 18
     },
     metaDia: {
       /* Fora a coluna "Ações (JSON)", que é 85% do peso da aba. */
@@ -135,6 +136,8 @@ function _fontes() {
       colunas: _ate(14)
     },
     metaCamp: { sheet: 'meta', abas: ['Campanhas'], cabec: 1, colunas: null },
+    metaAnuncios: { sheet: 'meta', abas: ['Anúncios', 'Anuncios'], cabec: 1, colunas: null },
+    metaJanelas:  { sheet: 'meta', abas: ['Janelas'], cabec: 1, colunas: null },
     metaReun: { sheet: 'meta', abas: ['Reuniões', 'Reunioes'], cabec: 1, colunas: null },
 
     kpisAtual:    { sheet: 'metas', abas: _abasDoMes('KPIS ', 0), cabec: 5, colunas: null },
@@ -211,6 +214,19 @@ function _lerFonte(chave) {
       for (var j = 0; j < cols.length; j++) o.push(l[cols[j] - 1] == null ? '' : l[cols[j] - 1]);
       return o;
     });
+  }
+
+  /* TIPO DE PESSOA derivado: conta os dígitos do CPF/CNPJ e devolve só
+     "PJ" ou "PF". A classificação é útil para a gestão; o número não serve a
+     nenhuma decisão comercial e por isso não sai daqui. */
+  if (spec.derivarTipoPessoa) {
+    var ic = spec.derivarTipoPessoa - 1;
+    var brutos = aba.getRange(primeira, 1, qtd, ultCol).getDisplayValues();
+    for (var r = 0; r < valores.length; r++) {
+      var doc = String((brutos[r] && brutos[r][ic]) || '').replace(/\D/g, '');
+      valores[r].push(r === 0 ? 'TIPO DE PESSOA'
+        : (doc.length >= 14 ? 'PJ' : doc.length >= 11 ? 'PF' : ''));
+    }
   }
 
   /* Linha totalmente vazia não viaja. */
