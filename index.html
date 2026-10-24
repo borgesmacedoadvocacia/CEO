@@ -587,6 +587,14 @@ if (window.self !== window.top) {
     border-bottom: 1px solid #16213a;
   }
   .secao-titulo.primeiro { margin-top: 0; }
+  /* Qual recorte vale nesta aba. Fica no topo porque e a primeira duvida de
+     quem troca de aba e ve outro numero para o mesmo indicador. */
+  .recorte-aba {
+    font-size: 0.715rem; color: var(--texto-muted); line-height: 1.5;
+    background: rgba(38,54,90,0.22); border: 1px solid #16213a;
+    border-radius: 8px; padding: 0.5rem 0.75rem; margin: 0 0 1rem;
+  }
+  .recorte-aba b { color: var(--texto-2); font-weight: 600; }
 
   /* --- grafico: tinta discreta e largura com teto --- */
   :root { --grade: rgba(148,163,184,0.085); }
@@ -836,8 +844,18 @@ if (window.self !== window.top) {
   .tab-expl { margin: 0 0 0.85rem; padding-left: 0.85rem; border-left: 3px solid var(--azul); }
   .tab-expl-tit {
     font-size: 0.78rem; font-weight: 700; color: var(--texto);
-    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.4rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    cursor: pointer; list-style: none; display: flex; align-items: baseline;
+    gap: 0.6rem; flex-wrap: wrap;
   }
+  .tab-expl-tit::-webkit-details-marker { display: none; }
+  .tab-expl-abre {
+    font-size: 0.645rem; font-weight: 500; letter-spacing: 0.02em;
+    text-transform: none; color: #6b7a93;
+  }
+  .tab-expl-tit:hover .tab-expl-abre { color: var(--azul); }
+  .tab-expl[open] .tab-expl-tit { margin-bottom: 0.45rem; }
+  .tab-expl[open] .tab-expl-abre { color: var(--azul); }
   .tab-expl-glo { font-size: 0.715rem; color: #8695ad; line-height: 1.65; max-width: 118ch; }
   .tab-expl-glo b { color: var(--texto-2); font-weight: 700; }
   .tab-expl-dica { font-size: 0.705rem; color: #6b7a93; line-height: 1.6; margin-top: 0.4rem; max-width: 118ch; }
@@ -3252,9 +3270,10 @@ function repintarTabela(id) {
    uso. Vai antes da tabela, nunca depois - quem le a coluna primeiro ja leu
    errado. */
 function tabelaExplicada(titulo, glossario, dica) {
-  return '<div class="tab-expl"><div class="tab-expl-tit">' + esc(titulo) + '</div>' +
+  return '<details class="tab-expl"><summary class="tab-expl-tit">' + esc(titulo) +
+    '<span class="tab-expl-abre">o que significa cada coluna</span></summary>' +
     '<div class="tab-expl-glo">' + glossario + '</div>' +
-    (dica ? '<div class="tab-expl-dica">' + dica + '</div>' : '') + '</div>';
+    (dica ? '<div class="tab-expl-dica">' + dica + '</div>' : '') + '</details>';
 }
 /* A dica de uso e sempre a mesma: vale a pena ser literal. */
 const DICA_ORDENAR = '<b>Clique no t\u00edtulo de uma coluna para ordenar</b> &mdash; clicar de novo inverte. ' +
@@ -4118,6 +4137,8 @@ function blocoCampanhas(campanhas, campVis, diasDoMes) {
     'qualifica\u00e7\u00e3o, documenta\u00e7\u00e3o, an\u00e1lise de viabilidade, agendamento, ADVBOX ou pesquisa de ' +
     'satisfa\u00e7\u00e3o &middot; ' +
     '<b>Custo/eleg.</b> = gasto \u00f7 eleg\u00edveis &middot; ' +
+    '<b>Qualificados</b> = os que avan\u00e7aram mais um degrau e j\u00e1 est\u00e3o na documenta\u00e7\u00e3o, ' +
+    'na an\u00e1lise de viabilidade, no agendamento, no ADVBOX ou na pesquisa de satisfa\u00e7\u00e3o &middot; ' +
     '<b>Reuni\u00f5es</b> = reuni\u00f5es com esta campanha anotada na aba Reuni\u00f5es do Meta &middot; ' +
     '<b>Conv. reun.</b> = reuni\u00f5es \u00f7 leads &middot; <b>Custo/reun.</b> = gasto \u00f7 reuni\u00f5es &middot; ' +
     '<b>Clientes</b> = fechamentos cuja ORIGEM \u00e9 esta campanha &middot; <b>Conv. cliente</b> = clientes \u00f7 leads &middot; ' +
@@ -4153,6 +4174,8 @@ function blocoCampanhas(campanhas, campVis, diasDoMes) {
     { k: 'elegiveis', rot: 'Eleg\u00edveis', tipo: 'num', cls: 'forte',
       html: r => !r.elegiveis ? '&mdash;' : n0(r.elegiveis) },
     { k: 'custoEleg', rot: 'Custo/eleg.', tipo: 'moeda' },
+    { k: 'qualificados', rot: 'Qualificados', tipo: 'num', cls: 'forte',
+      html: r => !r.qualificados ? '&mdash;' : n0(r.qualificados) },
     { k: 'reunioes', rot: 'Reuni\u00f5es', tipo: 'num', cls: 'forte',
       html: r => !r.reunioes ? '&mdash;' : n0(r.reunioes) },
     { k: 'convReuniao', rot: 'Conv. reun.', tipo: 'pct', casas: 1 },
@@ -4170,6 +4193,7 @@ function blocoCampanhas(campanhas, campVis, diasDoMes) {
     total: { orcDia: d => brl0(soma(d, r => r.orcDia)), orcMes: d => brl0(soma(d, r => r.orcMes)),
              gasto: d => brl0(soma(d, r => r.gasto)), leads: d => n0(soma(d, r => r.leads)),
              elegiveis: d => n0(soma(d, r => r.elegiveis)),
+             qualificados: d => n0(soma(d, r => r.qualificados)),
              reunioes: d => n0(soma(d, r => r.reunioes)), clientes: d => n0(soma(d, r => r.clientes)),
              honorarios: d => brl0(soma(d, r => r.honorarios)),
              cac: d => { const c2 = soma(d, r => r.clientes); return c2 ? brl0(soma(d, r => r.gasto) / c2) : ''; },
@@ -4196,8 +4220,14 @@ function telaTrafego(aba) {
   const todosT = KT.principais.concat(KT.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = '';
-  h += barraTela(c, true);
   h += avisoFiltro(c);
+  if (aba !== 'ind') {
+    h += '<div class="recorte-aba">Recorte desta aba: <b>' + esc(rotuloPeriodo()) + '</b> ' +
+      '&mdash; o filtro de per\u00edodo da barra de cima, n\u00e3o o m\u00eas dos indicadores. ' +
+      'Campanha e criativo se investigam no per\u00edodo; meta \u00e9 mensal e fica na aba <b>Indicadores</b>.</div>';
+  }
+  if (aba === 'ind') {
+  h += barraTela(c, true);
   h += resumoArea(todosT);
   h += '<div class="secao-titulo">Principais</div>';
   h += blocoPrincipais(KT.principais);
@@ -4238,16 +4268,16 @@ function telaTrafego(aba) {
 
   h += '<div class="secao-titulo">Todos os indicadores da area</div>';
   h += tabelaKpi('kpi-trafego', todosT, 'Indicadores de tráfego');
+  }
   /* A aba de indicadores segue ate a tabela de campanhas: era ela que
      faltava aqui. Todo indicador desta tela ("custo por lead elegivel",
      "conversao de lead em reuniao") tem a mesma pergunta em seguida - em
      qual campanha? -, e ate agora a resposta estava noutra aba. O custo e
      montar o recorte de campanha tambem aqui; vale o que custa. */
 
-  if (aba === 'camp') {
-  h += '<div class="secao-titulo primeiro">Evolução &middot; ' + esc(rotuloPeriodo()) + '</div>';
-  h += aviso('info', 'Daqui para baixo o recorte volta a ser o <b>filtro de período</b> da barra de cima (' +
-    esc(rotuloPeriodo()) + '), não o mês do painel: é a parte de investigar campanha e criativo.');
+  const evolucaoHtml = aba !== 'camp' ? '' : (() => {
+  let h = '';
+  h += '<div class="secao-titulo">Evolução &middot; ' + esc(rotuloPeriodo()) + '</div>';
   h += '<div class="grid g-2">';
   h += cartao('Investimento', 'Gasto no Meta Ads.',
     vizColunas({ dados: evolucao(md, r => r.d, r => r.gasto),
@@ -4277,7 +4307,8 @@ function telaTrafego(aba) {
         series: [{ nome: 'ROI', vals: vals, cor: 'var(--s3)' }] });
     })());
   h += '</div>';
-  }
+  return h;
+  })();
 
   /* ===== FUNIL POR CAMPANHA =====
      A cadeia inteira: investimento -> lead -> reuniao -> cliente -> honorario,
@@ -4304,11 +4335,12 @@ function telaTrafego(aba) {
      nao a data em que ele entrou em cada etapa - entao a contagem e pela
      etapa de hoje, com o lead situado no tempo pela data de criacao. Esta e
      a diferenca para o painel da central, e ela esta escrita no glossario. */
-  const elegPorCamp = {};
+  const elegPorCamp = {}, qualPorCamp = {};
   (DADOS.kommo ? selKommo() : []).forEach(r => {
-    if (!temCampanha(r) || !ehElegivel(r)) return;
+    if (!temCampanha(r)) return;
     const k = chaveBusca(r.campanha);
-    elegPorCamp[k] = (elegPorCamp[k] || 0) + 1;
+    if (ehElegivel(r)) elegPorCamp[k] = (elegPorCamp[k] || 0) + 1;
+    if (ehQualificado(r)) qualPorCamp[k] = (qualPorCamp[k] || 0) + 1;
   });
   const diasDoMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
 
@@ -4334,9 +4366,11 @@ function telaTrafego(aba) {
     const cl = cliPorCamp[k] || 0;
     const hon = honPorCamp[k] || 0;
     const el = elegPorCamp[k] || 0;
+    const ql = qualPorCamp[k] || 0;
     return {
       campanha: g.k, gasto: g.v, leads: l, cpl: l ? g.v / l : null,
       elegiveis: el, custoEleg: el ? g.v / el : null, taxaEleg: taxa(el, l),
+      qualificados: ql, custoQual: ql ? g.v / ql : null, taxaQual: taxa(ql, l),
       impressoes: soma(g.itens, r => r.impressoes), cliques: soma(g.itens, r => r.cliques),
       ctr: taxa(soma(g.itens, r => r.cliques), soma(g.itens, r => r.impressoes)),
       reunioes: rn, convReuniao: taxa(rn, l),
@@ -4363,7 +4397,7 @@ function telaTrafego(aba) {
   const atribuicaoFraca = cobReun != null && cobReun < 60;
 
   if (aba === 'camp') {
-  h += '<div class="secao-titulo">Campanhas &middot; do investimento ao honorário</div>';
+  h += '<div class="secao-titulo primeiro">Campanhas &middot; do investimento ao honorário</div>';
   if (atribuicaoFraca) {
     h += aviso('critico', '<b>A atribuicao de reuniao por campanha esta incompleta.</b> ' +
       'So <b>' + pctOuTraco(cobReun, 0) + '</b> das ' + n0(reun.length) + ' reunioes do recorte tem a coluna ' +
@@ -4381,6 +4415,12 @@ function telaTrafego(aba) {
   }
 
 
+  /* A tabela vem primeiro: e ela que a aba existe para mostrar, e e dela
+     que saem os graficos abaixo. Os cartoes sao recortes dos dez primeiros
+     de uma coluna ou outra - leitura de apoio, nao a resposta. */
+  h += blocoCampanhas(campanhas, campVis, diasDoMes);
+
+  h += '<div class="secao-titulo">Leituras de apoio</div>';
   h += '<div class="grid g-2">';
   h += cartao('Conversão em reunião por campanha', 'Reuniões marcadas dividido pelos leads da campanha. Só campanhas com 10 leads ou mais &mdash; abaixo disso a taxa e ruido.',
     (() => {
@@ -4420,8 +4460,7 @@ function telaTrafego(aba) {
         : '<div class="vazio">Nenhuma campanha com 3 ou mais leads no recorte.</div>';
     })());
   h += '</div>';
-
-  h += blocoCampanhas(campanhas, campVis, diasDoMes);
+  h += evolucaoHtml;
   }
 
   if (aba === 'ind') {
