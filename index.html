@@ -1557,6 +1557,11 @@ function lerKpis(linhas, mesEsperado) {
     const ehRS  = /R\$/.test(m.cel(l, 'metaMes'));
     krs.push({
       resp: respAtual, kr: kr,
+      /* O texto cru, antes do num(): celula VAZIA e celula com zero viram o
+         mesmo 0 depois da conversao, e as duas nao querem dizer a mesma
+         coisa. Sem medicao nao e resultado zero. */
+      brutoMeta: m.cel(l, 'metaMes'),
+      brutoRes: m.cel(l, 'resultado'),
       metaMes: num(m.cel(l, 'metaMes')),
       metaProp: num(m.cel(l, 'metaProp')),
       resultado: num(m.cel(l, 'resultado')),
@@ -4939,7 +4944,9 @@ const CORTX = { ok: '#5fd35f', atencao: '#f3c45a', grave: '#f0a681',
 /* Meta de referencia do indicador. metaProp vem da propria planilha quando
    ela ja calcula; senao, rateia pela fracao do mes ja corrida. */
 function metaRefK(k) {
-  if (k.meta == null || !isFinite(k.meta)) return null;
+  /* Meta zero nao e meta: e celula em branco que o num() converteu. Tratar
+     como alvo faria todo indicador nascer em 0% da meta. */
+  if (k.meta == null || !isFinite(k.meta) || k.meta === 0) return null;
   if (k.metaProp != null && isFinite(k.metaProp) && k.emCurso) return k.metaProp;
   return k.acumula && k.emCurso ? k.meta * (k.fracao == null ? 1 : k.fracao) : k.meta;
 }
@@ -4988,7 +4995,7 @@ const qInd = (nv, txt) => '<span class="q-ind" style="color:' + CORTX[nv] + '">'
 /* O quadro das quatro leituras. Sem meta nao existe quadro: sobraria uma
    tabela de uma linha repetindo o numero grande logo acima. */
 function quadroK(k) {
-  if (k.meta == null || !isFinite(k.meta)) return '';
+  if (k.meta == null || !isFinite(k.meta) || k.meta === 0) return '';
   const f = fmtK(k);
   const mProp = metaRefK(k);
   const a = atingK(k);
@@ -5552,14 +5559,26 @@ function kpisMarketing(c) {
   const custoMkt = fin ? soma((fin.itens || []).filter(x =>
     /social media|outras despesas de marketing/.test(normCab(x.rotulo))), x => x.meses[c.mes] || 0) : null;
 
-  const mkt = t => { const k = c.krMkt(t); return k ? k.resultado : null; };
-  const metaMkt = t => { const k = c.krMkt(t); return k ? k.metaMes : null; };
-  const propMkt = t => { const k = c.krMkt(t); return k ? k.metaProp : null; };
-  const SEM_MKT = 'Nenhuma fonte de Instagram no painel. Crie a aba <code>KPIS Marketing</code> na planilha de Metas, no mesmo formato das abas KPIS, com este indicador como Resultado Chave — o painel passa a lê-lo sozinho.';
+  /* Tres estados, nao dois: a aba pode nao existir, existir com a linha em
+     branco, ou estar preenchida. O painel diz qual deles e - "0" no lugar de
+     "ainda nao preenchido" seria um numero inventado. */
+  const cheio = v => v != null && String(v).trim() !== '';
+  const SEM_MKT = 'Nenhuma fonte de Instagram no painel. Crie a aba <code>KPIS Marketing</code> na planilha de Metas, no mesmo formato das abas KPIS, com este indicador como Resultado Chave — o painel passa a lê-lo sozinho. O script <code>apps-script/CriarAbaMarketing.gs</code> monta a aba pronta.';
   const kMkt = (k, rot, nome, o) => {
-    const v = mkt(nome);
-    return B(Object.assign({ k: k, rot: rot, valor: v, meta: metaMkt(nome), metaProp: propMkt(nome),
-      acumula: true, falta: v == null ? SEM_MKT : null, fonte: 'KR da aba KPIS Marketing' }, o || {}));
+    const linha = c.krMkt(nome);
+    const temValor = linha && cheio(linha.brutoRes);
+    const temMeta = linha && cheio(linha.brutoMeta) && num(linha.brutoMeta) !== 0;
+    return B(Object.assign({
+      k: k, rot: rot,
+      valor: temValor ? linha.resultado : null,
+      meta: temMeta ? linha.metaMes : null,
+      metaProp: temMeta ? linha.metaProp : null,
+      acumula: true,
+      falta: temValor ? null : (linha
+        ? 'A aba <code>KPIS Marketing</code> já tem esta linha, mas o <b>Resultado do Mês</b> ainda não foi preenchido.'
+        : SEM_MKT),
+      fonte: 'KR “' + (linha ? linha.kr : rot) + '” da aba KPIS Marketing'
+    }, o || {}));
   };
 
   const principais = [
