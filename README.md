@@ -10,51 +10,36 @@ conferida no servidor e as planilhas ficam privadas.
 
 ---
 
-## As telas
+## Os módulos
 
-**Comando**
+Cinco itens na lateral. Dentro de cada módulo, abas — porque juntar tudo num
+módulo não é o mesmo que juntar tudo numa *tela*.
 
-| Tela | O que responde |
+| Módulo | Abas |
 |---|---|
-| **Painel semanal** | Os cinco indicadores de cada área, quinze no total — e quais pedem diagnóstico |
-| **Visão Geral** | Ritmo do mês contra a meta, evolução e onde o resultado se forma |
-| **KPIs do comercial** | Realizado (MTD), meta proporcional, projeção do mês e quanto falta por dia |
+| **Painel semanal** | os 15 indicadores (5 por área) e os alertas de operação |
+| **Campanhas Meta Ads** | Indicadores · Campanhas · Criativos |
+| **Marketing** | tela única: audiência, conteúdo, marca e demanda sem verba |
+| **Funil de Pré-Qualificação** | Indicadores · Funil do produto · Leads do CRM |
+| **Negociação e Fechamento** | Indicadores · Esteira · Vendas · Clientes e equipe · Financeiro · Metas e OKRs |
 
-**Áreas** — cada uma com os indicadores principais em evidência e o diagnóstico do especialista abaixo
+*Fontes e dados* continua inteira, alcançada pelo rodapé da lateral: é
+manutenção, não leitura diária.
 
-| Tela | O que responde |
-|---|---|
-| **Comercial** | Pré-qualificação e fechamento, com o corte Meta Ads × orgânico onde ele existe |
-| **Tráfego Meta Ads** | Investimento → lead → reunião → cliente, por campanha e por criativo |
-| **Marketing** | Audiência, conteúdo, marca e a demanda que chega sem verba |
+**O que saiu, e por quê** — redundância, não corte:
 
-**Funil comercial**
+- *Visão Geral* repetia o Painel semanal e os principais de cada módulo. O que
+  ela tinha de único, os **alertas de operação**, subiu para o Painel semanal.
+- *KPIs do comercial* repetia, numa tela inteira, o quadro que hoje vem dentro
+  de cada cartão principal — realizado, meta até hoje, meta mensal, projeção.
+- *Equipe* foi para dentro da aba **Clientes e equipe**, ao lado do desempenho
+  por closer e SDR que já estava lá.
+- Na aba *Vendas*, a linha de KPI e as quebras por closer/produto/origem saíram:
+  os mesmos números já estavam nos Indicadores e na aba de Clientes.
 
-| Tela | O que responde |
-|---|---|
-| **Funil e pré-qualificação** | Do lead ao cliente etapa a etapa, com avanço, perda e origem por campanha |
-| **Negociação** | Esteira de proposta e follow up: o que está em aberto, o que esfriou, por que se perde |
-| **Vendas e receita** | Fechamentos, honorários, ticket, prazo e evolução |
-| **Fluxo de clientes** | Quem assina, por onde chega e quem fecha — por canal, pagamento, produto, PJ×PF, closer e SDR |
-
-**Gestão**
-
-| Tela | O que responde |
-|---|---|
-| **Financeiro e CAC** | Custo real do comercial, CAC, margem por cliente e estrutura de custo |
-| **Equipe** | Desempenho por closer e por SDR |
-| **Metas e OKRs** | Metas do mês, plano de ação e acumulado do ano |
-| **Fontes e dados** | De onde vem cada número, o que falhou e por qual transporte |
-
-As telas de funil e gestão respeitam os filtros da barra de cima: período,
-produto jurídico, closer, SDR, origem e busca livre. As tabelas ordenam por
-qualquer coluna e exportam o recorte inteiro em CSV. Abaixo de 640px cada
-linha de tabela vira um cartão.
-
-As telas de **indicador** (Painel semanal e as três áreas) têm escopo próprio:
-um seletor de **mês**, porque meta é mensal — não existe meta de "últimos 6
-meses". Na tela de Tráfego os dois escopos convivem, e a tela diz onde um
-termina e o outro começa.
+Os filtros da barra de cima — período, produto, closer, SDR, origem e busca —
+valem nas abas de detalhe. As abas de **Indicadores** têm escopo próprio: um
+seletor de mês, porque meta é mensal.
 
 ## Os indicadores
 
