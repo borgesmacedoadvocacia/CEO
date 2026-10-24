@@ -4113,10 +4113,9 @@ function telaTrafego(aba) {
      nao a data em que ele entrou em cada etapa - entao a contagem e pela
      etapa de hoje, com o lead situado no tempo pela data de criacao. Esta e
      a diferenca para o painel da central, e ela esta escrita no glossario. */
-  const ETAPA_PASSOU = /qualificac|documenta|agendar reuniao|advbox|inviavel|pesquisa de satisfacao|diagnostic/;
   const elegPorCamp = {};
   (DADOS.kommo ? selKommo() : []).forEach(r => {
-    if (!r.campanha || !ETAPA_PASSOU.test(chaveBusca(r.etapa))) return;
+    if (!temCampanha(r) || !ehElegivel(r)) return;
     const k = chaveBusca(r.campanha);
     elegPorCamp[k] = (elegPorCamp[k] || 0) + 1;
   });
@@ -5246,6 +5245,31 @@ const COR_NAT = { ads: 'var(--s1)', organico: 'var(--s3)', indicacao: 'var(--s7)
                   base: 'var(--s4)', outras: 'var(--texto-muted)', indefinido: 'var(--texto-muted)' };
 const NATS = ['ads', 'organico', 'indicacao', 'base', 'outras'];
 
+/* ===== O QUE O KOMMO SABE SOBRE O LEAD DE CAMPANHA =====
+   No modulo do Meta Ads, TODO denominador tem de ser de lead atribuido a
+   campanha. O total de elegiveis da planilha de Metas e atribuicao do
+   COMERCIAL - conta organico, indicacao e recompra junto - e nao responde
+   nada sobre o anuncio.
+
+   O Kommo guarda a etapa ATUAL do lead, nao a data em que ele entrou em
+   cada uma. Entao "passou da elegibilidade" se le pela etapa de hoje, e o
+   lead se situa no tempo pela data de criacao. As duas regras ficam aqui, e
+   nao dentro da tela, para a tabela de campanhas e os indicadores da area
+   nunca discordarem sobre o mesmo lead. */
+const ETAPA_ELEGIVEL    = /qualificac|documenta|agendar reuniao|advbox|inviavel|pesquisa de satisfacao|diagnostic/;
+const ETAPA_QUALIFICADO = /documenta|agendar reuniao|advbox|inviavel|pesquisa de satisfacao|diagnostic/;
+/* Conversa iniciada, na definicao da casa: o lead avancou para elegivel OU
+   para inelegivel. Quem travou na primeira mensagem nao chega a ser avaliado
+   e fica de fora. Nao da para usar o campo de triagem do Kommo: o coletor o
+   preenche em 673 de 674 leads, entao ele nao separa ninguem. */
+const ETAPA_CONVERSA = /qualificac|documenta|agendar reuniao|advbox|inviavel|pesquisa de satisfacao|diagnostic|inelegivel/;
+const houveConversa = r => ETAPA_CONVERSA.test(chaveBusca(r.etapa));
+/* "-" aparece como campanha em centenas de leads: e ausencia de atribuicao,
+   nao uma campanha chamada traco. */
+const temCampanha   = r => !!r.campanha && r.campanha.trim() !== '' && r.campanha.trim() !== '-';
+const ehElegivel    = r => ETAPA_ELEGIVEL.test(chaveBusca(r.etapa));
+const ehQualificado = r => ETAPA_QUALIFICADO.test(chaveBusca(r.etapa));
+
 /* ===== DEGRAU DA ESTEIRA EM QUE O FECHAMENTO ACONTECEU =====
    A esteira tem 9 follow ups com significado proprio: 1 = oferta de 24h,
    7 = D21 Buckner, 8 = D28 honorarios em liminar, 9 = D45 apenas exito. O FUP
@@ -5689,6 +5713,12 @@ function ctxArea() {
   const agendadas  = (lista, k) => lista.filter(r => r.dAgenda && chaveMes(r.dAgenda) === k && passaAt(r));
 
   const todosCli = reg(DADOS.clientes), todosAt = reg(DADOS.atend), todosMd = reg(DADOS.metaDia);
+  const todosKo = reg(DADOS.kommo);
+  const passaKo = r => passaSet(F.produtos, r.produto) && passaSet(F.origens, r.origem) &&
+    passaBusca([r.lead, r.id, r.etapa, r.funil, r.campanha, r.produto]);
+  /* Leads do CRM vindos de campanha, no mes: a base de tudo que o modulo do
+     Meta Ads mede depois do clique. */
+  const koAds = k => todosKo.filter(r => r.mes === k && temCampanha(r) && passaKo(r));
 
   const c = {
     mes: mes, ant: ant, emCurso: emCurso, dias: dias, diasMes: diasMes, fracao: fracao,
@@ -5699,6 +5729,9 @@ function ctxArea() {
     reun: realizadas(todosAt, mes), reunAnt: realizadas(todosAt, ant),
     marc: agendadas(todosAt, mes), marcAnt: agendadas(todosAt, ant),
     md: mdMes(todosMd, mes), mdAnt: mdMes(todosMd, ant),
+    koAds: koAds(mes), koAdsAnt: koAds(ant),
+    koMes: todosKo.filter(r => r.mes === mes && passaKo(r)),
+    temKommo: !ERROS.kommo && todosKo.length > 0,
     todosCli: todosCli, todosAt: todosAt, todosMd: todosMd,
     serieCli: k => noMes(todosCli, k),
     serieMd:  k => mdMes(todosMd, k),
@@ -5758,18 +5791,22 @@ function kpisTrafego(c) {
   const cliques = soma(c.md, r => r.cliques);
   const cliqLink = soma(c.md, r => r.cliquesLink);
 
-  /* "Conversa iniciada", na definicao da casa, e o lead que avancou para
-     elegivel ou inelegivel - quem travou na primeira mensagem nao conta.
-     Na planilha isso e exatamente "Responderam a Triagem": elegiveis (260) +
-     inelegiveis (43) = 303 respostas. A metrica homonima do Meta conta outra
-     coisa e entra separada, no bloco de especialista. */
-  const triagem = c.vProd(c.prod, 'responderam a triagem');
-  const triagemAnt = c.vProd(c.prodAnt, 'responderam a triagem');
+  /* TUDO AQUI E SO DO META ADS: o lead do CRM entra na conta apenas se tiver
+     campanha anotada.
 
-  const krEleg = c.kr('leads elegiveis');
-  const krQual = c.kr('leads qualificados');
-  const elegiveis = krEleg ? krEleg.resultado : null;
-  const qualificados = krQual ? krQual.resultado : null;
+     "Conversa iniciada", na definicao da casa, e o lead que avancou para
+     elegivel ou inelegivel - quem travou na primeira mensagem nao conta. No
+     Kommo isso e ter respondido a triagem. A metrica homonima do Meta conta
+     outra coisa e vive separada, no bloco de especialista. */
+  const semKommo = !c.temKommo
+    ? 'Depende da planilha <b>Leads Kommo</b>, que não entrou nesta leitura. É ela que diz em que etapa cada lead de campanha parou.'
+    : null;
+  const triagem       = c.temKommo ? c.koAds.filter(houveConversa).length : null;
+  const triagemAnt    = c.temKommo ? c.koAdsAnt.filter(houveConversa).length : null;
+  const elegiveis     = c.temKommo ? c.koAds.filter(ehElegivel).length : null;
+  const elegiveisAnt  = c.temKommo ? c.koAdsAnt.filter(ehElegivel).length : null;
+  const qualificados  = c.temKommo ? c.koAds.filter(ehQualificado).length : null;
+  const leadsCrmAds   = c.temKommo ? c.koAds.length : null;
 
   const cliAds = porNat(c.cli, 'ads'), cliAdsAnt = porNat(c.cliAnt, 'ads');
   const honAds = soma(cliAds, r => r.honIni);
@@ -5828,27 +5865,30 @@ function kpisTrafego(c) {
     B({ hero: true, k: 'leads', rot: 'Leads (total)', valor: leads, ant: leadsAnt, meta: metas.leadsAds, acumula: true,
         serie: c.serie.map(k => soma(c.serieMd(k), r => r.leadsTotal)), fonte: fonteIns,
         nota: 'Formulário ' + n0(leadsForm) + ' · conversas ' + n0(conversasMeta) + ' · pixel ' + n0(soma(c.md, r => r.leadsPixel)) }),
-    B({ k: 'eleg', rot: 'Leads elegíveis', valor: elegiveis, ant: c.krAnt('leads elegiveis'),
-        meta: krEleg ? krEleg.metaMes : null, metaProp: krEleg ? krEleg.metaProp : null, acumula: true,
-        falta: krEleg ? null : 'O KR <b>Leads Elegíveis</b> não foi lido na aba KPIS ' + esc(c.nomeMes) + '.',
-        fonte: fonteKr, nota: 'Conta todas as origens, não só o Meta Ads',
-        dica: 'A planilha mede elegibilidade no total do CRM. O corte por origem não existe em nível de lead — ver o bloco de Mensuração.' }),
+    B({ k: 'eleg', rot: 'Leads elegíveis', valor: elegiveis, ant: elegiveisAnt, acumula: true,
+        falta: semKommo,
+        fonte: 'Kommo: leads com campanha anotada que passaram da elegibilidade',
+        nota: leadsCrmAds ? n0(elegiveis) + ' de ' + n0(leadsCrmAds) + ' leads de campanha no CRM (' +
+          pctOuTraco(taxa(elegiveis, leadsCrmAds), 0) + ')' : null,
+        dica: 'Só lead com campanha anotada no Kommo. O total de elegíveis da planilha de Metas conta orgânico, indicação e recompra junto — é atribuição do comercial e vive no módulo Comercial, não aqui. Como o Kommo guarda só a etapa atual, a contagem é pela etapa de hoje. Este número é maior que a soma da aba Campanhas porque lá só entram campanhas que gastaram no período: lead que carrega o nome de uma campanha já parada conta aqui e não tem linha lá.' }),
     B({ k: 'custoConversa', rot: 'Custo por conversa iniciada', tipo: 'moeda2', inverso: true,
         valor: triagem ? gasto / triagem : null,
         ant: (triagemAnt && gastoAnt) ? gastoAnt / triagemAnt : null,
-        falta: triagem ? null : 'Depende de <b>Responderam a Triagem</b> na aba Produtos Jurídicos, que não foi lida para ' + esc(c.rotMes) + '.',
-        fonte: 'Investimento ÷ Responderam a Triagem',
-        nota: triagem ? n0(triagem) + ' leads passaram da primeira mensagem' : null,
-        dica: 'Conversa iniciada = lead que avançou para elegível ou inelegível. O denominador conta todas as origens, então o custo real é um pouco maior.' }),
+        falta: semKommo,
+        fonte: 'Investimento ÷ leads de campanha avaliados (elegíveis + inelegíveis)',
+        nota: (triagem && leadsCrmAds) ? n0(triagem) + ' de ' + n0(leadsCrmAds) + ' leads de campanha foram avaliados (' +
+          pctOuTraco(taxa(triagem, leadsCrmAds), 0) + ')' : null,
+        dica: 'Conversa iniciada = o lead avançou para elegível OU para inelegível. Quem travou na primeira mensagem não chega a ser avaliado e fica fora do divisor. A leitura vem da etapa do Kommo, não do campo de triagem: o coletor preenche esse campo para quase todo lead e ele não separa ninguém.' }),
     B({ hero: true, k: 'cpl', rot: 'Custo por lead (total)', tipo: 'moeda2', inverso: true,
         valor: leads ? gasto / leads : null, ant: leadsAnt ? gastoAnt / leadsAnt : null,
         serie: c.serie.map(k => { const g = c.serieMd(k); const l = soma(g, r => r.leadsTotal); return l ? soma(g, r => r.gasto) / l : null; }),
         fonte: fonteIns }),
     B({ k: 'cplEleg', rot: 'Custo por lead elegível', tipo: 'moeda2', inverso: true,
         valor: elegiveis ? gasto / elegiveis : null,
-        falta: elegiveis ? null : 'Depende do KR Leads Elegíveis.',
-        fonte: 'Investimento ÷ KR Leads Elegíveis',
-        dica: 'Denominador com todas as origens: o custo verdadeiro por elegível DE MÍDIA é maior que este.' }),
+        ant: elegiveisAnt ? gastoAnt / elegiveisAnt : null,
+        falta: semKommo,
+        fonte: 'Investimento ÷ elegíveis de campanha (Kommo)',
+        dica: 'Numerador e denominador do mesmo lado: só verba de anúncio, só lead de anúncio.' }),
     B({ k: 'custoReuniao', rot: 'Custo por reunião', tipo: 'moeda', inverso: true,
         valor: c.reun.length ? gasto / c.reun.length : null,
         ant: c.reunAnt.length ? gastoAnt / c.reunAnt.length : null,
@@ -5981,14 +6021,13 @@ function kpisTrafego(c) {
   const invTri = soma(tri, k => soma(c.serieMd(k), r => r.gasto));
   const fundo = [
     B({ k: 'txQual', rot: 'Taxa de qualificação', tipo: 'pct',
-        valor: (qualificados != null && c.kr('novos leads')) ? taxa(qualificados, c.kr('novos leads').resultado) : null,
-        meta: krQual && c.kr('novos leads') ? taxa(krQual.metaMes, c.kr('novos leads').metaMes) : null,
-        falta: qualificados != null ? null : 'Depende do KR Leads Qualificados.',
-        fonte: 'KR Leads Qualificados ÷ KR Novos Leads' }),
+        valor: taxa(qualificados, leadsCrmAds), falta: semKommo,
+        fonte: 'Qualificados ÷ leads de campanha, ambos do Kommo',
+        nota: leadsCrmAds ? n0(qualificados) + ' de ' + n0(leadsCrmAds) + ' leads de campanha' : null,
+        dica: 'Qualificado = lead de campanha cuja etapa já passou da documentação. Só anúncio dos dois lados da conta.' }),
     B({ k: 'cplQual', rot: 'Custo por lead qualificado', tipo: 'moeda', inverso: true,
-        valor: qualificados ? gasto / qualificados : null,
-        falta: qualificados ? null : 'Depende do KR Leads Qualificados.',
-        fonte: 'Investimento ÷ KR Leads Qualificados' }),
+        valor: qualificados ? gasto / qualificados : null, falta: semKommo,
+        fonte: 'Investimento ÷ qualificados de campanha (Kommo)' }),
     B({ k: 'cacTotal', rot: 'CAC total (mídia + comercial)', tipo: 'moeda', inverso: true, valor: cacTotal,
         falta: cacTotal ? null : 'Depende da linha <b>(-) SETOR COMERCIAL</b> da DRE para ' + esc(c.rotMes) + '.',
         fonte: 'DRE COMERCIAL ÷ clientes do mês',
@@ -6000,9 +6039,8 @@ function kpisTrafego(c) {
         fonte: 'Receita de caixa ÷ investimento, nos 3 meses até ' + esc(c.rotMes),
         dica: 'A DRE é de caixa: mede o que entrou, não o que foi contratado. Meses de calendário, não 90 dias corridos.' }),
     B({ k: 'conversaContrato', rot: 'Conversa → contrato', tipo: 'pct',
-        valor: triagem ? taxa(cliAds.length, triagem) : null,
-        falta: triagem ? null : 'Depende de Responderam a Triagem.',
-        fonte: 'Clientes de campanha ÷ triagens respondidas' }),
+        valor: triagem ? taxa(cliAds.length, triagem) : null, falta: semKommo,
+        fonte: 'Clientes de campanha ÷ conversas iniciadas de campanha' }),
     B({ k: 'convLeadCliente', rot: 'Lead → cliente', tipo: 'pct', valor: taxa(cliAds.length, leads),
         ant: taxa(cliAdsAnt.length, leadsAnt), fonte: 'Clientes de campanha ÷ leads do Meta' })
   ];
@@ -6019,6 +6057,12 @@ function kpisTrafego(c) {
         dica: 'Com cobertura baixa, campanha sem reunião pode ser só falta de anotação. O painel suspende os alertas por campanha nesse caso.' }),
     B({ k: 'cobCli', rot: 'Cobertura: cliente com origem', tipo: 'pct', valor: cobCli, meta: 95,
         fonte: 'Planilha de clientes: coluna ORIGEM preenchida' }),
+    B({ k: 'cobKommo', rot: 'Cobertura: lead com campanha no CRM', tipo: 'pct',
+        valor: c.temKommo ? taxa(c.koAds.length, c.koMes.length) : null,
+        falta: semKommo, meta: 90,
+        nota: c.temKommo ? n0(c.koAds.length) + ' de ' + n0(c.koMes.length) + ' leads do mês' : null,
+        fonte: 'Leads do Kommo no mês com o campo Campanha preenchido',
+        dica: 'Todo indicador deste módulo sai daqui. Lead de anúncio que chega sem campanha anotada some da conta — e o custo por elegível sobe sem motivo real.' }),
     B({ k: 'pixel', rot: 'Qualidade do pixel e da API', falta:
         'Precisa da nota de correspondência de eventos do Gerenciador de Eventos — nenhuma aba traz isso hoje.' }),
     B({ k: 'eventosCrm', rot: 'Eventos de CRM devolvidos à Meta', falta:
