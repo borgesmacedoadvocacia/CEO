@@ -976,11 +976,12 @@ if (window.self !== window.top) {
         </div>
         <div class="carregando-txt"><span class="spin"></span> Lendo as planilhas&hellip;</div>
       </div>
-      <section class="tela oculto" id="tela-semanal"></section>
       <section class="tela oculto" id="tela-campanhas"></section>
       <section class="tela oculto" id="tela-marketing"></section>
+      <section class="tela oculto" id="tela-kpisdash"></section>
       <section class="tela oculto" id="tela-prequal"></section>
       <section class="tela oculto" id="tela-fechamento"></section>
+      <section class="tela oculto" id="tela-clientes"></section>
       <section class="tela oculto" id="tela-fontes"></section>
     </div>
   </main>
@@ -3693,8 +3694,8 @@ function telaEsteira() {
 function telaVendas(modo) {
   if (ERROS.clientes) return aviso('critico', '<b>FLUXO DE CLIENTES nao entrou:</b> ' + esc(ERROS.clientes));
   /* No modulo, a linha de KPI e as quebras por closer/produto/origem ja
-     aparecem nos Indicadores e na aba de Clientes. Repetir aqui seria o
-     mesmo numero em tres lugares. */
+     aparecem em KPIS e Dashboards e no modulo Fluxo de clientes. Repetir aqui
+     seria o mesmo numero em tres lugares - o que o painel evita por regra. */
   const soEvolucao = modo === 'modulo';
   const cli = selClientes();
   const meses = mesesDoEixo();
@@ -4160,10 +4161,8 @@ function quebraClientes(lista, chaveFn) {
   })).sort((a, b) => b.total - a.total);
 }
 
-function telaClientesFluxo(modo) {
+function telaClientesFluxo() {
   if (ERROS.clientes) return aviso('critico', '<b>FLUXO DE CLIENTES nao entrou:</b> ' + esc(ERROS.clientes));
-  /* A evolucao de honorarios e clientes vive na aba Vendas do mesmo modulo. */
-  const semEvolucao = modo === 'modulo';
   const cli = selClientes();
   if (!cli.length) return aviso('info', 'Nenhum cliente no recorte atual. Amplie o periodo ou limpe os filtros.');
 
@@ -4186,9 +4185,23 @@ function telaClientesFluxo(modo) {
     nota: n0(cli.filter(r => r.pagoOk).length) + ' de ' + n0(cli.length) });
   h += kpi({ rotulo: 'Entrada recebida', valor: brl0(soma(cli, r => r.entrada)), pequeno: true,
     nota: pctOuTraco(taxa(soma(cli, r => r.entrada), total), 0) + ' dos honorarios' });
+  h += kpi({ rotulo: 'Fechados com honorario inicial', valor: n0(cli.filter(r => r.honIni > 0).length), pequeno: true,
+    nota: pctOuTraco(taxa(cli.filter(r => r.honIni > 0).length, cli.length), 0) + ' dos clientes do recorte',
+    dica: 'Os demais fecharam com honorario condicionado a liminar: contam como cliente, mas nao entram no ticket medio.' });
   h += kpi({ rotulo: 'Canais ativos', valor: n0(new Set(cli.map(r => r.origem)).size),
     nota: 'Origens distintas no recorte' });
   h += '</div>';
+  /* O painel da central divide os honorarios por TODOS os clientes e chega a
+     R$ 888. Aqui o ticket conta so quem teve honorario inicial, como pedido -
+     sao duas contas diferentes da mesma planilha, e esconder uma faria o
+     numero parecer errado quando os dois paineis forem comparados. */
+  if (semTicket(cli)) {
+    h += aviso('info', 'O ticket medio acima conta <b>so os ' + n0(cli.filter(r => r.honIni > 0).length) +
+      ' clientes que tiveram honorario inicial</b>. Dividindo os mesmos ' + brl0(total) +
+      ' por todos os ' + n0(cli.length) + ' clientes do recorte &mdash; como faz o painel da central &mdash; daria <b>' +
+      brl0(total / cli.length) + '</b>. Os ' + n0(semTicket(cli)) +
+      ' fechamentos com honorario condicionado a liminar entram como R$ 0: sao venda, mas nao sao preco.');
+  }
 
   /* Colunas comuns das tabelas de quebra. */
   const colsQuebra = rotulo => [
@@ -4337,13 +4350,11 @@ function telaClientesFluxo(modo) {
   /* ----- ANALISES ADICIONAIS ----- */
   h += '<div class="secao-titulo">Analises adicionais</div>';
   h += '<div class="grid g-2">';
-  if (!semEvolucao) {
   h += cartao('Evolucao &mdash; honorarios', 'Duas escalas, dois graficos. Aqui a receita.',
     vizColunas({ dados: evolucao(cli, r => r.dFecha, r => r.honIni),
       cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorarios', rotulos: false }));
   h += cartao('Evolucao &mdash; clientes', 'E aqui o volume.',
     vizColunas({ dados: evolucao(cli, r => r.dFecha), cor: 'var(--s3)', nome: 'Clientes' }));
-  }
 
   const faixas = [
     { k: 'Ate R$ 1.000', t: v => v > 0 && v <= 1000 },
@@ -5087,6 +5098,19 @@ function quadroK(k) {
   if (prop) h += qLinha('Meta proporcional (' + n0(k.dias) + 'd)', f(mProp), null,
     'O quanto deveria estar entregue a esta altura do mês: ' + n0(k.dias) + ' de ' + n0(k.diasMes) + ' dias do mês.');
   h += qLinha((k.inverso ? 'Limite' : 'Meta') + ' mensal', f(k.meta));
+  /* Quanto falta e em que ritmo diario. "vs meta" diz se esta atrasado;
+     isto diz o que fazer amanha. Vinha do painel de KPIs do comercial e nao
+     tem equivalente em nenhuma outra linha do quadro. */
+  if (prop && k.valor != null && !k.inverso) {
+    if (k.meta > k.valor) {
+      const faltam = k.meta - k.valor;
+      const diasRest = Math.max(1, k.diasMes - k.dias);
+      h += qLinha('Falta', f(faltam) + ' <span class="q-sec">(' + f(faltam / diasRest) + '/dia)</span>', null,
+        'Quanto falta para a meta cheia e quanto por dia nos ' + n0(diasRest) + ' dias que restam.');
+    } else {
+      h += qLinha('Falta', '<span class="q-ind" style="color:' + CORTX.ok + '">meta do mês batida</span>');
+    }
+  }
   if (k.emCurso) {
     h += qLinha('Projeção (mês)',
       (proj == null ? '&mdash;' : f(proj)) +
@@ -6139,64 +6163,67 @@ function kpisComercial(c) {
    --------------------------------------------------------------------------
    A metade de cima do funil: do lead que chega ate a reuniao marcada.
    ========================================================================== */
-function prequalIndicadores() {
+function prequalIndicadores(parcial) {
   const c = ctxAreaMemo();
   const K = kpisArea('comercial');
-  const preVenda = (K.grupos.find(g => g.t.indexOf('Pr\u00e9-venda') === 0) || { l: [] });
+  const preVenda = (K.grupos.find(g => g.t.indexOf('Pré-venda') === 0) || { l: [] });
   const todos = K.prequal.concat(preVenda.l);
 
-  let h = barraTela(c, true);
-  h += resumoArea(todos);
-  if (c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das quatro leituras: o <b>realizado</b>, ' +
+  let h = '';
+  if (parcial) h += '<div class="secao-titulo primeiro">Pré-qualificação &middot; principais</div>';
+  if (!parcial) h += barraTela(c, true) + resumoArea(todos);
+  if (!parcial && c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das quatro leituras: o <b>realizado</b>, ' +
     'o quanto ele representa da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia e a ' +
-    '<b>proje\u00e7\u00e3o</b> do m\u00eas pelo ritmo de hoje. No dia ' + n0(c.dias) + ' o certo \u00e9 ter ' +
-    pct(c.fracao * 100, 0) + ' da meta &mdash; \u00e9 onde a marca da barra de ritmo est\u00e1.');
+    '<b>projeção</b> do mês pelo ritmo de hoje. No dia ' + n0(c.dias) + ' o certo é ter ' +
+    pct(c.fracao * 100, 0) + ' da meta &mdash; é onde a marca da barra de ritmo está.');
 
   /* Os dois numeros de lead nao sao o mesmo lead, e sem dizer isso o cartao
      de Meta Ads parece maior que o total - o que faria duvidar da tela toda. */
   const leadsPlataforma = soma(c.md, r => r.leadsTotal);
   const krL = c.kr('novos leads');
   if (krL && krL.resultado && leadsPlataforma > krL.resultado) {
-    h += aviso('atencao', '<b>H\u00e1 duas contagens de lead, e elas n\u00e3o s\u00e3o o mesmo lead.</b> ' +
-      'O Meta conta <b>' + n0(leadsPlataforma) + '</b> na plataforma (cada formul\u00e1rio, conversa e evento de pixel) ' +
-      'e o CRM registrou <b>' + n0(krL.resultado) + '</b> no m\u00eas. A diferen\u00e7a costuma ser lead duplicado, ' +
+    h += aviso('atencao', '<b>Há duas contagens de lead, e elas não são o mesmo lead.</b> ' +
+      'O Meta conta <b>' + n0(leadsPlataforma) + '</b> na plataforma (cada formulário, conversa e evento de pixel) ' +
+      'e o CRM registrou <b>' + n0(krL.resultado) + '</b> no mês. A diferença costuma ser lead duplicado, ' +
       'evento contado duas vezes ou lead que nunca chegou a virar registro. ' +
-      'Os indicadores de custo usam o n\u00famero do <b>CRM</b> quando ele existe &mdash; \u00e9 o que virou gente de verdade.');
+      'Os indicadores de custo usam o número do <b>CRM</b> quando ele existe &mdash; é o que virou gente de verdade.');
   }
   h += gradeDestaque(K.prequal);
 
   h += '<div class="secao-titulo">Comparativos</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Atingimento dos principais', '\u00danica escala em que indicadores de unidades diferentes dividem o gr\u00e1fico: percentual da meta de refer\u00eancia. A linha tracejada marca 100%.',
+  h += cartao('Atingimento dos principais', 'Única escala em que indicadores de unidades diferentes dividem o gráfico: percentual da meta de referência. A linha tracejada marca 100%.',
     vizAtingimento(K.prequal, { rotuloW: 236 }));
 
-  h += cartao('Leads do Meta Ads, m\u00eas a m\u00eas', 'Campanha paga pelos insights do Meta; o org\u00e2nico vem da planilha de Metas e s\u00f3 existe no m\u00eas corrente e no anterior.',
+  h += cartao('Leads do Meta Ads, mês a mês', 'Campanha paga pelos insights do Meta; o orgânico vem da planilha de Metas e só existe no mês corrente e no anterior.',
     (() => {
       const xs = c.serie;
       return vizColunas({ dados: xs.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k),
           v: soma(c.serieMd(k), r => r.leadsTotal) })),
         cor: 'var(--s1)', nome: 'Leads do Meta Ads', rotulos: false }) +
         (c.vProd(c.prod, 'leads (organico)') != null
-          ? '<div style="font-size:0.7rem;color:var(--texto-muted);margin-top:0.5rem;line-height:1.5">Org\u00e2nico em ' +
+          ? '<div style="font-size:0.7rem;color:var(--texto-muted);margin-top:0.5rem;line-height:1.5">Orgânico em ' +
             esc(c.rotMes) + ': <b style="color:var(--texto-2)">' + n0(c.vProd(c.prod, 'leads (organico)')) + '</b> leads.</div>' : '');
     })());
 
-  h += cartao('Este m\u00eas x m\u00eas anterior', 'Mesma unidade nas duas barras: volume de cada etapa at\u00e9 a reuni\u00e3o.',
-    vizGrupos({ x: ['Reuni\u00f5es marcadas', 'Reuni\u00f5es realizadas'],
+  h += cartao('Este mês x mês anterior', 'Mesma unidade nas duas barras: volume de cada etapa até a reunião.',
+    vizGrupos({ x: ['Reuniões marcadas', 'Reuniões realizadas'],
       fmt: n0, series: [
         { nome: rotuloMesCurto(c.ant), vals: [c.marcAnt.length, c.reunAnt.length], cor: 'var(--s4)' },
         { nome: rotuloMesCurto(c.mes), vals: [c.marc.length, c.reun.length], cor: 'var(--s1)' }
       ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s1)' }]));
   h += '</div>';
 
-  h += '<div class="secao-titulo">Diagn\u00f3stico da pr\u00e9-venda</div>';
+  h += '<div class="secao-titulo">Diagnóstico da pré-venda</div>';
   h += '<div style="font-size:0.73rem;color:var(--texto-muted);line-height:1.5;margin:-0.35rem 0 0.9rem;max-width:74ch">' +
-    'O detalhe que se consulta quando um principal acende. Indicador com borda tracejada n\u00e3o tem fonte: ' +
-    'o p\u00e9 do cart\u00e3o diz o que falta para ele existir.</div>';
-  h += blocoEsp(preVenda.t || 'Pr\u00e9-venda (SDR)', preVenda.s, preVenda.l);
+    'O detalhe que se consulta quando um principal acende. Indicador com borda tracejada não tem fonte: ' +
+    'o pé do cartão diz o que falta para ele existir.</div>';
+  h += blocoEsp(preVenda.t || 'Pré-venda (SDR)', preVenda.s, preVenda.l);
 
-  h += '<div class="secao-titulo">Todos os indicadores da pr\u00e9-qualifica\u00e7\u00e3o</div>';
-  h += tabelaKpi('kpi-prequal', todos, 'Indicadores da pr\u00e9-qualifica\u00e7\u00e3o');
+  if (!parcial) {
+    h += '<div class="secao-titulo">Todos os indicadores da pré-qualificação</div>';
+    h += tabelaKpi('kpi-prequal', todos, 'Indicadores da pré-qualificação');
+  }
   return h;
 }
 
@@ -6206,23 +6233,34 @@ function prequalIndicadores() {
    A metade de baixo: da reuniao realizada ate o honorario assinado - e o
    custo do que foi preciso para chegar la.
    ========================================================================== */
-function fechamentoIndicadores() {
+function fechamentoIndicadores(parcial) {
   const c = ctxAreaMemo();
   const K = kpisArea('comercial');
-  const grupos = K.grupos.filter(g => g.t.indexOf('Pr\u00e9-venda') !== 0);
+  const grupos = K.grupos.filter(g => g.t.indexOf('Pré-venda') !== 0);
   const todos = K.fecha.concat(grupos.reduce((a, g) => a.concat(g.l), []));
 
-  let h = barraTela(c, true);
-  h += resumoArea(todos);
+  let h = '';
+  if (!parcial) h += barraTela(c, true) + resumoArea(todos);
+  h += '<div class="secao-titulo' + (parcial ? '' : ' primeiro') + '">Atendimento e fechamento &middot; principais</div>';
   h += gradeDestaque(K.fecha);
 
   h += '<div class="secao-titulo">Comparativos</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Atingimento dos principais', '\u00danica escala em que indicadores de unidades diferentes dividem o gr\u00e1fico: percentual da meta de refer\u00eancia. A linha tracejada marca 100%.',
+  h += cartao('Atingimento dos principais', 'Única escala em que indicadores de unidades diferentes dividem o gráfico: percentual da meta de referência. A linha tracejada marca 100%.',
     vizAtingimento(K.fecha, { rotuloW: 236 }));
 
-  h += cartao('Reuni\u00e3o e fechamento &middot; este m\u00eas x anterior', 'Mesma unidade nas duas barras.',
-    vizGrupos({ x: ['Reuni\u00f5es realizadas', 'Clientes'],
+  h += cartao('Reuniões realizadas x clientes fechados', 'Mesma escala (contagem), por isso dividem o gráfico. A distância entre as linhas é o que a reunião não converteu.',
+    (() => {
+      const rr = evolucao((DADOS.atend && DADOS.atend.reg || []).filter(x => x.dAtend), x => x.dAtend);
+      const cl = evolucao((DADOS.clientes && DADOS.clientes.reg || []), x => x.dFecha);
+      return vizLinhas({ x: rr.map(x => x.k), fmt: n0, series: [
+        { nome: 'Reuniões', vals: rr.map(x => x.v), cor: 'var(--s1)' },
+        { nome: 'Clientes', vals: cl.map(x => x.v), cor: 'var(--s3)' }
+      ] }) + legenda([{ nome: 'Reuniões', cor: 'var(--s1)' }, { nome: 'Clientes', cor: 'var(--s3)' }]);
+    })());
+
+  h += cartao('Reunião e fechamento &middot; este mês x anterior', 'Mesma unidade nas duas barras.',
+    vizGrupos({ x: ['Reuniões realizadas', 'Clientes'],
       fmt: n0, series: [
         { nome: rotuloMesCurto(c.ant), vals: [c.reunAnt.length, c.cliAnt.length], cor: 'var(--s4)' },
         { nome: rotuloMesCurto(c.mes), vals: [c.reun.length, c.cli.length], cor: 'var(--s1)' }
@@ -6231,19 +6269,19 @@ function fechamentoIndicadores() {
   /* A barra conta CLIENTES, nao honorario: fechamento condicionado a liminar
      entra como R$ 0, e uma barra de zero esconderia que o canal trouxe
      cliente. O honorario e o ticket vao no balao. */
-  h += cartao('Clientes por natureza da origem', 'O \u00fanico corte pago x n\u00e3o pago que existe em n\u00edvel de registro. Honor\u00e1rio e ticket no bal\u00e3o &mdash; a barra conta cliente, porque fechamento em liminar entra como R$ 0.',
+  h += cartao('Clientes por natureza da origem', 'O único corte pago x não pago que existe em nível de registro. Honorário e ticket no balão &mdash; a barra conta cliente, porque fechamento em liminar entra como R$ 0.',
     (() => {
       const d = NATS.map(nat => ({ nat: nat, itens: porNat(c.cli, nat) })).filter(x => x.itens.length);
       return d.length ? vizBarras({ rotuloW: 170, nome: 'Clientes',
         dados: d.map(x => ({ k: ROT_NAT[x.nat], v: x.itens.length, cor: COR_NAT[x.nat],
-          extra: [{ rot: 'Honor\u00e1rios', val: brl0(soma(x.itens, r => r.honIni)) },
-                  { rot: 'Ticket m\u00e9dio', val: ticketMedio(x.itens) == null ? '\u2014' : brl0(ticketMedio(x.itens)) }] })) })
-        : '<div class="vazio">Sem clientes no m\u00eas selecionado.</div>';
+          extra: [{ rot: 'Honorários', val: brl0(soma(x.itens, r => r.honIni)) },
+                  { rot: 'Ticket médio', val: ticketMedio(x.itens) == null ? '—' : brl0(ticketMedio(x.itens)) }] })) })
+        : '<div class="vazio">Sem clientes no mês selecionado.</div>';
     })());
 
   /* Ticket por produto: a barra e o ticket, e o balao traz o volume. Produto
      com 1 ou 2 clientes fica fora - a media de dois casos nao e um ticket. */
-  h += cartao('Ticket m\u00e9dio por produto jur\u00eddico', 'S\u00f3 produtos com 3 ou mais clientes no m\u00eas: abaixo disso a m\u00e9dia \u00e9 um caso, n\u00e3o um pre\u00e7o.',
+  h += cartao('Ticket médio por produto jurídico', 'Só produtos com 3 ou mais clientes no mês: abaixo disso a média é um caso, não um preço.',
     (() => {
       const g = agrupar(c.cli, r => r.produto).filter(x => x.itens.length >= 3 && ticketMedio(x.itens) != null)
         .map(x => ({ k: x.k, t: ticketMedio(x.itens), n: x.itens.length,
@@ -6251,12 +6289,12 @@ function fechamentoIndicadores() {
         .sort((a2, b2) => b2.t - a2.t);
       if (!g.length) return '<div class="vazio">Nenhum produto com 3 ou mais clientes em ' + esc(c.rotMes) + '.</div>';
       const geral = ticketMedio(c.cli);
-      return vizBarras({ rotuloW: 220, fmt: brl0, nome: 'Ticket m\u00e9dio', ref: geral,
+      return vizBarras({ rotuloW: 220, fmt: brl0, nome: 'Ticket médio', ref: geral,
         dados: g.map((x, i) => ({ k: x.k, v: x.t, cor: corSerie(i),
           extra: [{ rot: 'Clientes', val: n0(x.n) },
-                  { rot: 'Honor\u00e1rios', val: brl0(x.hon) },
-                  { rot: 'Sem honor\u00e1rio inicial', val: n0(semTicket(x.itens)) }] })) }) +
-        (geral != null ? '<div style="font-size:0.7rem;color:var(--texto-muted);margin-top:0.5rem">A linha tracejada \u00e9 o ticket m\u00e9dio geral do m\u00eas: <b style="color:var(--texto-2)">' + brl0(geral) + '</b>.</div>' : '');
+                  { rot: 'Honorários', val: brl0(x.hon) },
+                  { rot: 'Sem honorário inicial', val: n0(semTicket(x.itens)) }] })) }) +
+        (geral != null ? '<div style="font-size:0.7rem;color:var(--texto-muted);margin-top:0.5rem">A linha tracejada é o ticket médio geral do mês: <b style="color:var(--texto-2)">' + brl0(geral) + '</b>.</div>' : '');
     })());
   h += '</div>';
 
@@ -6265,29 +6303,31 @@ function fechamentoIndicadores() {
   if (!K.totEtapa) {
     h += '<div class="cartao"><div class="vazio">Nenhum fechamento registrado na esteira em ' + esc(c.rotMes) + '.</div></div>';
   } else {
-    h += aviso('info', 'O degrau \u00e9 lido do pr\u00f3prio follow up: o FUP mais alto marcado <b>Feito</b> \u00e9 onde a venda aconteceu ' +
-      '(1 = oferta de 24h, 7 = D21 Buckner, 8 = D28 honor\u00e1rios em liminar, 9 = D45 apenas \u00eaxito). ' +
-      'Quando <i>Tipo de Contrato (Honor\u00e1rios)</i> est\u00e1 preenchido, ele manda: diz a oferta que fechou, n\u00e3o s\u00f3 quando o toque aconteceu.');
+    h += aviso('info', 'O degrau é lido do próprio follow up: o FUP mais alto marcado <b>Feito</b> é onde a venda aconteceu ' +
+      '(1 = oferta de 24h, 7 = D21 Buckner, 8 = D28 honorários em liminar, 9 = D45 apenas êxito). ' +
+      'Quando <i>Tipo de Contrato (Honorários)</i> está preenchido, ele manda: diz a oferta que fechou, não só quando o toque aconteceu.');
     h += '<div class="grid g-2">';
-    h += cartao('Participa\u00e7\u00e3o de cada oferta', 'Sobre os ' + n0(K.totEtapa) + ' fechamentos do m\u00eas.',
+    h += cartao('Participação de cada oferta', 'Sobre os ' + n0(K.totEtapa) + ' fechamentos do mês.',
       vizDonut({ centro: n0(K.totEtapa), centroRot: 'fechamentos',
         dados: K.porEtapa.filter(x => x.n).map(x => ({ k: x.rot, v: x.n, cor: x.cor })) }));
-    h += cartao('Fechamentos por degrau', 'Em quantidade e em percentual do m\u00eas.',
+    h += cartao('Fechamentos por degrau', 'Em quantidade e em percentual do mês.',
       vizBarras({ rotuloW: 210, nome: 'Fechamentos',
         dados: K.porEtapa.map(x => ({ k: x.rot, v: x.n, cor: x.cor,
-          extra: [{ rot: 'Do m\u00eas', val: pct(taxa(x.n, K.totEtapa), 1) }] })) }));
+          extra: [{ rot: 'Do mês', val: pct(taxa(x.n, K.totEtapa), 1) }] })) }));
     h += '</div>';
   }
 
   /* ----- Especialista ----- */
-  h += '<div class="secao-titulo">Diagn\u00f3stico do gestor comercial</div>';
+  h += '<div class="secao-titulo">Diagnóstico do gestor comercial</div>';
   h += '<div style="font-size:0.73rem;color:var(--texto-muted);line-height:1.5;margin:-0.35rem 0 0.9rem;max-width:74ch">' +
-    'O detalhe que se consulta quando um principal acende. Indicador com borda tracejada n\u00e3o tem fonte: ' +
-    'o p\u00e9 do cart\u00e3o diz o que falta para ele existir.</div>';
+    'O detalhe que se consulta quando um principal acende. Indicador com borda tracejada não tem fonte: ' +
+    'o pé do cartão diz o que falta para ele existir.</div>';
   grupos.forEach(g => { h += blocoEsp(g.t, g.s, g.l); });
 
-  h += '<div class="secao-titulo">Todos os indicadores do fechamento</div>';
-  h += tabelaKpi('kpi-fechamento', todos, 'Indicadores de negocia\u00e7\u00e3o e fechamento');
+  if (!parcial) {
+    h += '<div class="secao-titulo">Todos os indicadores do fechamento</div>';
+    h += tabelaKpi('kpi-fechamento', todos, 'Indicadores de negociação e fechamento');
+  }
   return h;
 }
 
@@ -6367,101 +6407,31 @@ function telaAreaMarketing() {
   h += tabelaKpi('kpi-marketing', todos, 'Indicadores de marketing');
   return h;
 }
-
-/* ==========================================================================
-   TELA - PAINEL SEMANAL  (os 5 primeiros de cada area, 15 no total)
-   --------------------------------------------------------------------------
-   A regra e do proprio gestor: 15 indicadores na semana, e o diagnostico
-   abre so quando um deles fica vermelho. O painel implementa isso ao pe da
-   letra - cada principal em alerta ganha o atalho para a area onde o detalhe
-   dele mora.
-   ========================================================================== */
-const TOPO5 = {
-  trafego:   ['cacMidia', 'cplQual', 'custoConversa', 'txQual', 'roi'],
-  marketing: ['leadsOrg', 'pctIndicacao', 'socialSeller', 'seguidores', 'conteudo'],
-  comercial: ['clientes', 'fat', 'txFecha', 'primeiraResposta', 'noshow']
-};
-
-function telaSemanal() {
-  const c = ctxAreaMemo();
-  const T = kpisArea('trafego'), M = kpisArea('marketing'), C = kpisArea('comercial');
-
-  /* Os cinco primeiros de cada area podem vir dos principais ou do bloco de
-     especialista - "tempo de 1a resposta" e "custo por lead qualificado" sao
-     dos top 5 e vivem no diagnostico. Procuro nos dois. */
-  const achar = (pacote, chave) => {
-    const todos = (pacote.principais || []).concat(
-      (pacote.prequal || []), (pacote.fecha || []),
-      (pacote.grupos || []).reduce((a, g) => a.concat(g.l), []));
-    return todos.find(k => k.k === chave) || null;
-  };
-  const areas = [
-    { k: 'trafego',   rot: 'Tráfego pago',  sub: 'O que a verba virou',            tela: 'trafego',   pac: T },
-    { k: 'marketing', rot: 'Marketing',     sub: 'O que chega sem verba',          tela: 'marketing', pac: M },
-    { k: 'comercial', rot: 'Comercial',     sub: 'O que a operação fecha',         tela: 'comercial', pac: C }
-  ].map(a => Object.assign(a, {
-    lista: TOPO5[a.k].map(ch => achar(a.pac, ch)).filter(Boolean).map(k => Object.assign({}, k, { tela: a.tela }))
-  }));
-
-  const quinze = areas.reduce((a, x) => a.concat(x.lista), []);
-  const vermelhos = quinze.filter(k => !k.falta && alertaK(k));
-
-  let h = barraTela(c, false);
-  h += aviso('info', '<b>Cinco indicadores por área, quinze no total.</b> É o recorte que se olha toda semana. ' +
-    'O resto &mdash; são mais de 120 &mdash; fica no diagnóstico de cada área, para abrir quando um destes acende. ' +
-    'Indicador com borda tracejada não tem fonte: o pé do cartão diz o que falta.');
-  h += resumoArea(quinze);
-  /* O que pede acao hoje vem antes do que pede leitura. */
-  h += alertasOperacao();
-
-  if (vermelhos.length) {
-    h += aviso('atencao', '<b>' + n0(vermelhos.length) + ' dos quinze pedem diagnóstico:</b> ' +
-      vermelhos.map(k => '<b>' + esc(k.rot) + '</b> (' +
-        (k.inverso ? fmtK(k)(k.valor) + ' contra limite de ' + fmtK(k)(metaRefK(k))
-                   : pctOuTraco(atingK(k), 0) + ' da meta') + ') &mdash; ' +
-        '<a href="#" data-ir="' + k.tela + '">abrir ' + esc(k.tela === 'trafego' ? 'Tráfego' : k.tela === 'marketing' ? 'Marketing' : 'Comercial') + '</a>').join(' &middot; ') + '.');
-  } else if (quinze.some(k => atingK(k) != null)) {
-    h += aviso('info', 'Nenhum dos quinze está no vermelho neste recorte. Sem diagnóstico a abrir.');
-  }
-
-  areas.forEach(a => {
-    const comMeta = a.lista.filter(k => !k.falta && atingK(k) != null);
-    const verdes = comMeta.filter(k => nivelK(k) === 'ok').length;
-    h += '<div class="secao-titulo">' + esc(a.rot) +
-      '<span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--texto-muted)">&middot; ' + esc(a.sub) + '</span>' +
-      (comMeta.length ? '<span style="margin-left:auto">' + selo(nivelMeta(taxa(verdes, comMeta.length)),
-        verdes + '/' + comMeta.length + ' no verde') + '</span>' : '') +
-      '<a href="#" data-ir="' + a.tela + '" style="color:var(--azul-claro);text-transform:none;letter-spacing:0;font-weight:600">abrir área &rarr;</a></div>';
-    h += gradeDestaque(a.lista);
-  });
-
-  h += '<div class="secao-titulo">Comparativo dos quinze</div>';
-  h += cartao('Atingimento da meta de referência', 'Percentual da meta &mdash; a única escala que permite indicadores de unidades diferentes no mesmo gráfico. A linha tracejada marca 100%.',
-    vizAtingimento(quinze, { rotuloW: 250 }));
-  return h;
-}
 /* ==========================================================================
    MODULOS
    --------------------------------------------------------------------------
-   Quatro modulos na lateral, e dentro de cada um as abas que a leitura pede.
+   Seis itens na lateral, em dois grupos. Dentro dos que reunem muita coisa,
+   abas - porque juntar tudo num modulo nao e o mesmo que juntar tudo numa
+   TELA. Negociacao e Fechamento sozinho reune esteira, vendas, financeiro e
+   metas: empilhado, daria uma rolagem de varios metros onde nada se acha. A
+   aba concentra sem amontoar, e so monta o que esta a vista.
 
-   Por que abas e nao mais itens no menu: juntar tudo num modulo nao e o
-   mesmo que juntar tudo numa TELA. Negociacao e Fechamento sozinho reune
-   esteira, vendas, clientes, equipe, financeiro e metas - empilhado, daria
-   uma rolagem de varios metros onde nada se acha. A aba concentra sem
-   amontoar, e so monta o que esta a vista.
+   REGRA DESTA REORGANIZACAO: menos divisoes, nenhum dado a menos. O que saiu
+   saiu por estar em dois lugares, e o unico lugar que restou e sempre o mais
+   completo dos dois:
 
-   O que saiu por redundancia, nao por corte:
-     . "Visao Geral" repetia o Painel semanal e os principais de cada area.
-       O que ela tinha de unico - os alertas de operacao - subiu para o
-       Painel semanal.
-     . "KPIs do comercial" repetia, numa tela inteira, o quadro que hoje vem
-       dentro de cada cartao principal (realizado, meta ate hoje, meta
-       mensal, projecao).
-     . "Equipe" foi para dentro da aba de Clientes, ao lado do desempenho por
-       closer e SDR que ja estava la.
-     . "Fontes e dados" continua inteira, alcancada pelo rodape da lateral -
-       e manutencao, nao leitura diaria.
+     . "Visao Geral" repetia os principais de cada area. O que ela tinha de
+       unico - os alertas de operacao e o grafico de reunioes x clientes -
+       foi para KPIS e Dashboards.
+     . "Painel semanal" mostrava os 5 principais de cada area; cada um deles
+       ja aparece, com o quadro completo, dentro do modulo da sua area.
+     . "KPIs do comercial" repetia numa tela o quadro que hoje vem dentro de
+       cada cartao principal. A unica linha que so ela tinha - quanto falta e
+       quanto por dia - virou uma linha do quadro.
+     . "Equipe" foi para dentro de Fluxo de clientes, ao lado do desempenho
+       por closer e SDR que ja estava la.
+     . Na aba Vendas sairam a linha de KPI e as quebras por closer, produto,
+       origem e pagamento: Fluxo de clientes traz as cinco, com mais colunas.
    ========================================================================== */
 const MODULOS = {
   campanhas: [
@@ -6470,22 +6440,19 @@ const MODULOS = {
     { k: 'criativo', rot: 'Criativos' }
   ],
   prequal: [
-    { k: 'ind',     rot: 'Indicadores' },
     { k: 'produto', rot: 'Funil do produto' },
     { k: 'kommo',   rot: 'Leads do CRM' }
   ],
   fechamento: [
-    { k: 'ind',      rot: 'Indicadores' },
-    { k: 'esteira',  rot: 'Esteira' },
-    { k: 'vendas',   rot: 'Vendas' },
-    { k: 'clientes', rot: 'Clientes e equipe' },
-    { k: 'fin',      rot: 'Financeiro' },
-    { k: 'metas',    rot: 'Metas e OKRs' }
+    { k: 'esteira', rot: 'Esteira' },
+    { k: 'vendas',  rot: 'Vendas' },
+    { k: 'fin',     rot: 'Financeiro' },
+    { k: 'metas',   rot: 'Metas e OKRs' }
   ]
 };
-/* A aba escolhida fica no estado global, junto com os filtros: trocar de
+/* A aba escolhida fica no estado global, junto com os filtros: sair do
    modulo e voltar nao perde onde a pessoa estava. */
-F.aba = { campanhas: 'ind', prequal: 'ind', fechamento: 'ind' };
+F.aba = { campanhas: 'ind', prequal: 'produto', fechamento: 'esteira' };
 
 function abasDe(mod) {
   const lista = MODULOS[mod];
@@ -6499,7 +6466,8 @@ function abasDe(mod) {
 
 /* ===== ALERTAS DE OPERACAO =====
    Vinham da Visao Geral. Sao a unica coisa do painel que pede acao hoje, nao
-   leitura - por isso subiram para o Painel semanal, que e onde o dia comeca. */
+   leitura - por isso abrem o modulo de KPIS e Dashboards, que e onde o dia
+   comeca, e levam direto para a esteira. */
 function alertasOperacao() {
   const todos = (DADOS.atend && DADOS.atend.reg) || [];
   const paradas = todos.filter(r => r.parado);
@@ -6508,16 +6476,16 @@ function alertasOperacao() {
   if (paradas.length) {
     h += aviso('atencao', '<b>' + n0(paradas.length) + ' negociações em aberto sem nenhum toque há mais de 7 dias</b> ' +
       '(proposta parada: ' + brl0(soma(paradas, r => r.vInicial)) + '). ' +
-      '<a href="#" data-ir="fechamento">Abrir a esteira</a>.');
+      '<a href="#" data-ir="fechamento:esteira">Abrir a esteira</a>.');
   }
   if (fupPend.length) {
     h += aviso('atencao', '<b>' + n0(fupPend.length) + ' negociações com follow up marcado como Pendente</b> na esteira. ' +
-      '<a href="#" data-ir="fechamento">Abrir a esteira</a>.');
+      '<a href="#" data-ir="fechamento:esteira">Abrir a esteira</a>.');
   }
   return h;
 }
 
-/* ===================== OS QUATRO MODULOS ===================== */
+/* ===================== OS MODULOS ===================== */
 function moduloCampanhas() {
   return abasDe('campanhas') + telaTrafego(F.aba.campanhas);
 }
@@ -6526,21 +6494,48 @@ function moduloMarketing() {
   return telaAreaMarketing();
 }
 
+/* KPIS e Dashboards: o comercial inteiro num lugar so - as duas metades do
+   funil lado a lado, os comparativos, os fechamentos por degrau da esteira e
+   o diagnostico completo. E a tela de comando do comercial. */
+function moduloKpisDash() {
+  const c = ctxAreaMemo();
+  const K = kpisArea('comercial');
+  const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
+
+  let h = barraTela(c, true);
+  h += resumoArea(todos);
+  h += alertasOperacao();
+  if (c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das leituras que vivem sendo confundidas: ' +
+    'o <b>realizado</b>, quanto ele representa da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia, ' +
+    '<b>quanto falta e por dia</b>, e a <b>projeção</b> do mês pelo ritmo de hoje. No dia ' + n0(c.dias) +
+    ' o certo é ter ' + pct(c.fracao * 100, 0) + ' da meta — é onde a marca da barra de ritmo está.');
+
+  h += prequalIndicadores(true);
+  h += fechamentoIndicadores(true);
+
+  h += '<div class="secao-titulo">Todos os indicadores do comercial</div>';
+  h += tabelaKpi('kpi-comercial', todos, 'Indicadores do comercial');
+  return h;
+}
+
 function moduloPrequal() {
-  const a = F.aba.prequal;
-  return abasDe('prequal') + (a === 'ind' ? prequalIndicadores() : telaFunil(a));
+  return abasDe('prequal') + telaFunil(F.aba.prequal);
 }
 
 function moduloFechamento() {
   const a = F.aba.fechamento;
   let h = abasDe('fechamento');
-  if (a === 'esteira')       h += telaEsteira();
-  else if (a === 'vendas')   h += telaVendas('modulo');
-  else if (a === 'clientes') h += telaClientesFluxo('modulo') + telaEquipe('modulo');
-  else if (a === 'fin')      h += telaFinanceiro();
-  else if (a === 'metas')    h += telaMetas();
-  else                       h += fechamentoIndicadores();
+  if (a === 'vendas')      h += telaVendas('modulo');
+  else if (a === 'fin')    h += telaFinanceiro();
+  else if (a === 'metas')  h += telaMetas();
+  else                     h += telaEsteira();
   return h;
+}
+
+/* Fluxo de clientes: a replica do painel da central, inteira, mais o
+   ranking de equipe que antes era uma tela a parte. */
+function moduloClientes() {
+  return telaClientesFluxo() + telaEquipe('modulo');
 }
 /* ==========================================================================
    NAVEGACAO
@@ -6557,6 +6552,8 @@ const IC = {
   metas:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
   fin:     '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
   semanal: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="8 14 11 17 16 12"/></svg>',
+  kpisdash: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+  clientes: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>',
   campanhas: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>',
   prequal: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>',
   fechamento: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="8 10 10.5 12.5 15 8"/></svg>',
@@ -6566,19 +6563,20 @@ const IC = {
 };
 
 const TELAS = [
-  { k: 'semanal', rot: 'Painel semanal',  sub: 'Os cinco indicadores de cada área, quinze no total', fn: telaSemanal },
   { grupo: 'Áreas' },
   { k: 'campanhas', rot: 'Campanhas Meta Ads', sub: 'Do investimento ao honorário, campanha e criativo', fn: moduloCampanhas },
-  { k: 'marketing', rot: 'Marketing',     sub: 'Audiência, conteúdo, marca e demanda sem verba', fn: moduloMarketing },
+  { k: 'marketing', rot: 'Marketing',          sub: 'Audiência, conteúdo, marca e demanda sem verba', fn: moduloMarketing },
   { grupo: 'Comercial' },
-  { k: 'prequal', rot: 'Funil de Pré-Qualificação', sub: 'Do lead que chega até a reunião marcada', fn: moduloPrequal },
-  { k: 'fechamento', rot: 'Negociação e Fechamento', sub: 'Da reunião realizada ao honorário assinado', fn: moduloFechamento },
+  { k: 'kpisdash',  rot: 'KPIS e Dashboards',  sub: 'O comercial inteiro: indicadores, comparativos e diagnóstico', fn: moduloKpisDash },
+  { k: 'prequal',   rot: 'Funil de Pré-Qualificação', sub: 'Do lead que chega até a reunião marcada', fn: moduloPrequal },
+  { k: 'fechamento', rot: 'Negociação e Fechamento',  sub: 'Esteira, vendas, financeiro e metas', fn: moduloFechamento },
+  { k: 'clientes',  rot: 'Fluxo de clientes',  sub: 'Quem assina, por onde chega e quem fecha', fn: moduloClientes },
   /* Fontes e dados nao entra no menu: e manutencao, nao leitura diaria. O
-     rodape da lateral ja leva ate ela quando alguma fonte falha. */
-  { k: 'fontes',  rot: 'Fontes e dados',  sub: 'De onde vem cada número e o que falhou', fn: telaFontes, oculta: true }
+     rodape da lateral leva ate ela quando alguma fonte falha. */
+  { k: 'fontes',    rot: 'Fontes e dados',     sub: 'De onde vem cada número e o que falhou', fn: telaFontes, oculta: true }
 ];
 
-let TELA_ATIVA = 'semanal';
+let TELA_ATIVA = 'kpisdash';
 
 function montarNav() {
   const nav = document.getElementById('nav');
@@ -6790,7 +6788,15 @@ document.addEventListener('click', ev => {
     return;
   }
   const ir = ev.target.closest('[data-ir]');
-  if (ir) { ev.preventDefault(); irPara(ir.dataset.ir); return; }
+  if (ir) {
+    ev.preventDefault();
+    /* "tela:aba" leva para a tela JA na aba certa - senao o atalho deixava a
+       pessoa na porta do modulo, procurando onde estava o que ele prometeu. */
+    const [tela, aba] = ir.dataset.ir.split(':');
+    if (aba && F.aba[tela] !== undefined) F.aba[tela] = aba;
+    irPara(tela, !!aba);
+    return;
+  }
   const g = ev.target.closest('[data-grupo]');
   if (g) { F.grupo = g.dataset.grupo; redesenhar(); return; }
   const ab = ev.target.closest('[data-aba]');
