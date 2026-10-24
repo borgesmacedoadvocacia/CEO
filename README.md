@@ -84,6 +84,19 @@ Em indicador **invertido** (CAC, custo por lead, no-show) a meta é um teto, e o
 quadro escreve "Limite mensal" em vez de "Meta mensal": acima de 100% significa
 que o realizado está *dentro* do limite.
 
+### Toda tabela diz a conta de cada coluna
+
+Coluna que ninguém sabe de onde veio não é usada — ou, pior, é usada errado.
+A tabela de campanhas e as três tabelas de indicadores trazem o glossário
+**antes** da tabela: cada coluna com a conta que a produz, e a nota de uso
+(ordenar, linha sem valor, o que o CSV leva).
+
+Na tabela de campanhas, os **elegíveis** vêm do Kommo, não do Meta: é o CRM
+que sabe se o lead passou da elegibilidade. O Kommo guarda a etapa *atual* do
+lead, não a data em que ele entrou em cada etapa — então a contagem é pela
+etapa de hoje, com o lead situado no tempo pela data de criação. Está escrito
+no próprio glossário.
+
 ### Indicador sem fonte não é zero
 
 Um indicador que nenhuma planilha alimenta aparece com **borda tracejada**,
@@ -204,6 +217,12 @@ limitando a saída de dados, e recusa de execução dentro de iframe.
 > à tela de login, e para nela.
 
 ## Manutenção
+
+As três áreas são calculadas **uma vez por mês de painel** e guardadas em
+memória: sem isso, o Painel semanal varreria 11 mil leads do Kommo e os
+insights diários três vezes por clique. A memória cai quando as planilhas são
+relidas ou uma meta muda. Na prática: abrir o Painel semanal pela primeira vez
+custa ~430 ms, voltar a ele custa ~16 ms.
 
 Arquivo único (`index.html`), sem dependência externa e sem build. As colunas
 são achadas pelo **nome** do cabeçalho, com apelidos: renomear ou mover uma

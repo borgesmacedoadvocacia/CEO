@@ -713,6 +713,29 @@ if (window.self !== window.top) {
   .resumo-item:first-child { border-left: none; }
   .resumo-item b { font-size: 1.32rem; letter-spacing: -0.03em; font-weight: 650; line-height: 1.15; }
 
+  /* --- tabela explicada ---
+     Coluna que ninguem sabe de onde veio nao e usada - ou, pior, e usada
+     errado. O glossario vem antes da tabela e diz a conta de cada coluna. */
+  .tab-expl { margin: 0 0 0.85rem; padding-left: 0.85rem; border-left: 3px solid var(--azul); }
+  .tab-expl-tit {
+    font-size: 0.78rem; font-weight: 700; color: var(--texto);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.4rem;
+  }
+  .tab-expl-glo { font-size: 0.715rem; color: #8695ad; line-height: 1.65; max-width: 118ch; }
+  .tab-expl-glo b { color: var(--texto-2); font-weight: 700; }
+  .tab-expl-dica { font-size: 0.705rem; color: #6b7a93; line-height: 1.6; margin-top: 0.4rem; max-width: 118ch; }
+  .tab-expl-dica b { color: #8695ad; }
+
+  /* Barra "mostrar" acima da tabela, no padrao da central. */
+  .mostrar { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+  .mostrar-rot {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #6b7a93; font-weight: 700; margin-right: 0.15rem;
+  }
+
+  /* Celula de campanha: nome e, embaixo, de que tipo de campanha se trata. */
+  .cel-sub { display: block; font-size: 0.645rem; color: #6b7a93; line-height: 1.4; margin-top: 0.12rem; font-weight: 400; }
+
   /* --- barra da tela ---
      O cabecalho fixo ja diz em que tela se esta; repetir o nome num titulo
      logo abaixo so gastava uma linha. Aqui fica o que o cabecalho nao tem: o
@@ -854,7 +877,7 @@ if (window.self !== window.top) {
     <div class="campo-grupo">
       <label class="campo-rotulo" for="campoUsuario">Login</label>
       <input class="campo-texto" type="text" id="campoUsuario" name="username"
-             autocomplete="username" placeholder="Admin" required />
+             autocomplete="username" placeholder="CEO" required />
     </div>
     <div class="campo-grupo">
       <label class="campo-rotulo" for="campoSenha">Senha</label>
@@ -978,7 +1001,7 @@ if (window.self !== window.top) {
    planilhas ler. A chave vem de PBKDF2-SHA256 (310 mil iteracoes) sobre
    login + senha. */
 const COFRES = [
-  {"v":1,"it":310000,"salt":"SFyEWvfqWRB/X6hNNHbE2Q==","iv":"W+6BQ6rq+kzkYVvs","ct":"PHOx8BafR3pP632k2+sP8pw1xNF4kHXPAzKb9fjaIdXuKXcihZ1uSMwauYq5nm7+vny3BCsn10giIRiX74LmAOclS4w0u1BG71PEze8POGxrjN6YkaIdAXNWJ3eXlwML+jLgR1NHT9h12pYSIp0eWC0ayD9WXutNZcMzi0b9vZ+/3fVEalI5iWagqTqSEeJqWUFgAFTGT6gzT7aFX+NerJub/Q0W4Voz5GgT6aHPHf+vGDsXW1/LrdviTmat6w6TclaZbvdYpAemL6nuDQi+RjzGRvlXKP8mescNOKiPn01vGW7PTDWxI1+b3GjjzVN6P3NFe95orCEEbwGJqOxP/j6ddoNlV9FhADKGoLhu43Wu9SoWNct8C/i+u1JsYhHQjZNHr6NmknNAWN7eRcLoVQbISo3Ca+ZN3T2i5O7uBZU0eNEBZPraL7wIBD8svD6QULltPmPe2Qt8XaE7HyDBtHehZ4yCOF8ri8f8IT2AcSt2iMMYvFai3b9z+dklykMdPhSXbotP1m0gUGiXhDu5tySiT6gfKw0gLP2wekWeZxcUtiJhkMMhP6nD16ml7t8e2OUZveRjOe+iJbLy4x6sF78oj/JC76rec7YqZ39Dv2RbWmj9krY7mJSn1Cypu0aJF0gINjkKerk0/2N7ctumPtkiZYNTNWOouTo="}
+  {"v":1,"it":310000,"salt":"NhJtRXs0I0+QS3lwAEzIZA==","iv":"XKgZHz+fxlOcPFTa","ct":"lgY/vEUffmMyX21LSglsC0gGdi/XP4YrdyYMrP1Rhss/fvWYCrEi20GHDokGNXWTm8Jm+L3YamsVj8D6qaVSOMZDBnRCrYgvL039n9faoo+6zzEzU7NnrbSmi0I4H/ZUZDFAd0M6TUZnbSEWYW9Lq/dA4nqdoD6orrCc+I4xG6rDtWGNqHiDQX7d8kqRKGn+Dxv357rR1Z23WW3PwgtcHubQQzLGhdNWg/Q/qz6efAnmo0JArVocRjSftiXdtasPvAT767VFRAyJ2UltoXNpMOBNoL+1Kr7LJyBhlcVcKWM2HSnRN7DpGinpCnbuUF90IoXS6LVkOQArdfaZFPMvSExzmRcR1yWAGvwgXNoDQChPMyhVsKBHvVWDyI+ktxvbwbBUuhN1pExcJQOl1wkuxqbv6Y7g+vmo10eldfX72u49n5As0/WQ6hQPJgnjIhQor6C9m9CxSb2eKB1GIQCfE4uF6HTMsgHUXGWscVCLdeP1rSFeytmsv3JCeWPiz6CmYxuWhjDFtKN3AutXe+f8uaPhacJvpp1O9924W6+6bG4fzWPHj3debtCF05iFxAz4k3Z+ymOhleVNSGhARwpAnfWskTytF93wcff2icFtYRSx3GcKm00kk3aKbWz/Odrts4NA1TiVtVJKshII6neJYLDoxNjhS8cjwgc="}
 ];
 
 const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
@@ -1641,7 +1664,7 @@ async function carregarMetaCamp() {
   const m = mapear(t, {
     idCamp: ['ID da campanha'], campanha: ['Campanha'], status: ['Status'],
     statusEf: ['Status efetivo'], objetivo: ['Objetivo'], orcDia: ['Orcamento diario'],
-    orcVit: ['Orcamento vitalicio'], conjAtivos: ['Conjuntos ativos'],
+    orcVit: ['Orcamento vitalicio'], origemOrc: ['Origem do orcamento'], conjAtivos: ['Conjuntos ativos'],
     inicio: ['Inicio'], fim: ['Fim']
   });
   const reg = t.linhas.map(l => ({
@@ -1651,6 +1674,7 @@ async function carregarMetaCamp() {
     objetivo: m.cel(l, 'objetivo'),
     orcDia: num(m.cel(l, 'orcDia')),
     orcVit: num(m.cel(l, 'orcVit')),
+    origemOrc: m.cel(l, 'origemOrc'),
     conjAtivos: num(m.cel(l, 'conjAtivos')),
     inicio: parseData(m.cel(l, 'inicio')),
     fim: parseData(m.cel(l, 'fim'))
@@ -2323,6 +2347,8 @@ async function carregarTudo() {
     }
   });
   ULTIMA_LEITURA = new Date();
+  /* Dado novo invalida a memoria das areas. */
+  GERACAO++;
   return DADOS;
 }
 /* ==========================================================================
@@ -2943,6 +2969,27 @@ function desenharTabela(id) {
 function repintarTabela(id) {
   const el = document.getElementById('tbl-' + id);
   if (el) el.innerHTML = desenharTabela(id);
+}
+
+/* Cabecalho de tabela explicada: titulo, glossario das colunas e a dica de
+   uso. Vai antes da tabela, nunca depois - quem le a coluna primeiro ja leu
+   errado. */
+function tabelaExplicada(titulo, glossario, dica) {
+  return '<div class="tab-expl"><div class="tab-expl-tit">' + esc(titulo) + '</div>' +
+    '<div class="tab-expl-glo">' + glossario + '</div>' +
+    (dica ? '<div class="tab-expl-dica">' + dica + '</div>' : '') + '</div>';
+}
+/* A dica de uso e sempre a mesma: vale a pena ser literal. */
+const DICA_ORDENAR = '<b>Clique no t\u00edtulo de uma coluna para ordenar</b> &mdash; clicar de novo inverte. ' +
+  'Linha sem valor fica sempre no fim. O total do rodap\u00e9 e os gr\u00e1ficos acima n\u00e3o mudam com a ordem, ' +
+  'e o bot\u00e3o CSV leva o recorte inteiro, n\u00e3o s\u00f3 as linhas \u00e0 vista.';
+
+/* Barra "mostrar" com pilulas de recorte, no padrao da central. */
+function barraMostrar(opcoes) {
+  return '<div class="mostrar"><span class="mostrar-rot">Mostrar</span>' +
+    opcoes.map(o => '<button class="btn-acao' + (o.ativa ? ' primario' : '') + '" type="button" ' +
+      o.attr + '>' + esc(o.rot) + (o.n == null ? '' :
+      ' <b style="font-variant-numeric:tabular-nums">' + n0(o.n) + '</b>') + '</button>').join('') + '</div>';
 }
 
 /* Mini barra dentro da celula - comparacao rapida sem sair da tabela. */
@@ -3898,8 +3945,8 @@ function telaTrafego() {
        existe meta de "ultimos 6 meses";
      . o DETALHE de campanha, criativo e alerta segue o filtro de periodo da
        barra de cima, porque e ali que se investiga. */
-  const c = ctxArea();
-  const KT = kpisTrafego(c);
+  const c = ctxAreaMemo();
+  const KT = kpisArea('trafego');
   const todosT = KT.principais.concat(KT.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = '';
@@ -3990,6 +4037,20 @@ function telaTrafego() {
   const cadastro = {};
   (DADOS.metaCamp ? DADOS.metaCamp.reg : []).forEach(c => { cadastro[chaveBusca(c.campanha)] = c; });
 
+  /* ELEGIVEIS POR CAMPANHA vem do KOMMO, nao do Meta: quem sabe se o lead
+     passou da elegibilidade e o CRM. O Kommo guarda a etapa ATUAL do lead,
+     nao a data em que ele entrou em cada etapa - entao a contagem e pela
+     etapa de hoje, com o lead situado no tempo pela data de criacao. Esta e
+     a diferenca para o painel da central, e ela esta escrita no glossario. */
+  const ETAPA_PASSOU = /qualificac|documenta|agendar reuniao|advbox|inviavel|pesquisa de satisfacao|diagnostic/;
+  const elegPorCamp = {};
+  (DADOS.kommo ? selKommo() : []).forEach(r => {
+    if (!r.campanha || !ETAPA_PASSOU.test(chaveBusca(r.etapa))) return;
+    const k = chaveBusca(r.campanha);
+    elegPorCamp[k] = (elegPorCamp[k] || 0) + 1;
+  });
+  const diasDoMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+
   /* Reunioes e clientes indexados pelo nome da campanha / origem. */
   const reunPorCamp = {}, cliPorCamp = {}, honPorCamp = {};
   reun.forEach(r => { const k = chaveBusca(r.campanha); if (k) reunPorCamp[k] = (reunPorCamp[k] || 0) + 1; });
@@ -4007,8 +4068,10 @@ function telaTrafego() {
     const rn = reunPorCamp[k] || 0;
     const cl = cliPorCamp[k] || 0;
     const hon = honPorCamp[k] || 0;
+    const el = elegPorCamp[k] || 0;
     return {
       campanha: g.k, gasto: g.v, leads: l, cpl: l ? g.v / l : null,
+      elegiveis: el, custoEleg: el ? g.v / el : null, taxaEleg: taxa(el, l),
       impressoes: soma(g.itens, r => r.impressoes), cliques: soma(g.itens, r => r.cliques),
       ctr: taxa(soma(g.itens, r => r.cliques), soma(g.itens, r => r.impressoes)),
       reunioes: rn, convReuniao: taxa(rn, l),
@@ -4016,7 +4079,9 @@ function telaTrafego() {
       honorarios: hon, cac: cl ? g.v / cl : null, roi: g.v ? hon / g.v : null,
       custoReuniao: rn ? g.v / rn : null,
       status: c.status || '', ativa: /^active$/i.test(c.status || ''),
-      orcDia: c.orcDia || 0, dias: new Set(g.itens.map(r => chaveMes(r.d) + r.d.getDate())).size
+      objetivo: c.objetivo || '', origemOrc: c.origemOrc || '',
+      orcDia: c.orcDia || 0, orcMes: (c.orcDia || 0) * diasDoMes,
+      dias: new Set(g.itens.map(r => chaveMes(r.d) + r.d.getDate())).size
     };
   });
   const campVis = F.soAtivas ? campanhas.filter(c => c.ativa) : campanhas;
@@ -4049,12 +4114,10 @@ function telaTrafego() {
       ' dos clientes com origem preenchida.');
   }
 
-  /* Filtro de campanhas ativas, no padrao dos botoes da esteira. */
-  h += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem">' +
-    [{ k: false, rot: 'Todas' }, { k: true, rot: 'So campanhas ativas' }].map(o =>
-      '<button class="btn-acao' + (!!F.soAtivas === o.k ? ' primario' : '') + '" type="button" data-ativas="' + o.k + '">' +
-      esc(o.rot) + ' <b style="font-variant-numeric:tabular-nums">' +
-      n0(o.k ? campanhas.filter(c => c.ativa).length : campanhas.length) + '</b></button>').join('') + '</div>';
+  h += barraMostrar([
+    { rot: 'Todas as campanhas', n: campanhas.length, ativa: !F.soAtivas, attr: 'data-ativas="false"' },
+    { rot: 'S\u00f3 as ativas', n: campanhas.filter(c => c.ativa).length, ativa: !!F.soAtivas, attr: 'data-ativas="true"' }
+  ]);
 
   h += '<div class="grid g-2">';
   h += cartao('Conversao em reuniao por campanha', 'Reunioes marcadas dividido pelos leads da campanha. So campanhas com 10 leads ou mais &mdash; abaixo disso a taxa e ruido.',
@@ -4096,32 +4159,56 @@ function telaTrafego() {
     })());
   h += '</div>';
 
+  h += tabelaExplicada('Campanha a campanha',
+    '<b>CPL</b> = gasto \u00f7 leads &middot; ' +
+    '<b>Eleg\u00edveis</b> = leads da campanha cuja etapa no Kommo j\u00e1 passou da elegibilidade ' +
+    '(qualifica\u00e7\u00e3o, documenta\u00e7\u00e3o, agendamento, diagn\u00f3stico, ADVBOX ou p\u00f3s-venda) &middot; ' +
+    '<b>Custo/eleg.</b> = gasto \u00f7 eleg\u00edveis &middot; ' +
+    '<b>Reuni\u00f5es</b> = reuni\u00f5es com esta campanha anotada na aba Reuni\u00f5es do Meta &middot; ' +
+    '<b>Conv. reun.</b> = reuni\u00f5es \u00f7 leads &middot; <b>Custo/reun.</b> = gasto \u00f7 reuni\u00f5es &middot; ' +
+    '<b>Clientes</b> = fechamentos cuja ORIGEM \u00e9 esta campanha &middot; <b>Conv. cliente</b> = clientes \u00f7 leads &middot; ' +
+    '<b>Retorno</b> = honor\u00e1rios iniciais desses clientes &middot; <b>CAC</b> = gasto \u00f7 clientes &middot; ' +
+    '<b>ROI</b> = retorno \u00f7 gasto (quanto voltou por R$ 1) &middot; ' +
+    '<b>Or\u00e7./m\u00eas</b> = or\u00e7amento di\u00e1rio \u00d7 ' + n0(diasDoMes) + ' dias do m\u00eas corrente.',
+    DICA_ORDENAR + '<br><b>O Kommo n\u00e3o guarda a data de entrada em cada etapa</b>, s\u00f3 a etapa atual: ' +
+    'os eleg\u00edveis s\u00e3o contados pela etapa de hoje e situados no tempo pela data de cria\u00e7\u00e3o do lead.');
+
   h += tabelaInterativa('trafego-tab', [
-    { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap' },
-    { k: 'status', rot: 'Status', tipo: 'txt', ord: false, html: r => !r.status ? '&mdash;' :
+    { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap',
+      html: r => esc(r.campanha) + (r.objetivo || r.origemOrc
+        ? '<span class="cel-sub">' + esc(r.objetivo) +
+          (r.origemOrc ? ' &middot; or\u00e7amento por ' + esc(r.origemOrc) : '') + '</span>' : '') },
+    { k: 'status', rot: 'Status', tipo: 'txt', ord: true, html: r => !r.status ? '&mdash;' :
       (r.ativa ? selo('ok', 'ativa') : selo('neutro', r.status.toLowerCase())) },
-    { k: 'gasto', rot: 'Investimento', tipo: 'moeda0' },
+    { k: 'orcDia', rot: 'Or\u00e7./dia', tipo: 'moeda0' },
+    { k: 'orcMes', rot: 'Or\u00e7./m\u00eas', tipo: 'moeda0' },
+    { k: 'gasto', rot: 'Gasto', tipo: 'moeda0', cls: 'forte' },
     { k: 'leads', rot: 'Leads', tipo: 'num' },
     { k: 'cpl', rot: 'CPL', tipo: 'moeda' },
-    { k: 'reunioes', rot: 'Reunioes', tipo: 'num' },
-    { k: 'convReuniao', rot: 'Conv. reuniao', tipo: 'pct', casas: 2,
-      html: r => r.convReuniao == null ? '&mdash;' : barraCelula(r.convReuniao, 5,
-        r.convReuniao >= 2 ? 'var(--s3)' : r.convReuniao >= 1 ? 'var(--s4)' : 'var(--s2)', pct(r.convReuniao, 2)) },
-    { k: 'custoReuniao', rot: 'Custo / reuniao', tipo: 'moeda0' },
+    { k: 'elegiveis', rot: 'Eleg\u00edveis', tipo: 'num', cls: 'forte',
+      html: r => !r.elegiveis ? '&mdash;' : n0(r.elegiveis) },
+    { k: 'custoEleg', rot: 'Custo/eleg.', tipo: 'moeda' },
+    { k: 'reunioes', rot: 'Reuni\u00f5es', tipo: 'num', cls: 'forte',
+      html: r => !r.reunioes ? '&mdash;' : n0(r.reunioes) },
+    { k: 'convReuniao', rot: 'Conv. reun.', tipo: 'pct', casas: 1 },
+    { k: 'custoReuniao', rot: 'Custo/reun.', tipo: 'moeda0' },
     { k: 'clientes', rot: 'Clientes', tipo: 'num' },
-    { k: 'convReunCli', rot: 'Reuniao &rarr; cliente', tipo: 'pct', casas: 1 },
-    { k: 'honorarios', rot: 'Honorarios', tipo: 'moeda0' },
+    { k: 'honorarios', rot: 'Retorno', tipo: 'moeda0', cls: 'forte' },
+    { k: 'convCliente', rot: 'Conv. cliente', tipo: 'pct', casas: 1 },
     { k: 'cac', rot: 'CAC', tipo: 'moeda0' },
-    { k: 'roi', rot: 'ROI', tipo: 'num1', ord: true,
+    { k: 'roi', rot: 'ROI', tipo: 'num1',
       html: r => r.roi == null ? '&mdash;' : (r.roi >= 3 ? selo('ok', n1(r.roi) + 'x')
         : r.roi >= 1 ? selo('atencao', n1(r.roi) + 'x') : selo('critico', n1(r.roi) + 'x')) },
     { k: 'ctr', rot: 'CTR', tipo: 'pct', casas: 2 },
-    { k: 'orcDia', rot: 'Orc. diario', tipo: 'moeda0' },
     { k: 'dias', rot: 'Dias com gasto', tipo: 'num' }
   ], campVis, { ord: 'gasto', dir: -1, titulo: 'Campanhas Meta Ads', limite: 50,
-    total: { gasto: d => brl0(soma(d, r => r.gasto)), leads: d => n0(soma(d, r => r.leads)),
+    total: { orcDia: d => brl0(soma(d, r => r.orcDia)), orcMes: d => brl0(soma(d, r => r.orcMes)),
+             gasto: d => brl0(soma(d, r => r.gasto)), leads: d => n0(soma(d, r => r.leads)),
+             elegiveis: d => n0(soma(d, r => r.elegiveis)),
              reunioes: d => n0(soma(d, r => r.reunioes)), clientes: d => n0(soma(d, r => r.clientes)),
              honorarios: d => brl0(soma(d, r => r.honorarios)),
+             cac: d => { const c2 = soma(d, r => r.clientes); return c2 ? brl0(soma(d, r => r.gasto) / c2) : ''; },
+             custoEleg: d => { const e = soma(d, r => r.elegiveis); return e ? brl(soma(d, r => r.gasto) / e) : ''; },
              cpl: d => { const l = soma(d, r => r.leads); return l ? brl(soma(d, r => r.gasto) / l) : ''; } } });
 
   /* ===== CRIATIVO ===== */
@@ -5412,28 +5499,55 @@ function vizAtingimento(lista, opc) {
   });
 }
 
-/* Tabela de diagnostico: todos os indicadores da area, com fonte declarada. */
-function tabelaKpi(id, lista, titulo) {
+/* Tabela de indicadores, no mesmo padrao da tabela de campanhas: glossario
+   antes, colunas que dizem a conta, ordenacao por qualquer uma. E a mesma
+   leitura do cartao - realizado, meta ate hoje, meta cheia, projecao -, so
+   que com a area inteira de uma vez, para comparar e ordenar. */
+function tabelaKpi(id, lista, titulo, area) {
   const linhas = lista.map(k => ({
     rot: k.rot, grupo: k.grupo || '', kk: k,
     valorTxt: k.falta ? null : (k.valor == null ? null : fmtK(k)(k.valor)),
-    valorOrd: k.valor == null ? null : k.valor,
-    metaTxt: k.meta == null ? null : fmtK(k)(k.meta),
+    valorOrd: k.falta || k.valor == null ? null : k.valor,
+    propOrd: k.falta ? null : metaRefK(k),
+    metaOrd: k.meta == null || k.meta === 0 ? null : k.meta,
+    projOrd: k.falta ? null : projecaoK(k),
     ating: k.falta ? null : atingK(k),
     fonte: k.falta ? 'sem fonte' : (k.fonte || '')
   }));
-  return tabelaInterativa(id, [
-    { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap' },
+  const emCurso = lista.length && lista[0].emCurso;
+  const cel = (r, v) => v == null ? '&mdash;' : fmtK(r.kk)(v);
+
+  let h = tabelaExplicada(titulo,
+    '<b>Realizado</b> = o que j\u00e1 entrou no m\u00eas &middot; ' +
+    '<b>Meta at\u00e9 hoje</b> = a meta mensal rateada pelos dias j\u00e1 corridos, nos indicadores que acumulam ' +
+    '(em taxa, ticket e custo nada se rateia: a meta cheia vale o m\u00eas todo) &middot; ' +
+    '<b>Meta mensal</b> = a meta cheia; em indicador invertido (CAC, custo, no-show) ela \u00e9 um <b>teto</b> &middot; ' +
+    '<b>Proje\u00e7\u00e3o</b> = onde o m\u00eas termina se o ritmo de hoje continuar &middot; ' +
+    '<b>Atingimento</b> = realizado \u00f7 meta at\u00e9 hoje; no indicador invertido a conta se inverte, ' +
+    'e acima de 100% quer dizer <b>dentro do limite</b> &middot; ' +
+    '<b>De onde vem</b> = a planilha, a coluna ou a conta que produz o n\u00famero.',
+    DICA_ORDENAR + '<br>Linha com <b>sem fonte</b> n\u00e3o \u00e9 zero: \u00e9 indicador que nenhuma planilha ' +
+    'alimenta hoje. O cart\u00e3o dele, acima, diz o que falta para ele existir.');
+
+  h += tabelaInterativa(id, [
+    { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap',
+      html: r => esc(r.rot) + (r.kk.inverso ? '<span class="cel-sub">menos \u00e9 melhor</span>' : '') },
     { k: 'grupo', rot: 'Bloco', tipo: 'txt' },
-    { k: 'valorOrd', rot: 'Realizado', tipo: 'num',
-      html: r => r.valorTxt == null ? '<span class="marca-sem">sem fonte</span>' : '<b style="color:var(--texto)">' + r.valorTxt + '</b>' },
-    { k: 'metaTxt', rot: 'Meta', tipo: 'txt', ord: false,
-      html: r => r.metaTxt == null ? '<span style="color:var(--texto-muted)">sem meta</span>'
-        : r.metaTxt + (r.kk.inverso ? ' <span style="color:var(--texto-muted)">(teto)</span>' : '') },
+    { k: 'valorOrd', rot: 'Realizado', tipo: 'num', cls: 'forte',
+      html: r => r.valorTxt == null
+        ? '<span class="marca-sem">sem fonte</span>'
+        : '<b style="color:var(--texto)">' + r.valorTxt + '</b>' },
+    { k: 'propOrd', rot: emCurso ? 'Meta at\u00e9 hoje' : 'Meta do m\u00eas', tipo: 'num',
+      html: r => r.propOrd == null ? '<span style="color:var(--texto-muted)">sem meta</span>' : cel(r, r.propOrd) },
+    { k: 'metaOrd', rot: 'Meta mensal', tipo: 'num',
+      html: r => r.metaOrd == null ? '&mdash;'
+        : cel(r, r.metaOrd) + (r.kk.inverso ? ' <span style="color:var(--texto-muted)">(teto)</span>' : '') },
+    { k: 'projOrd', rot: 'Proje\u00e7\u00e3o', tipo: 'num', html: r => cel(r, r.projOrd) },
     { k: 'ating', rot: 'Atingimento', tipo: 'num',
       html: r => r.ating == null ? '&mdash;' : selo(nivelMeta(r.ating), pct(r.ating, 0)) },
     { k: 'fonte', rot: 'De onde vem', tipo: 'txt', cls: 'wrap' }
   ], linhas, { titulo: titulo, limite: 80, ativa: false });
+  return h;
 }
 
 /* Barra da tela: o mes do recorte e os controles dele, numa linha so.
@@ -5456,8 +5570,37 @@ function barraTela(c, comMetas) {
 }
 
 /* ==========================================================================
-   CONTEXTO MENSAL  -  um unico recorte, montado uma vez por desenho de tela
+   CONTEXTO MENSAL  -  um unico recorte, montado uma vez por mes
+   --------------------------------------------------------------------------
+   O Painel semanal monta as tres areas de uma vez e a tela de Trafego monta
+   a dela de novo: sem memoria, o painel varreria 11 mil leads e 300 mil
+   linhas de insight varias vezes por clique. O recorte so depende do MES e
+   da leitura das planilhas - nao dos filtros da barra -, entao a chave e
+   essa. GERACAO sobe quando as planilhas sao relidas ou as metas mudam.
    ========================================================================== */
+let GERACAO = 0;
+const MEMO = { chave: '', dados: {} };
+function memoAreas() {
+  const chave = (F.mesKpi || MES_ATUAL) + '|' + GERACAO;
+  if (MEMO.chave !== chave) { MEMO.chave = chave; MEMO.dados = {}; }
+  return MEMO.dados;
+}
+function ctxAreaMemo() {
+  const m = memoAreas();
+  if (!m.ctx) m.ctx = ctxArea();
+  return m.ctx;
+}
+/* Indicadores de uma area, calculados no maximo uma vez por mes. */
+function kpisArea(nome) {
+  const m = memoAreas();
+  if (!m[nome]) {
+    const c = ctxAreaMemo();
+    m[nome] = nome === 'trafego' ? kpisTrafego(c)
+            : nome === 'marketing' ? kpisMarketing(c) : kpisComercial(c);
+  }
+  return m[nome];
+}
+
 function ctxArea() {
   const mes = F.mesKpi || MES_ATUAL;
   const ant = mesMais(mes, -1);
@@ -6288,8 +6431,8 @@ function kpisComercial(c) {
    TELA - COMERCIAL
    ========================================================================== */
 function telaAreaComercial() {
-  const c = ctxArea();
-  const K = kpisComercial(c);
+  const c = ctxAreaMemo();
+  const K = kpisArea('comercial');
   const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = barraTela(c, true);
@@ -6407,8 +6550,8 @@ function telaAreaComercial() {
    TELA - MARKETING
    ========================================================================== */
 function telaAreaMarketing() {
-  const c = ctxArea();
-  const K = kpisMarketing(c);
+  const c = ctxAreaMemo();
+  const K = kpisArea('marketing');
   const todos = K.principais.concat(K.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = barraTela(c, false);
@@ -6495,8 +6638,8 @@ const TOPO5 = {
 };
 
 function telaSemanal() {
-  const c = ctxArea();
-  const T = kpisTrafego(c), M = kpisMarketing(c), C = kpisComercial(c);
+  const c = ctxAreaMemo();
+  const T = kpisArea('trafego'), M = kpisArea('marketing'), C = kpisArea('comercial');
 
   /* Os cinco primeiros de cada area podem vir dos principais ou do bloco de
      especialista - "tempo de 1a resposta" e "custo por lead qualificado" sao
@@ -7011,6 +7154,8 @@ document.addEventListener('click', ev => {
     if (v !== atuais[k]) mudou = true;
   }
   try { localStorage.setItem(K_METAS, JSON.stringify(novas)); } catch (e) {}
+  /* Meta nova muda o atingimento de toda a area: a memoria tem de cair. */
+  GERACAO++;
   if (mudou) redesenhar();
 });
 
