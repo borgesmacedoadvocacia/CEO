@@ -150,8 +150,34 @@ dados*, não como zero silencioso. Releitura automática a cada 10 minutos.
 - **Metas são por responsável.** Na planilha, `Clientes` e `Honorários` estão
   no bloco do closer, não do time. O número grande é do time; a barra de ritmo
   recorta o realizado no mesmo escopo do KR e diz de quem é a meta.
-- **Origens de lead não se encadeiam.** Orgânico, Kommo e Meta Ads são
-  paralelos: entram somados no topo, e a conversão começa na triagem.
+- **Todo lead entra no Kommo; Meta Ads e orgânico dividem esse total.**
+  `Leads (Kommo)` é o total, não uma origem ao lado de `Leads (Orgânico)` —
+  somar os dois contava o orgânico duas vezes e inflava o topo do funil, e com
+  o topo inflado toda conversão abaixo saía menor do que é. A própria planilha
+  confirma: ela encadeia *Responderam a Triagem* em cima do Kommo
+  (990 ÷ 1.100 = 90%), nunca em cima da soma. Quando não há coluna de Meta Ads
+  no mês, o pago é o total menos o orgânico — e a tela diz que é dedução.
+- **Duas contagens de lead no mesmo mês, cada uma com nome próprio.** O KR da
+  aba KPIS anota 440 em outubro e o CRM registra 795. Chamar o KR de "total" e
+  pôr 762 leads de campanha logo abaixo fazia a parte parecer maior que o todo.
+  Agora o rótulo diz de onde vem cada um: o KR carrega a meta, o total do CRM
+  fecha com os dois recortes.
+- **A profundidade da etapa é uma tabela, não uma expressão regular.** O Kommo
+  guarda a etapa atual do lead e um `etapa_ordem` que é a ordem de *exibição*
+  do pipeline — nela as caixas de perda vêm depois das de ganho (*Sem resposta:
+  ELEGIBILIDADE* é 190, *Enviado ao ADVBOX* é 120), então usá-la como
+  profundidade poria quem não respondeu a primeira pergunta acima de quem virou
+  cliente. A escada está escrita etapa a etapa no código. Era regex antes, e a
+  regex calava etapa inteira sem avisar: `/documenta/` não casa com *Sem
+  resposta: AGUARDANDO DOCUMENTO* por uma letra, e 944 leads que já tinham
+  passado da qualificação contavam como não elegíveis; `/qualificac/` também
+  não casa com *Desqualificado*. Etapa nova que apareça no CRM fica com
+  profundidade desconhecida — entra no total, em degrau nenhum, e a tela diz
+  quantos leads estão assim.
+- **Etapa não é tempo.** *Conversão por etapa* era um gráfico de linhas: a
+  linha promete continuidade entre pontos, e entre *Elegíveis* e *Diagnósticos*
+  não há continuidade nenhuma — são categorias. Virou barra lado a lado, que
+  compara as duas taxas dentro da mesma etapa.
 - **Avanço ≠ acumulado.** Avanço é sobre a etapa anterior; acumulado é sobre o
   topo. São taxas diferentes e o painel mostra as duas.
 - **Antes de acusar, medir se dá para acusar.** O painel calcula a cobertura da

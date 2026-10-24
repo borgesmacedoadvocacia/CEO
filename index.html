@@ -1914,9 +1914,13 @@ function lerKpis(linhas, mesEsperado) {
    e as abas de meses diferentes nao tem as mesmas colunas - por isso cada
    rotulo e reduzido a uma destas chaves antes de virar dado. */
 const ETAPA_ROT = {
-  'leads (organico)': 'Leads (Orgânico)',
-  'leads (kommo)': 'Leads (Kommo)',
-  'leads (meta ads)': 'Leads (Meta Ads)',
+  /* Os rotulos dizem a relacao entre as tres linhas: Kommo e o TOTAL (todo
+     lead entra nele) e as outras duas sao recortes de dentro dele. Com os
+     nomes antigos as tres pareciam origens paralelas, e o painel chegava a
+     soma-las. */
+  'leads (organico)': 'Leads · orgânicos',
+  'leads (kommo)': 'Leads · total (CRM)',
+  'leads (meta ads)': 'Leads · Meta Ads',
   'leads abordados ou que falaram no whatsapp': 'Leads abordados / WhatsApp',
   'responderam a triagem': 'Responderam a triagem',
   'elegiveis': 'Elegíveis',
@@ -3524,23 +3528,35 @@ function telaFunil(aba) {
     const ordem = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)', 'responderam a triagem', 'elegiveis',
       'responderam a qualificacao', 'qualificados (aguardando documentacao)', 'diagnosticos', 'viaveis',
       'atendimentos realizados', 'clientes'];
-    /* As linhas de ORIGEM de lead (Organico, Kommo, Meta Ads) sao paralelas
-       entre si, nao etapas em sequencia: encadear uma na outra produziria
-       "conversao de 1.981%". Elas entram somadas como topo do funil, e a
-       cadeia de conversao comeca na triagem. */
+    /* ===== TODO LEAD ENTRA NO KOMMO =====
+       "Leads (Kommo)" nao e uma origem ao lado de "Leads (Organico)": e o
+       TOTAL, e o organico e um pedaco de dentro dele. Somar os dois, como
+       esta tela fazia, contava o organico duas vezes e inflava o topo do
+       funil - e com o topo inflado toda conversao abaixo saia menor do que
+       e. A propria planilha confirma a relacao: a projecao encadeia
+       "Responderam a Triagem" em cima do Kommo (990 de 1.100 = 90%), nunca
+       em cima da soma.
+       Entao: o total e o Kommo, o organico e recorte, e o pago e o que
+       resta quando a planilha nao traz coluna propria de Meta Ads. */
     const FONTES_LEAD = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)',
                          'leads abordados ou que falaram no whatsapp'];
     const valorDe = k => (atual.real && atual.real[k] != null && atual.real[k] !== '') ? num(atual.real[k]) : null;
 
-    const origens = FONTES_LEAD.map(k => {
-      const v = valorDe(k);
-      if (!v) return null;
-      const e = atual.etapas.find(x => x.k === k);
-      return { k: (e && e.rot) || k, v: v };
-    }).filter(Boolean);
-    const totalLeads = origens.reduce((a, o) => a + o.v, 0);
+    const leadsOrg = valorDe('leads (organico)');
+    const leadsPagoCol = valorDe('leads (meta ads)');
+    const totalLeads = valorDe('leads (kommo)') ||
+      ((leadsOrg || 0) + (leadsPagoCol || 0)) || null;
+    /* Sem coluna propria de Meta Ads, o pago e o que resta do total depois
+       do organico. E deducao, nao registro, e o cartao diz isso. */
+    const pagoDeduzido = leadsPagoCol == null && !!totalLeads && leadsOrg != null;
+    const leadsPago = leadsPagoCol != null ? leadsPagoCol
+      : (pagoDeduzido ? Math.max(0, totalLeads - leadsOrg) : null);
+    const origens = [
+      leadsPago ? { k: 'Leads · Meta Ads', v: leadsPago } : null,
+      leadsOrg ? { k: 'Leads · orgânicos', v: leadsOrg } : null
+    ].filter(Boolean);
 
-    const etapas = totalLeads ? [{ k: 'Leads (todas as origens)', v: totalLeads }] : [];
+    const etapas = totalLeads ? [{ k: 'Leads · total (CRM)', v: totalLeads }] : [];
     ordem.filter(k => FONTES_LEAD.indexOf(k) < 0).forEach(k => {
       const v = valorDe(k);
       if (!v) return;
@@ -3552,12 +3568,15 @@ function telaFunil(aba) {
       (atual.medicao ? 'medicao de ' + esc(atual.medicao) : rotuloMes(MES_ATUAL)) + '</div>';
     h += aviso('info', 'Este funil vem da aba <b>Produtos Juridicos</b> da planilha de Metas &mdash; ' +
       'e a contagem que o time mantem a mao. A percentagem ao lado de cada etapa e a conversao sobre a etapa anterior. ' +
-      'As origens de lead entram somadas no topo (elas sao paralelas, nao etapas em sequencia).');
+      'O topo e o <b>total de leads do CRM</b>: todo lead entra no Kommo, e Meta Ads e organico sao recortes ' +
+      'de dentro desse total &mdash; por isso eles nao se somam ao total, eles o dividem.');
     h += '<div class="grid g-2">';
     h += cartao('Funil realizado no mês', 'Volume por etapa e conversão etapa a etapa.', vizFunil(etapas));
 
     if (origens.length > 1) {
-      h += cartao('De onde vieram os leads do mês', 'Origens somadas no topo do funil.',
+      h += cartao('De onde vieram os leads do mês',
+        'Recortes de dentro do total do CRM — Meta Ads mais orgânico fecha no total.' +
+        (pagoDeduzido ? ' A planilha não tem coluna de Meta Ads neste mês: o pago aqui é o total menos o orgânico.' : ''),
         /* Barra horizontal ja carrega o proprio rotulo: legenda aqui seria
            repetir a mesma lista duas vezes. */
         vizBarras({ dados: origens.map((o, i) => ({ k: o.k, v: o.v, cor: corSerie(i),
@@ -3568,12 +3587,17 @@ function telaFunil(aba) {
        original da celula (R$, %, decimal) em vez de reformatar - assim a
        linha de ROI nao vira "2" no lugar de "2,02". */
     const cel = (o, k) => (o && o[k] != null && o[k] !== '') ? String(o[k]).trim() : '';
-    const linhas = atual.etapas.map(e => ({
-      etapa: e.rot,
+    /* A planilha poe "Leads (Organico)" na primeira coluna, antes do total.
+       Na tela isso virava o recorte em cima do todo. A ordem aqui e a da
+       leitura: total, depois as duas origens que o dividem, depois o funil
+       na sequencia da propria planilha. */
+    const PRIMEIRO = { 'leads (kommo)': 1, 'leads (meta ads)': 2, 'leads (organico)': 3 };
+    const linhas = atual.etapas.map((e, i) => ({
+      etapa: e.rot, ordem: PRIMEIRO[e.k] || (10 + i),
       real: num(cel(atual.real, e.k)),        realTxt: cel(atual.real, e.k),
       projProp: num(cel(atual.projProp, e.k)), projPropTxt: cel(atual.projProp, e.k),
       projMes: num(cel(atual.projMes, e.k)),   projMesTxt: cel(atual.projMes, e.k)
-    })).filter(l => l.realTxt || l.projMesTxt);
+    })).filter(l => l.realTxt || l.projMesTxt).sort((x, y) => x.ordem - y.ordem);
     const txtOuNum = (txt, n) => txt ? esc(txt) : (n ? n0(n) : '&mdash;');
 
     h += cartao('Realizado x projetado', 'Comparacao com a projeção proporcional (ritmo esperado para hoje) e com a meta cheia do mês.',
@@ -3713,12 +3737,37 @@ function telaFunil(aba) {
         return { etapa: e.rot, real: numPct(r), proj: numPct(pj) };
       }).filter(Boolean);
       if (tx.length) {
+        /* ===== ETAPA NAO E TEMPO =====
+           Isto era um grafico de linhas. A linha liga um ponto no outro e
+           promete continuidade entre eles - entre "Elegiveis" e
+           "Diagnosticos" nao ha continuidade nenhuma, sao categorias. E,
+           esticada na largura da tela, a linha virava um sismografo de oito
+           picos. Barra lado a lado compara as duas taxas DENTRO da mesma
+           etapa, que e a pergunta que o cartao faz. */
+        const CURTO_ETAPA = {
+          'Responderam a triagem': 'Triagem',
+          'Responderam a qualificação': 'Resp. qualif.',
+          'Qualificados (aguardando documentação)': 'Qualificados',
+          'Atendimentos realizados': 'Atendimentos'
+        };
+        const rotEtapa = e => CURTO_ETAPA[e] || (e.length > 14 ? e.slice(0, 13) + '…' : e);
         h += '<div class="secao-titulo">Taxas de conversão &middot; real x projetada</div>';
-        h += cartao('Conversão por etapa', 'Onde a operação esta acima e abaixo do que o modelo assume.',
-          vizLinhas({ x: tx.map(t => t.etapa.length > 14 ? t.etapa.slice(0, 13) + '…' : t.etapa), fmt: v => pct(v, 0),
+        h += '<div class="grid g-2">';
+        h += cartao('Conversão por etapa', 'Cada etapa sobre a anterior. Duas barras na mesma etapa: o que o modelo assume e o que aconteceu.',
+          vizGrupos({ altura: 248, x: tx.map(t => rotEtapa(t.etapa)),
+            fmt: v => pct(v, 0), fmtEixo: v => n0(v) + '%',
             series: [{ nome: 'Projetada', vals: tx.map(t => t.proj), cor: 'var(--s4)' },
                      { nome: 'Real', vals: tx.map(t => t.real), cor: 'var(--s1)' }] }) +
           legenda([{ nome: 'Projetada', cor: 'var(--s4)' }, { nome: 'Real', cor: 'var(--s1)' }]));
+        h += cartao('Distância do modelo, etapa a etapa',
+          'Tamanho do desvio em pontos percentuais. Verde é etapa acima do projetado, vermelho é abaixo — o sinal está no número.',
+          vizBarras({ rotuloW: 190, nome: 'Desvio',
+            fmt: v => (v > 0 ? '+' : '') + n1(v) + ' p.p.',
+            dados: tx.slice().sort((a2, b2) => (a2.real - a2.proj) - (b2.real - b2.proj))
+              .map(t => ({ k: rotEtapa(t.etapa), v: t.real - t.proj,
+                cor: t.real >= t.proj ? 'var(--s3)' : 'var(--s2)',
+                extra: [{ rot: 'Projetada', val: pct(t.proj, 0) }, { rot: 'Real', val: pct(t.real, 0) }] })) }));
+        h += '</div>';
       }
     }
   } else if (p && p.atualErro) {
@@ -4029,6 +4078,87 @@ function telaVendas(modo) {
 /* ==========================================================================
    TELA 5 - TRAFEGO (META ADS)
    ========================================================================== */
+/* ===== A TABELA DE CAMPANHAS, USADA EM DUAS ABAS =====
+   Ela nasceu na aba Campanhas, mas e tambem a resposta imediata a quase todo
+   indicador da aba Indicadores: "o custo por lead elegivel subiu - em qual
+   campanha?". Fica numa funcao so porque duas copias divergiriam na primeira
+   coluna nova. O filtro "so as ativas" vem junto: tabela e filtro separados
+   deixariam uma das copias sem o botao.
+   O id do quadro se repete nas duas abas, e isso e proposital - elas nunca
+   estao na tela ao mesmo tempo, e assim a ordenacao escolhida numa vale na
+   outra. */
+function blocoCampanhas(campanhas, campVis, diasDoMes) {
+  let h = '';
+  h += barraMostrar([
+    { rot: 'Todas as campanhas', n: campanhas.length, ativa: !F.soAtivas, attr: 'data-ativas="false"' },
+    { rot: 'S\u00f3 as ativas', n: campanhas.filter(c => c.ativa).length, ativa: !!F.soAtivas, attr: 'data-ativas="true"' }
+  ]);
+  h += tabelaExplicada('Campanha a campanha',
+    '<b>CPL</b> = gasto \u00f7 leads &middot; ' +
+    '<b>Eleg\u00edveis</b> = leads da campanha cuja etapa no Kommo j\u00e1 passou da elegibilidade &mdash; ' +
+    'qualifica\u00e7\u00e3o, documenta\u00e7\u00e3o, an\u00e1lise de viabilidade, agendamento, ADVBOX ou pesquisa de ' +
+    'satisfa\u00e7\u00e3o &middot; ' +
+    '<b>Custo/eleg.</b> = gasto \u00f7 eleg\u00edveis &middot; ' +
+    '<b>Reuni\u00f5es</b> = reuni\u00f5es com esta campanha anotada na aba Reuni\u00f5es do Meta &middot; ' +
+    '<b>Conv. reun.</b> = reuni\u00f5es \u00f7 leads &middot; <b>Custo/reun.</b> = gasto \u00f7 reuni\u00f5es &middot; ' +
+    '<b>Clientes</b> = fechamentos cuja ORIGEM \u00e9 esta campanha &middot; <b>Conv. cliente</b> = clientes \u00f7 leads &middot; ' +
+    '<b>Retorno</b> = honor\u00e1rios iniciais desses clientes &middot; <b>CAC</b> = gasto \u00f7 clientes &middot; ' +
+    '<b>ROI</b> = retorno \u00f7 gasto (quanto voltou por R$ 1) &middot; ' +
+    '<b>Or\u00e7./dia</b> e <b>Or\u00e7./m\u00eas</b> = soma do or\u00e7amento das campanhas <b>ativas</b> com este nome, ' +
+    'a segunda multiplicada por ' + n0(diasDoMes) + ' dias do m\u00eas corrente.',
+    DICA_ORDENAR +
+    '<br><b>O total desta tabela pode ficar abaixo do cart\u00e3o da \u00e1rea</b>, e isso n\u00e3o \u00e9 erro: ' +
+    'aqui s\u00f3 h\u00e1 linha para campanha que <b>gastou no per\u00edodo escolhido</b>. Cliente que veio de uma ' +
+    'campanha pausada, renomeada ou de outro m\u00eas continua contado no cart\u00e3o de Clientes do m\u00f3dulo, ' +
+    'que olha a ORIGEM do fechamento e n\u00e3o o investimento do per\u00edodo. S\u00e3o duas perguntas diferentes.' +
+    '<br><b>O Kommo n\u00e3o guarda a data de entrada em cada etapa</b>, s\u00f3 a etapa atual: ' +
+    'os eleg\u00edveis s\u00e3o contados pela etapa de hoje e situados no tempo pela data de cria\u00e7\u00e3o do lead.' +
+    '<br><b>Campanhas de mesmo nome entram na mesma linha</b>, e a linha avisa quando isso acontece. ' +
+    'Tem de ser assim porque o CRM anota o <i>nome</i> da campanha, n\u00e3o o ID: separar por ID quebraria ' +
+    'a liga\u00e7\u00e3o com reuni\u00e3o e cliente.');
+
+  h += tabelaInterativa('trafego-tab', [
+    { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap',
+      html: r => esc(r.campanha) + (r.objetivo || r.origemOrc || r.homonimas > 1
+        ? '<span class="cel-sub">' + esc(r.objetivo) +
+          (r.origemOrc ? ' &middot; or\u00e7amento por ' + esc(r.origemOrc) : '') +
+          (r.homonimas > 1 ? ' &middot; <b style="color:#f3c45a">' + n0(r.homonimas) +
+            ' campanhas com este nome</b>' : '') + '</span>' : '') },
+    { k: 'status', rot: 'Status', tipo: 'txt', ord: true, html: r => !r.status ? '&mdash;' :
+      (r.ativa ? selo('ok', 'ativa') : selo('neutro', r.status.toLowerCase())) },
+    { k: 'orcDia', rot: 'Or\u00e7./dia', tipo: 'moeda0' },
+    { k: 'orcMes', rot: 'Or\u00e7./m\u00eas', tipo: 'moeda0' },
+    { k: 'gasto', rot: 'Gasto', tipo: 'moeda0', cls: 'forte' },
+    { k: 'leads', rot: 'Leads', tipo: 'num' },
+    { k: 'cpl', rot: 'CPL', tipo: 'moeda' },
+    { k: 'elegiveis', rot: 'Eleg\u00edveis', tipo: 'num', cls: 'forte',
+      html: r => !r.elegiveis ? '&mdash;' : n0(r.elegiveis) },
+    { k: 'custoEleg', rot: 'Custo/eleg.', tipo: 'moeda' },
+    { k: 'reunioes', rot: 'Reuni\u00f5es', tipo: 'num', cls: 'forte',
+      html: r => !r.reunioes ? '&mdash;' : n0(r.reunioes) },
+    { k: 'convReuniao', rot: 'Conv. reun.', tipo: 'pct', casas: 1 },
+    { k: 'custoReuniao', rot: 'Custo/reun.', tipo: 'moeda0' },
+    { k: 'clientes', rot: 'Clientes', tipo: 'num' },
+    { k: 'honorarios', rot: 'Retorno', tipo: 'moeda0', cls: 'forte' },
+    { k: 'convCliente', rot: 'Conv. cliente', tipo: 'pct', casas: 1 },
+    { k: 'cac', rot: 'CAC', tipo: 'moeda0' },
+    { k: 'roi', rot: 'ROI', tipo: 'num1',
+      html: r => r.roi == null ? '&mdash;' : (r.roi >= 3 ? selo('ok', n1(r.roi) + 'x')
+        : r.roi >= 1 ? selo('atencao', n1(r.roi) + 'x') : selo('critico', n1(r.roi) + 'x')) },
+    { k: 'ctr', rot: 'CTR', tipo: 'pct', casas: 2 },
+    { k: 'dias', rot: 'Dias com gasto', tipo: 'num' }
+  ], campVis, { ord: 'gasto', dir: -1, titulo: 'Campanhas Meta Ads', limite: 50,
+    total: { orcDia: d => brl0(soma(d, r => r.orcDia)), orcMes: d => brl0(soma(d, r => r.orcMes)),
+             gasto: d => brl0(soma(d, r => r.gasto)), leads: d => n0(soma(d, r => r.leads)),
+             elegiveis: d => n0(soma(d, r => r.elegiveis)),
+             reunioes: d => n0(soma(d, r => r.reunioes)), clientes: d => n0(soma(d, r => r.clientes)),
+             honorarios: d => brl0(soma(d, r => r.honorarios)),
+             cac: d => { const c2 = soma(d, r => r.clientes); return c2 ? brl0(soma(d, r => r.gasto) / c2) : ''; },
+             custoEleg: d => { const e = soma(d, r => r.elegiveis); return e ? brl(soma(d, r => r.gasto) / e) : ''; },
+             cpl: d => { const l = soma(d, r => r.leads); return l ? brl(soma(d, r => r.gasto) / l) : ''; } } });
+  return h;
+}
+
 function telaTrafego(aba) {
   aba = aba || 'ind';
   if (ERROS.metaDia) return aviso('critico', '<b>Insights do Meta Ads nao entraram:</b> ' + esc(ERROS.metaDia));
@@ -4089,9 +4219,11 @@ function telaTrafego(aba) {
 
   h += '<div class="secao-titulo">Todos os indicadores da area</div>';
   h += tabelaKpi('kpi-trafego', todosT, 'Indicadores de tráfego');
-  /* A aba de indicadores para aqui: assim ela nem monta o recorte de
-     campanha, que varre os insights dia a dia. */
-  if (aba === 'ind') return h;
+  /* A aba de indicadores segue ate a tabela de campanhas: era ela que
+     faltava aqui. Todo indicador desta tela ("custo por lead elegivel",
+     "conversao de lead em reuniao") tem a mesma pergunta em seguida - em
+     qual campanha? -, e ate agora a resposta estava noutra aba. O custo e
+     montar o recorte de campanha tambem aqui; vale o que custa. */
 
   if (aba === 'camp') {
   h += '<div class="secao-titulo primeiro">Evolução &middot; ' + esc(rotuloPeriodo()) + '</div>';
@@ -4229,10 +4361,6 @@ function telaTrafego(aba) {
       ' dos clientes com origem preenchida.');
   }
 
-  h += barraMostrar([
-    { rot: 'Todas as campanhas', n: campanhas.length, ativa: !F.soAtivas, attr: 'data-ativas="false"' },
-    { rot: 'S\u00f3 as ativas', n: campanhas.filter(c => c.ativa).length, ativa: !!F.soAtivas, attr: 'data-ativas="true"' }
-  ]);
 
   h += '<div class="grid g-2">';
   h += cartao('Conversão em reunião por campanha', 'Reuniões marcadas dividido pelos leads da campanha. Só campanhas com 10 leads ou mais &mdash; abaixo disso a taxa e ruido.',
@@ -4274,63 +4402,17 @@ function telaTrafego(aba) {
     })());
   h += '</div>';
 
-  h += tabelaExplicada('Campanha a campanha',
-    '<b>CPL</b> = gasto \u00f7 leads &middot; ' +
-    '<b>Eleg\u00edveis</b> = leads da campanha cuja etapa no Kommo j\u00e1 passou da elegibilidade ' +
-    '(qualifica\u00e7\u00e3o, documenta\u00e7\u00e3o, agendamento, diagn\u00f3stico, ADVBOX ou p\u00f3s-venda) &middot; ' +
-    '<b>Custo/eleg.</b> = gasto \u00f7 eleg\u00edveis &middot; ' +
-    '<b>Reuni\u00f5es</b> = reuni\u00f5es com esta campanha anotada na aba Reuni\u00f5es do Meta &middot; ' +
-    '<b>Conv. reun.</b> = reuni\u00f5es \u00f7 leads &middot; <b>Custo/reun.</b> = gasto \u00f7 reuni\u00f5es &middot; ' +
-    '<b>Clientes</b> = fechamentos cuja ORIGEM \u00e9 esta campanha &middot; <b>Conv. cliente</b> = clientes \u00f7 leads &middot; ' +
-    '<b>Retorno</b> = honor\u00e1rios iniciais desses clientes &middot; <b>CAC</b> = gasto \u00f7 clientes &middot; ' +
-    '<b>ROI</b> = retorno \u00f7 gasto (quanto voltou por R$ 1) &middot; ' +
-    '<b>Or\u00e7./dia</b> e <b>Or\u00e7./m\u00eas</b> = soma do or\u00e7amento das campanhas <b>ativas</b> com este nome, ' +
-    'a segunda multiplicada por ' + n0(diasDoMes) + ' dias do m\u00eas corrente.',
-    DICA_ORDENAR + '<br><b>O Kommo n\u00e3o guarda a data de entrada em cada etapa</b>, s\u00f3 a etapa atual: ' +
-    'os eleg\u00edveis s\u00e3o contados pela etapa de hoje e situados no tempo pela data de cria\u00e7\u00e3o do lead.' +
-    '<br><b>Campanhas de mesmo nome entram na mesma linha</b>, e a linha avisa quando isso acontece. ' +
-    'Tem de ser assim porque o CRM anota o <i>nome</i> da campanha, n\u00e3o o ID: separar por ID quebraria ' +
-    'a liga\u00e7\u00e3o com reuni\u00e3o e cliente.');
+  h += blocoCampanhas(campanhas, campVis, diasDoMes);
+  }
 
-  h += tabelaInterativa('trafego-tab', [
-    { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap',
-      html: r => esc(r.campanha) + (r.objetivo || r.origemOrc || r.homonimas > 1
-        ? '<span class="cel-sub">' + esc(r.objetivo) +
-          (r.origemOrc ? ' &middot; or\u00e7amento por ' + esc(r.origemOrc) : '') +
-          (r.homonimas > 1 ? ' &middot; <b style="color:#f3c45a">' + n0(r.homonimas) +
-            ' campanhas com este nome</b>' : '') + '</span>' : '') },
-    { k: 'status', rot: 'Status', tipo: 'txt', ord: true, html: r => !r.status ? '&mdash;' :
-      (r.ativa ? selo('ok', 'ativa') : selo('neutro', r.status.toLowerCase())) },
-    { k: 'orcDia', rot: 'Or\u00e7./dia', tipo: 'moeda0' },
-    { k: 'orcMes', rot: 'Or\u00e7./m\u00eas', tipo: 'moeda0' },
-    { k: 'gasto', rot: 'Gasto', tipo: 'moeda0', cls: 'forte' },
-    { k: 'leads', rot: 'Leads', tipo: 'num' },
-    { k: 'cpl', rot: 'CPL', tipo: 'moeda' },
-    { k: 'elegiveis', rot: 'Eleg\u00edveis', tipo: 'num', cls: 'forte',
-      html: r => !r.elegiveis ? '&mdash;' : n0(r.elegiveis) },
-    { k: 'custoEleg', rot: 'Custo/eleg.', tipo: 'moeda' },
-    { k: 'reunioes', rot: 'Reuni\u00f5es', tipo: 'num', cls: 'forte',
-      html: r => !r.reunioes ? '&mdash;' : n0(r.reunioes) },
-    { k: 'convReuniao', rot: 'Conv. reun.', tipo: 'pct', casas: 1 },
-    { k: 'custoReuniao', rot: 'Custo/reun.', tipo: 'moeda0' },
-    { k: 'clientes', rot: 'Clientes', tipo: 'num' },
-    { k: 'honorarios', rot: 'Retorno', tipo: 'moeda0', cls: 'forte' },
-    { k: 'convCliente', rot: 'Conv. cliente', tipo: 'pct', casas: 1 },
-    { k: 'cac', rot: 'CAC', tipo: 'moeda0' },
-    { k: 'roi', rot: 'ROI', tipo: 'num1',
-      html: r => r.roi == null ? '&mdash;' : (r.roi >= 3 ? selo('ok', n1(r.roi) + 'x')
-        : r.roi >= 1 ? selo('atencao', n1(r.roi) + 'x') : selo('critico', n1(r.roi) + 'x')) },
-    { k: 'ctr', rot: 'CTR', tipo: 'pct', casas: 2 },
-    { k: 'dias', rot: 'Dias com gasto', tipo: 'num' }
-  ], campVis, { ord: 'gasto', dir: -1, titulo: 'Campanhas Meta Ads', limite: 50,
-    total: { orcDia: d => brl0(soma(d, r => r.orcDia)), orcMes: d => brl0(soma(d, r => r.orcMes)),
-             gasto: d => brl0(soma(d, r => r.gasto)), leads: d => n0(soma(d, r => r.leads)),
-             elegiveis: d => n0(soma(d, r => r.elegiveis)),
-             reunioes: d => n0(soma(d, r => r.reunioes)), clientes: d => n0(soma(d, r => r.clientes)),
-             honorarios: d => brl0(soma(d, r => r.honorarios)),
-             cac: d => { const c2 = soma(d, r => r.clientes); return c2 ? brl0(soma(d, r => r.gasto) / c2) : ''; },
-             custoEleg: d => { const e = soma(d, r => r.elegiveis); return e ? brl(soma(d, r => r.gasto) / e) : ''; },
-             cpl: d => { const l = soma(d, r => r.leads); return l ? brl(soma(d, r => r.gasto) / l) : ''; } } });
+  if (aba === 'ind') {
+    h += '<div class="secao-titulo">Campanha a campanha</div>';
+    h += aviso('info', 'A mesma tabela da aba <b>Campanhas</b>, aqui para responder de imediato ' +
+      'o "em qual campanha?" que todo indicador acima levanta. Ela segue o <b>filtro de per\u00edodo</b> ' +
+      'da barra de cima (' + esc(rotuloPeriodo()) + '), e nao o mes dos indicadores &mdash; os dois ' +
+      'recortes convivem na tela de proposito, e cada bloco diz qual usa.');
+    h += blocoCampanhas(campanhas, campVis, diasDoMes);
+    return h;
   }
 
   /* ===== CRIATIVO ===== */
@@ -5296,14 +5378,70 @@ const NATS = ['ads', 'organico', 'indicacao', 'base', 'outras'];
    lead se situa no tempo pela data de criacao. As duas regras ficam aqui, e
    nao dentro da tela, para a tabela de campanhas e os indicadores da area
    nunca discordarem sobre o mesmo lead. */
-const ETAPA_ELEGIVEL    = /qualificac|documenta|agendar reuniao|advbox|inviavel|pesquisa de satisfacao|diagnostic/;
-const ETAPA_QUALIFICADO = /documenta|agendar reuniao|advbox|inviavel|pesquisa de satisfacao|diagnostic/;
-/* Conversa iniciada, na definicao da casa: o lead avancou para elegivel OU
-   para inelegivel. Quem travou na primeira mensagem nao chega a ser avaliado
-   e fica de fora. Nao da para usar o campo de triagem do Kommo: o coletor o
-   preenche em 673 de 674 leads, entao ele nao separa ninguem. */
-const ETAPA_CONVERSA = /qualificac|documenta|agendar reuniao|advbox|inviavel|pesquisa de satisfacao|diagnostic|inelegivel/;
-const houveConversa = r => ETAPA_CONVERSA.test(chaveBusca(r.etapa));
+/* ===== A ESCADA DO FUNIL COMERCIAL =====
+   A profundidade de cada etapa esta escrita aqui, uma linha por etapa real
+   do CRM, e NAO sai do campo "etapa_ordem" do Kommo: aquela e a ordem de
+   EXIBICAO do pipeline, e nela as caixas de perda vem depois das de ganho
+   ("Sem resposta: ELEGIBILIDADE" e 190, "Enviado ao ADVBOX" e 120). Usa-la
+   como profundidade poria quem nao respondeu a primeira pergunta acima de
+   quem virou cliente.
+
+   Tabela, e nao expressao regular, porque a regex calava etapa inteira sem
+   avisar: /documenta/ nao casa com "Sem resposta: AGUARDANDO DOCUMENTO" por
+   uma letra, e 944 leads que ja tinham passado da qualificacao contavam como
+   nao elegiveis. /qualificac/ tambem nao casa com "Desqualificado". E havia
+   um ramo /diagnostic/ que nao casa com etapa nenhuma do CRM - sugeria uma
+   etapa de diagnostico que nunca existiu ali.
+
+   Etapa que aparecer no CRM e nao estiver nesta tabela fica com profundidade
+   DESCONHECIDA: entra no total, nao entra em degrau nenhum, e a tela diz
+   quantos leads estao nessa situacao. Inventar o degrau seria pior. */
+const DEG = { ENTRADA: 0, ELEGIBILIDADE: 1, QUALIFICACAO: 2, DOCUMENTACAO: 3,
+              DIAGNOSTICO: 4, REUNIAO: 5, ATENDIDO: 6 };
+const ESCADA = [
+  [DEG.ENTRADA,       ['incoming leads', 'entrada de leads']],
+  [DEG.ELEGIBILIDADE, ['aguardando forms', 'sem resposta: elegibilidade', 'inelegivel']],
+  [DEG.QUALIFICACAO,  ['analise de qualificacao', 'respondeu fup qualificacao',
+                       'sem resposta: qualificacao', 'desqualificado']],
+  [DEG.DOCUMENTACAO,  ['respondeu fup documentacao', 'sem resposta: aguardando documento']],
+  [DEG.DIAGNOSTICO,   ['analise de viabilidade', 'inviavel (nao tem abusividade)']],
+  [DEG.REUNIAO,       ['agendar reuniao', 'sem resposta: agendar reuniao']],
+  [DEG.ATENDIDO,      ['enviado ao advbox', 'pesquisa de satisfacao']]
+];
+const MAPA_DEGRAU = (() => {
+  const m = {};
+  ESCADA.forEach(par => par[1].forEach(nome => { m[nome] = par[0]; }));
+  return m;
+})();
+function degrauLead(r) {
+  const k = chaveBusca(r && r.etapa);
+  if (!k) return null;
+  if (MAPA_DEGRAU[k] != null) return MAPA_DEGRAU[k];
+  /* O funil de Follow Up repete a etapa com o numero do toque na frente
+     ("FUP 5 - Qualificacao"). O toque nao muda a profundidade. */
+  if (/^fup \d+ ?- ?qualificacao$/.test(k)) return DEG.QUALIFICACAO;
+  if (/^fup \d+ ?- ?documentacao$/.test(k)) return DEG.DOCUMENTACAO;
+  return null;
+}
+const passouDe = (r, d) => { const x = degrauLead(r); return x != null && x >= d; };
+const semDegrau = r => degrauLead(r) == null;
+/* Elegivel = passou da elegibilidade, ou seja, ja esta na qualificacao ou
+   adiante. Qualificado = ja esta na documentacao ou adiante. */
+const ehElegivel    = r => passouDe(r, DEG.QUALIFICACAO);
+const ehQualificado = r => passouDe(r, DEG.DOCUMENTACAO);
+/* Diagnostico = o calculo foi feito (analise de viabilidade em diante).
+   Positivo = o calculo fechou com direito a revisar, isto e, nao parou em
+   "Inviavel (Nao tem abusividade)". */
+const ehDiagnostico = r => passouDe(r, DEG.DIAGNOSTICO);
+const ehViavel = r => passouDe(r, DEG.DIAGNOSTICO) &&
+  chaveBusca(r.etapa).indexOf('inviavel') < 0;
+/* Conversa iniciada, na definicao da casa: o lead foi AVALIADO - avancou
+   para a qualificacao ou recebeu "Inelegivel". Quem travou na primeira
+   mensagem nao chega a ser avaliado e fica de fora. Nao da para usar o campo
+   de triagem do Kommo: o coletor o preenche em 673 de 674 leads, entao ele
+   nao separa ninguem. */
+const houveConversa = r => passouDe(r, DEG.QUALIFICACAO) ||
+  chaveBusca(r.etapa) === 'inelegivel';
 /* "-" aparece como campanha em centenas de leads: e ausencia de atribuicao,
    nao uma campanha chamada traco. */
 const temCampanha   = r => !!r.campanha && r.campanha.trim() !== '' && r.campanha.trim() !== '-';
@@ -5322,8 +5460,6 @@ const ehFunilSocial = r => /instagram/i.test(r.funil || '');
 /* Etapas do funil social, na ordem em que a conversa avanca. */
 const IG_PEDIU_CONTATO = /telefone solicitado|ja esta no wpp/;
 const IG_FOI_PARA_WPP  = /ja esta no wpp/;
-const ehElegivel    = r => ETAPA_ELEGIVEL.test(chaveBusca(r.etapa));
-const ehQualificado = r => ETAPA_QUALIFICADO.test(chaveBusca(r.etapa));
 
 /* ===== DEGRAU DA ESTEIRA EM QUE O FECHAMENTO ACONTECEU =====
    A esteira tem 9 follow ups com significado proprio: 1 = oferta de 24h,
@@ -6368,6 +6504,36 @@ function kpisComercial(c) {
   const organico = c.vProd(c.prod, 'leads (organico)');
   const crm = c.vProd(c.prod, 'leads (kommo)');
 
+  /* ===== O CORTE POR ORIGEM QUE O CRM JA TEM =====
+     A planilha de Metas anota elegivel, qualificado e diagnostico NO TOTAL,
+     sem separar pago de organico. O corte nao esta na planilha, mas esta no
+     Kommo: lead de campanha tem o nome da campanha anotado, lead organico
+     nao tem. Com a escada de etapas, da para contar os dois lados pela etapa
+     de hoje de cada lead.
+
+     O que este corte NAO e: nao e a mesma contagem da planilha. A planilha
+     conta um produto e tem data de medicao propria; aqui estao todos os
+     leads comerciais do mes, pela data de criacao. Por isso o total da
+     planilha continua sendo o numero oficial e este corte entra como
+     PROPORCAO entre as duas origens, nunca no lugar do total. */
+  const koCom = c.koCom || [];
+  const koPago = koCom.filter(temCampanha);
+  const koOrg = koCom.filter(r => !temCampanha(r));
+  const semEscada = koCom.filter(semDegrau).length;
+  const temCorte = c.temKommo && koCom.length > 0;
+  const corte = fn => ({ pago: koPago.filter(fn).length, org: koOrg.filter(fn).length });
+  const corteEleg = corte(ehElegivel), corteQual = corte(ehQualificado), corteDiag = corte(ehDiagnostico);
+  const faltaCorte = temCorte ? null
+    : 'Depende da planilha <b>Leads Kommo</b>, que não entrou nesta leitura.';
+  const notaCorte = o => temCorte
+    ? n0(o.pago) + ' de campanha &middot; ' + n0(o.org) + ' sem campanha anotada'
+    : null;
+  const dicaCorte = 'Lido do CRM pela etapa de hoje de cada lead: com campanha anotada é Meta Ads, ' +
+    'sem campanha é orgânico ou outra origem. Não é a contagem da planilha de Metas — esta cobre todos ' +
+    'os leads comerciais do mês e aquela cobre um produto, com data de medição própria. O total oficial ' +
+    'continua sendo o da planilha; aqui está a proporção entre as duas origens.' +
+    (semEscada ? ' ' + n0(semEscada) + ' lead(s) estão numa etapa que o painel não sabe situar no funil e ficam fora dos dois lados.' : '');
+
   const krLeads = c.kr('novos leads'), krEleg = c.kr('leads elegiveis'),
         krQual = c.kr('leads qualificados'), krDiag = c.kr('diagnosticos'),
         krReun = c.kr('reunioes realizadas'), krNoShow = c.kr('no show'),
@@ -6400,23 +6566,66 @@ function kpisComercial(c) {
   /* ----- PRE-QUALIFICACAO ----- */
   const outras = crm != null ? Math.max(0, crm - leadsAds) : null;
   const prequal = [
-    B({ hero: true, k: 'leadsTotal', rot: 'Leads · total (CRM)', valor: krLeads ? krLeads.resultado : null,
+    /* ===== TOTAL, META ADS E ORGANICO SAIEM DA MESMA BASE =====
+       Antes "Leads (Kommo)" e "Leads (Organico)" apareciam lado a lado como
+       se fossem origens paralelas. Nao sao: TODO lead entra no Kommo, e o
+       organico e um pedaco de dentro desse total. Somar os dois contava os
+       organicos duas vezes.
+       Agora o total e o CRM e as duas origens sao recortes dele, entao
+       Meta Ads + organico fecha no total por construcao. A meta do mes
+       continua vindo do KR, que e onde ela foi combinada. */
+    B({ hero: true, k: 'leadsTotal', rot: 'Leads · total (meta do mês)', valor: krLeads ? krLeads.resultado : null,
         ant: c.krAnt('novos leads'), meta: krLeads ? krLeads.metaMes : null,
         metaProp: krLeads ? krLeads.metaProp : null, acumula: true,
         falta: krLeads ? null : 'KR Novos Leads não lido na aba KPIS ' + esc(c.nomeMes) + '.',
-        fonte: 'KR Novos Leads (Meta Ads + Orgânico + Parcerias)' }),
-    B({ k: 'leadsAds', rot: 'Leads · Meta Ads (plataforma)', valor: leadsAds, ant: leadsAdsAnt,
-        serie: c.serie.map(k => soma(c.serieMd(k), r => r.leadsTotal)),
-        fonte: 'Insights diários do Meta Ads',
-        dica: 'O Meta conta lead por plataforma e o CRM conta lead criado — os dois números não batem de propósito.' }),
-    B({ k: 'leadsOrg', rot: 'Leads · orgânicos', valor: organico,
-        nota: (organico != null && crm != null) ? 'De ' + n0(crm) + ' leads que o CRM registrou no mês' : null,
-        falta: organico == null ? 'A linha Leads (Orgânico) da aba Produtos Jurídicos não foi lida.' : null,
-        fonte: 'Produtos Jurídicos, linha Leads (Orgânico)' }),
-    doKr('eleg', 'Leads elegíveis · total', krEleg, null, { hero: true, nota: 'Sem corte por origem na planilha' }),
-    B({ k: 'elegAds', rot: 'Elegíveis, qualificados e diagnósticos por origem', falta:
-        'A planilha anota essas etapas <b>no total</b>, sem separar pago de orgânico — valendo para elegíveis, qualificados, taxa de qualificação, diagnósticos positivos e taxa de agendamento. O corte existiria com a origem marcada em cada etapa do CRM: é o que a planilha <b>Cérebro Comercial</b> já faz, e ela só abre pelo proxy. Clientes e faturamento, esses sim, têm o corte — a origem fica no registro.' }),
-    doKr('qual', 'Leads qualificados · total', krQual, null, { hero: true }),
+        fonte: 'KR Novos Leads (Meta Ads + Orgânico + Parcerias)',
+        nota: temCorte ? 'O CRM registrou ' + n0(koCom.length) + ' leads comerciais no mesmo mês' : null,
+        dica: 'Este é o KR, anotado à mão na aba KPIS, e é ele que tem meta. O CRM conta mais, porque registra todo lead criado enquanto o KR passa por uma triagem. As duas contagens vivem lado a lado de propósito: a diferença entre elas é o que ainda não foi anotado, e some sozinha quando a anotação ficar em dia.' }),
+    /* O total do CRM existe como cartao proprio porque e ELE que fecha com
+       os dois recortes abaixo. Sem ele, "Leads . Meta Ads = 762" aparecia
+       debaixo de um "total" de 440 e a parte parecia maior que o todo. */
+    B({ k: 'leadsCrmTotal', rot: 'Leads · total (CRM)', valor: temCorte ? koCom.length : null,
+        ant: (c.koComAnt || []).length || null, acumula: true,
+        falta: faltaCorte, fonte: 'Kommo, funis comerciais, pela data de criação',
+        nota: (temCorte && krLeads) ? 'O KR do mês anota ' + n0(krLeads.resultado) : null,
+        dica: 'Todo lead comercial criado no Kommo no mês, fora o funil Instagram e o Processual. É a base que os dois cartões seguintes dividem: Meta Ads mais orgânicos fecha exatamente neste número.' }),
+    B({ k: 'leadsAdsCrm', rot: 'Leads · Meta Ads', valor: temCorte ? koPago.length : null,
+        ant: (c.koComAnt || []).filter(temCampanha).length || null, acumula: true,
+        falta: faltaCorte, fonte: 'CRM: leads com campanha anotada',
+        nota: temCorte ? pct(taxa(koPago.length, koCom.length), 1) + ' dos leads do CRM' +
+          (c.koInfer ? ' &middot; ' + n0(c.koInfer) + ' com campanha deduzida pela integração' : '') : null,
+        dica: 'Lead criado no CRM com nome de campanha. A plataforma do Meta conta ' +
+          (leadsAds ? n0(leadsAds) : 'outro número') + ' no mesmo mês: ela conta lead por plataforma e o CRM conta lead criado, e a diferença costuma ser lead duplicado ou que não virou registro.' }),
+    B({ k: 'leadsOrgCrm', rot: 'Leads · orgânicos', valor: temCorte ? koOrg.length : null,
+        ant: (c.koComAnt || []).filter(r => !temCampanha(r)).length || null, acumula: true,
+        falta: faltaCorte, fonte: 'CRM: leads sem campanha anotada',
+        nota: temCorte ? pct(taxa(koOrg.length, koCom.length), 1) + ' dos leads do CRM' +
+          (organico != null ? ' &middot; a planilha de produto anota ' + n0(organico) : '') : null,
+        dica: 'Tudo que entrou no CRM sem campanha: busca, indicação, Instagram que virou WhatsApp, calculadora. Chamar de "orgânico" é uma aproximação — é o que sobra quando se tira o pago.' }),
+    doKr('eleg', 'Leads elegíveis · total', krEleg, null, { hero: true,
+      nota: temCorte ? n0(corteEleg.pago + corteEleg.org) + ' no CRM, ' + n0(corteEleg.pago) + ' deles de campanha' : null }),
+    /* ===== A TAXA QUE O PAINEL NAO MOSTRAVA =====
+       Elegiveis sobre total de leads. Os dois sao KRs da mesma aba, anotados
+       na mesma data de medicao - por isso a divisao e legitima. Dividir o
+       elegivel do CRM pelo lead do KR misturaria bases e daria uma taxa que
+       nao existe. */
+    B({ k: 'txEleg', rot: 'Taxa de elegibilidade', tipo: 'pct',
+        valor: (krEleg && krLeads) ? taxa(krEleg.resultado, krLeads.resultado) : null,
+        meta: (krEleg && krLeads) ? taxa(krEleg.metaMes, krLeads.metaMes) : null,
+        falta: (krEleg && krLeads) ? null : 'Depende dos KRs Novos Leads e Leads Elegíveis da aba KPIS ' + esc(c.nomeMes) + '.',
+        fonte: 'KR Leads Elegíveis ÷ KR Novos Leads',
+        nota: (krEleg && krLeads) ? n0(krEleg.resultado) + ' elegíveis de ' + n0(krLeads.resultado) + ' leads' : null,
+        dica: 'De cada 100 leads que entram, quantos passam da elegibilidade. Os dois números são KRs da mesma aba e da mesma data de medição — por isso dividem um pelo outro sem mistura de base.' }),
+    B({ k: 'elegOrigem', rot: 'Elegíveis · Meta Ads x orgânico', tipo: 'pct',
+        valor: temCorte ? taxa(corteEleg.pago, corteEleg.pago + corteEleg.org) : null,
+        falta: faltaCorte, fonte: 'CRM, pela etapa de hoje de cada lead',
+        nota: notaCorte(corteEleg), dica: 'Quanto dos elegíveis veio de campanha paga. ' + dicaCorte }),
+    doKr('qual', 'Leads qualificados · total', krQual, null, { hero: true,
+      nota: temCorte ? n0(corteQual.pago + corteQual.org) + ' no CRM, ' + n0(corteQual.pago) + ' deles de campanha' : null }),
+    B({ k: 'qualOrigem', rot: 'Qualificados · Meta Ads x orgânico', tipo: 'pct',
+        valor: temCorte ? taxa(corteQual.pago, corteQual.pago + corteQual.org) : null,
+        falta: faltaCorte, fonte: 'CRM, pela etapa de hoje de cada lead',
+        nota: notaCorte(corteQual), dica: 'Quanto dos qualificados veio de campanha paga. ' + dicaCorte }),
     B({ k: 'txQual', rot: 'Taxa de qualificação', tipo: 'pct',
         valor: (krQual && krLeads) ? taxa(krQual.resultado, krLeads.resultado) : null,
         meta: (krQual && krLeads) ? taxa(krQual.metaMes, krLeads.metaMes) : null,
@@ -6425,6 +6634,10 @@ function kpisComercial(c) {
     doKr('diagKr', 'Diagnósticos (cálculos)', krDiag, null,
       { nota: diagnosticos != null ? 'A aba de produto conta ' + n0(diagnosticos) + ' no recorte dela' : null,
         dica: 'O KR é da SDR e cobre todos os produtos; a aba Produtos Jurídicos conta só o produto dela e com outra data de medição.' }),
+    B({ k: 'diagOrigem', rot: 'Diagnósticos · Meta Ads x orgânico', tipo: 'pct',
+        valor: temCorte ? taxa(corteDiag.pago, corteDiag.pago + corteDiag.org) : null,
+        falta: faltaCorte, fonte: 'CRM: da análise de viabilidade em diante',
+        nota: notaCorte(corteDiag), dica: 'Quanto dos diagnósticos veio de campanha paga. ' + dicaCorte }),
     B({ k: 'diagPos', rot: 'Diagnósticos positivos', valor: viaveis,
         falta: viaveis == null ? 'A linha <b>Viáveis</b> da aba Produtos Jurídicos não foi lida.' : null,
         fonte: 'Produtos Jurídicos, linha Viáveis',
