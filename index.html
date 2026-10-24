@@ -1364,11 +1364,18 @@ async function lerAba(id, aba, opc) {
     if (PROXY_ERROS[o.fonte]) throw new Error(PROXY_ERROS[o.fonte]);
     throw new Error('o proxy nao devolveu a fonte "' + o.fonte + '"');
   }
-  /* Fontes que so existem pelo proxy (planilha privada). */
+  /* ===== FONTES QUE O PAINEL SO LE PELO PROXY =====
+     Nao e que a planilha seja privada - esta aqui para nao ser lida por
+     link MESMO quando o link funciona. A base de leads tem nome, telefone e
+     honorarios de todo mundo; lendo por link, o navegador de quem abre o
+     painel busca isso direto do Google, e o endereco da chamada carrega o ID
+     da planilha. Pelo proxy a chamada sai do servidor e o ID nunca aparece.
+     A frase nao afirma mais que a planilha e privada: isso dependia do
+     compartilhamento dela, que pode mudar sem o painel saber. */
   if (o.soProxy) {
     throw new Error(CONFIG.PROXY
       ? 'esta planilha so e lida pelo proxy, e o proxy nao respondeu'
-      : 'esta planilha e privada: so e lida pelo proxy Apps Script. Configure em "Fontes e dados".');
+      : 'o painel nao le esta planilha por link: ela traz a base inteira de leads. Publique o proxy Apps Script e configure em "Fontes e dados".');
   }
 
   let resp;
@@ -2344,7 +2351,11 @@ async function carregarKommo() {
    lead aparece em mais de uma linha - e o funil. Para contagem unica, agrupe
    por nome.
 
-   So e lida pelo proxy: a planilha e privada, e e assim que deve ficar. */
+   So e lida pelo proxy - por decisao do painel, nao porque a planilha esteja
+   fechada. Em 24/10/2026 ela estava como "qualquer pessoa com o link pode
+   ver", e o gviz devolvia as 14.463 linhas sem autenticacao. O bloqueio
+   continua de pe justamente por isso: enquanto a leitura sai do navegador de
+   quem abre o painel, o ID da planilha viaja no endereco da chamada. */
 async function carregarCerebro() {
   const linhas = await lerAba(CONFIG.SHEETS.cerebro, 'TODOS OS LEADS', {
     fonte: 'cerebro', soProxy: true, esperado: ['ESTAGIO', 'NOME']

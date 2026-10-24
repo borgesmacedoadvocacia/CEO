@@ -85,9 +85,30 @@ acima: **Compartilhar** → *Acesso geral* → **Restrito**.
 A partir daí o único caminho para o dado é o proxy, e o único jeito de passar
 pelo proxy é a senha. Confira no painel: tudo deve continuar carregando.
 
-> Comece pela **Fluxo de Atendimentos**, que hoje está como *qualquer pessoa
-> com o link* no papel de **editor** — ou seja, estranho com o link consegue
-> editar e apagar a esteira de negociação.
+### Onde cada planilha está hoje (24/10/2026)
+
+A **escrita** por link já foi fechada nas duas que estavam abertas — *Fluxo de
+Atendimentos* e *Campanhas Meta Ads* estavam como **editor** para qualquer
+pessoa com o link. Ninguém mais edita por link.
+
+Falta a **leitura**. As oito seguem como *qualquer pessoa com o link pode ver*,
+e é isso que o passo 6 resolve:
+
+| Planilha | Hoje | Depois do passo 6 |
+|---|---|---|
+| Fluxo de Atendimentos | pode ver | Restrito |
+| FLUXO DE CLIENTES [2026] | pode ver | Restrito |
+| Campanhas Meta Ads | pode ver | Restrito |
+| Metas e Resultados [NOVA] | pode ver | Restrito |
+| Metas e Resultados (antiga) | pode ver | Restrito |
+| Leads Kommo [DASHBOARDS] | pode ver | Restrito |
+| FLUXO FINANCEIRO 2026 | pode ver | Restrito |
+| TODOS OS LEADS [CÉREBRO] | pode ver | Restrito |
+
+> **Comece pelo Cérebro Comercial.** É a planilha com a base inteira de leads —
+> nome, telefone e honorários de 14.463 linhas — e é a única que o painel já
+> se recusa a ler por link. Fechá-la não tira nada da tela, porque a tela
+> ainda não a usa: ela só passa a existir no painel quando o proxy entrar.
 
 ---
 
