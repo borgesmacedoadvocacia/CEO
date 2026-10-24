@@ -253,6 +253,9 @@ if (window.self !== window.top) {
   .grid { display: grid; gap: 0.85rem; }
   .g-kpi { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
   .g-2 { grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); }
+  @media (min-width: 1180px) { .g-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* A de tres segue a mesma ideia: ou tres, ou dois - nunca um sozinho. */
+  @media (min-width: 1500px) { .g-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .g-3 { grid-template-columns: repeat(auto-fit, minmax(348px, 1fr)); }
 
   .cartao {
@@ -751,6 +754,53 @@ if (window.self !== window.top) {
     .met-fim { grid-column: 1 / -1; text-align: left; }
   }
 
+  /* --- faixa de leitura do grafico ---
+     O desenho mostra a FORMA; o numero exato, nao. Total, media, melhor
+     ponto e em quantos pontos houve movimento sao justamente o que o olho
+     nao tira da forma - e o que faz o grafico responder uma pergunta em vez
+     de so decorar o cartao. */
+  .viz-resumo {
+    display: flex; flex-wrap: wrap; gap: 0.3rem 1.5rem;
+    padding: 0 0 0.85rem; margin: -0.2rem 0 0.2rem;
+  }
+  .viz-resumo span { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
+  .viz-resumo i {
+    font-style: normal; font-size: 0.605rem; text-transform: uppercase;
+    letter-spacing: 0.075em; color: #6b7a93; font-weight: 700; white-space: nowrap;
+  }
+  .viz-resumo b {
+    font-size: 0.92rem; font-weight: 650; letter-spacing: -0.02em; color: var(--texto);
+    font-variant-numeric: tabular-nums lining-nums; white-space: nowrap;
+  }
+  @media (max-width: 640px) { .viz-resumo { gap: 0.3rem 1rem; } .viz-resumo b { font-size: 0.84rem; } }
+
+  /* --- acoes no rodape da tabela e no rodape da lateral --- */
+  .tabela-acoes { display: inline-flex; gap: 0.45rem; flex-wrap: wrap; }
+  .btn-recarregar {
+    width: 100%; margin-top: 0.5rem; display: inline-flex; align-items: center;
+    justify-content: center; gap: 0.4rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0)), var(--bg3);
+    border: 1px solid #223150; border-radius: 8px; color: var(--texto-2);
+    font-family: inherit; font-size: 0.72rem; font-weight: 600;
+    padding: 0.4rem 0.6rem; cursor: pointer; transition: background .14s, color .14s, border-color .14s;
+  }
+  .btn-recarregar:hover { background: var(--bg4); color: var(--texto); border-color: #2e4166; }
+  .btn-recarregar svg { width: 12px; height: 12px; }
+  .btn-recarregar:disabled { opacity: .6; cursor: default; }
+
+  /* --- campo de meta ---
+     Mesmo peso do numero que ele define: quem edita a meta esta olhando
+     para o lugar onde ela aparece. */
+  .campo-meta {
+    width: 100%; max-width: 132px; background: var(--bg3); border: 1px solid #223150;
+    color: var(--texto); border-radius: 8px; padding: 0.34rem 0.5rem;
+    font-family: inherit; font-size: 0.95rem; font-weight: 650; text-align: right;
+    font-variant-numeric: tabular-nums; outline: none;
+  }
+  .campo-meta:focus { border-color: var(--azul-claro); box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
+  .meta-linha .met-val { overflow: visible; }
+  .meta-linha .met-barra { gap: 0.5rem; }
+
   /* --- abas do modulo ---
      Quatro modulos na lateral, e dentro de cada um as abas que a leitura
      pede. A alternativa seria uma rolagem de quatro metros por modulo: tudo
@@ -963,8 +1013,15 @@ if (window.self !== window.top) {
       <img src="logo.png" alt="Borges Macedo Advocacia" class="sidebar-logo" onerror="this.style.display='none'" />
     </div>
     <nav class="nav" id="nav"></nav>
+    <!-- Atualizar mora aqui, junto da hora da ultima leitura: e a informacao
+         que responde "preciso atualizar?". No cabecalho, era so mais um
+         botao disputando espaco com o titulo da tela. -->
     <div class="sidebar-rodape">
       <div id="rodapeAtualizado">&mdash;</div>
+      <button class="btn-recarregar" id="btnAtualizar" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Atualizar agora
+      </button>
       <button class="btn-sair" id="btnSair" type="button">Sair</button>
     </div>
   </aside>
@@ -981,15 +1038,6 @@ if (window.self !== window.top) {
           <button class="btn-acao btn-filtros" id="btnFiltros" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
             Filtros
-          </button>
-          <button class="btn-acao" id="btnExportar" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            CSV
-          </button>
-          <button class="btn-acao" id="btnPlanilhas" type="button">Planilhas</button>
-          <button class="btn-acao primario" id="btnAtualizar" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Atualizar
           </button>
         </div>
       </div>
@@ -1020,6 +1068,7 @@ if (window.self !== window.top) {
       <section class="tela oculto" id="tela-prequal"></section>
       <section class="tela oculto" id="tela-fechamento"></section>
       <section class="tela oculto" id="tela-clientes"></section>
+      <section class="tela oculto" id="tela-metasconfig"></section>
       <section class="tela oculto" id="tela-fontes"></section>
     </div>
   </main>
@@ -2468,6 +2517,15 @@ function barraFimRedondo(x, y, w, h, r) {
          'H' + x + 'Z';
 }
 
+/* Faixa de leitura: vai ACIMA do grafico, porque quem olha quer o numero
+   antes da forma. */
+function faixaResumo(itens) {
+  const l = (itens || []).filter(x => x && x.val != null && x.val !== '');
+  if (!l.length) return '';
+  return '<div class="viz-resumo">' + l.map(i =>
+    '<span><i>' + esc(i.rot) + '</i><b>' + i.val + '</b></span>').join('') + '</div>';
+}
+
 const tipLinha = (cor, rot, val) =>
   '<div class="d-linha">' + (cor ? '<span class="d-marca" style="background:' + cor + '"></span>' : '') +
   '<span>' + rot + '</span><span class="d-val">' + val + '</span></div>';
@@ -2487,7 +2545,7 @@ const VW = 600;
 function vizColunas(o) {
   const dados = o.dados || [];
   if (!dados.length) return '<div class="vazio">Sem dados no recorte.</div>';
-  const W = VW, H = o.altura || 268;
+  const W = VW, H = o.altura || 310;
   const mE = 52, mD = 12, mT = o.rotulos === false ? 12 : 22, mB = 30;
   const fmt = o.fmt || n0;
   const topo = escalaTopo(Math.max.apply(null, dados.map(d => d.v).concat([0])));
@@ -2497,11 +2555,31 @@ function vizColunas(o) {
   const y = v => mT + ph - (v / topo) * ph;
   const passo = Math.ceil(dados.length / 12);
 
-  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
+  /* Media sobre os pontos COM movimento: dividir por dias vazios faria a
+     media despencar e dizer outra coisa. */
+  const comValor = dados.filter(d => d.v > 0);
+  const totalV = dados.reduce((a, d) => a + (d.v || 0), 0);
+  const mediaV = comValor.length ? totalV / comValor.length : 0;
+  const melhor = dados.slice().sort((a, b) => b.v - a.v)[0];
+
+  let s = '';
+  if (o.resumo !== false) s += faixaResumo([
+    { rot: 'Total no recorte', val: fmt(totalV) },
+    { rot: 'M\u00e9dia', val: fmt(mediaV) },
+    (melhor && melhor.v > 0) ? { rot: 'Maior (' + (melhor.rot || melhor.k) + ')', val: fmt(melhor.v) } : null,
+    { rot: 'Com movimento', val: n0(comValor.length) + ' de ' + n0(dados.length) }
+  ]);
+  s += '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
   ticks(topo, 4).forEach(t => {
     s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + y(t) + '" y2="' + y(t) + '" vector-effect="non-scaling-stroke"/>';
     s += '<text class="eixo" x="' + (mE - 8) + '" y="' + (y(t) + 3.6) + '" text-anchor="end">' + (o.fmtEixo || n0)(t) + '</text>';
   });
+  /* A media entra como referencia: sem ela, "foi um dia bom?" nao tem contra o que. */
+  if (o.resumo !== false && mediaV > 0 && mediaV <= topo) {
+    s += '<line x1="' + mE + '" x2="' + (W - mD) + '" y1="' + y(mediaV) + '" y2="' + y(mediaV) +
+         '" stroke="var(--texto-2)" stroke-width="1" stroke-dasharray="4 4" opacity=".55" vector-effect="non-scaling-stroke"/>';
+    s += '<text class="eixo" x="' + (W - mD) + '" y="' + (y(mediaV) - 5) + '" text-anchor="end" style="opacity:.75">m\u00e9dia</text>';
+  }
   dados.forEach((d, i) => {
     const cx = mE + pw * i + pw / 2;
     const h = Math.max(0, (d.v / topo) * ph);
@@ -2569,7 +2647,7 @@ function vizGrupos(o) {
   const x = o.x || [];
   const series = (o.series || []).slice(0, 3);
   if (!x.length || !series.length) return '<div class="vazio">Sem dados no recorte.</div>';
-  const W = VW, H = o.altura || 268;
+  const W = VW, H = o.altura || 310;
   const mE = 54, mD = 12, mT = 20, mB = 30;
   const fmt = o.fmt || n0;
   let max = 0;
@@ -2611,7 +2689,7 @@ function vizLinhas(o) {
   const x = o.x || [];
   const series = (o.series || []).filter(s => s.vals && s.vals.length);
   if (!x.length || !series.length) return '<div class="vazio">Sem dados no recorte.</div>';
-  const W = VW, H = o.altura || 278;
+  const W = VW, H = o.altura || 318;
   const mE = 56, mD = 14, mT = 16, mB = 30;
   const fmt = o.fmt || n0;
   let max = 0;
@@ -2623,7 +2701,29 @@ function vizLinhas(o) {
   const py = v => mT + ph - (v / topo) * ph;
   const passo = Math.ceil(x.length / 12);
 
-  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
+  let s = '';
+  if (o.resumo !== false) {
+    /* Numa serie so, o resumo fala dela. Em varias, fala do ultimo ponto de
+       cada uma - que e a pergunta "como esta agora". */
+    if (series.length === 1) {
+      const v = series[0].vals.filter(x => x != null && isFinite(x));
+      const ult = v.length ? v[v.length - 1] : null;
+      const mx = v.length ? Math.max.apply(null, v) : null;
+      const mn = v.length ? Math.min.apply(null, v) : null;
+      s += faixaResumo([
+        { rot: 'Agora', val: ult == null ? null : fmt(ult) },
+        { rot: 'M\u00e9dia do recorte', val: v.length ? fmt(v.reduce((a, b) => a + b, 0) / v.length) : null },
+        { rot: 'Melhor', val: mx == null ? null : fmt(mx) },
+        { rot: 'Pior', val: mn == null ? null : fmt(mn) }
+      ]);
+    } else {
+      s += faixaResumo(series.map((se2, i2) => {
+        const v = se2.vals.filter(x => x != null && isFinite(x));
+        return { rot: se2.nome, val: v.length ? fmt(v[v.length - 1]) : null };
+      }));
+    }
+  }
+  s += '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
   ticks(topo, 4).forEach(t => {
     s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + py(t) + '" y2="' + py(t) + '" vector-effect="non-scaling-stroke"/>';
     s += '<text class="eixo" x="' + (mE - 8) + '" y="' + (py(t) + 3.6) + '" text-anchor="end">' + (o.fmtEixo || n0)(t) + '</text>';
@@ -2732,7 +2832,7 @@ function vizEmpilhado(o) {
   const x = o.x || [];
   const series = o.series || [];
   if (!x.length || !series.length) return '<div class="vazio">Sem dados no recorte.</div>';
-  const W = VW, H = o.altura || 278;
+  const W = VW, H = o.altura || 318;
   const mE = 52, mD = 12, mT = 16, mB = 30;
   const fmt = o.fmt || n0;
   const totais = x.map((_, i) => series.reduce((a, s) => a + (s.vals[i] || 0), 0));
@@ -3067,10 +3167,16 @@ function desenharTabela(id) {
   }
   h += '</table></div>';
 
+  /* O CSV fica na tabela, nao no cabecalho da pagina: la em cima nunca
+     ficava claro QUAL tabela seria exportada. Aqui, exporta esta. */
   h += '<div class="tabela-rodape"><span>Exibindo ' + n0(vis.length) + ' de ' + n0(d.length) + ' registros</span>';
+  h += '<span class="tabela-acoes">';
   if (d.length > t.limite)
     h += '<button class="btn-acao" data-mais="' + id + '" type="button">Mostrar mais ' + n0(Math.min(t.passo, d.length - t.limite)) + '</button>';
-  h += '</div>';
+  h += '<button class="btn-acao" data-csv="' + id + '" type="button" title="Baixar as ' + n0(d.length) + ' linhas em CSV">' +
+       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+       '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>CSV</button>';
+  h += '</span></div>';
   return h;
 }
 
@@ -3902,6 +4008,7 @@ function telaTrafego(aba) {
 
   let h = '';
   h += barraTela(c, true);
+  h += avisoFiltro(c);
   h += resumoArea(todosT);
   h += '<div class="secao-titulo">Principais</div>';
   h += blocoPrincipais(KT.principais);
@@ -5477,6 +5584,23 @@ function tabelaKpi(id, lista, titulo, area) {
   return h;
 }
 
+/* Quando ha filtro de dimensao ligado, a tela diz o que responde e o que
+   nao responde - senao o numero da planilha parece teimoso. */
+function avisoFiltro(c) {
+  if (!c.filtrando) return '';
+  const partes = [];
+  if (F.produtos.size) partes.push('produto');
+  if (F.closers.size) partes.push('closer');
+  if (F.sdrs.size) partes.push('SDR');
+  if (F.origens.size) partes.push('origem');
+  if (F.busca) partes.push('busca "' + esc(F.busca) + '"');
+  return aviso('info', '<b>Filtro ativo:</b> ' + partes.join(', ') + '. ' +
+    'Clientes, faturamento, reuni\u00f5es e tudo que sai de registro j\u00e1 est\u00e3o recortados. ' +
+    'Os indicadores que vêm dos <b>KRs da planilha de Metas</b> (leads, eleg\u00edveis, qualificados, ' +
+    'diagn\u00f3sticos, liga\u00e7\u00f5es, no-show) s\u00e3o totais do m\u00eas e n\u00e3o sabem filtrar por pessoa ou produto &mdash; ' +
+    'eles seguem cheios.');
+}
+
 /* Barra da tela: o mes do recorte e os controles dele, numa linha so.
    O estado do mes e um unico (F.mesKpi) em todas as telas de indicador -
    dois "mes atual" diferentes na mesma cabeca nao dao certo. */
@@ -5508,7 +5632,10 @@ function barraTela(c, comMetas) {
 let GERACAO = 0;
 const MEMO = { chave: '', dados: {} };
 function memoAreas() {
-  const chave = (F.mesKpi || MES_ATUAL) + '|' + GERACAO;
+  /* O filtro entra na chave: sem isso, trocar de closer nao recalcularia
+     nada - a memoria devolveria o recorte anterior. */
+  const chave = (F.mesKpi || MES_ATUAL) + '|' + GERACAO + '|' + F.busca + '|' +
+    [F.produtos, F.closers, F.sdrs, F.origens].map(x => [...x].sort().join(',')).join(';');
   if (MEMO.chave !== chave) { MEMO.chave = chave; MEMO.dados = {}; }
   return MEMO.dados;
 }
@@ -5540,11 +5667,26 @@ function ctxArea() {
   for (let i = 5; i >= 0; i--) serie.push(mesMais(mes, -i));
 
   const reg = f => (f && f.reg) || [];
-  const noMes = (lista, k) => lista.filter(r => r.mes === k);
+
+  /* ===== OS FILTROS DA BARRA VALEM AQUI TAMBEM =====
+     Antes nao valiam: escolher um closer nao mexia nada na tela de
+     indicadores, e o filtro parecia quebrado. Cada fonte recebe so os
+     filtros que fazem sentido nela - um insight do Meta nao tem closer nem
+     SDR, entao filtrar por pessoa nao pode zerar o investimento. */
+  const passaCli = r => passaSet(F.produtos, r.produto) && passaSet(F.sdrs, r.sdr) &&
+    passaSet(F.closers, r.closer) && passaSet(F.origens, r.origem) &&
+    passaBusca([r.contato, r.cliente, r.produto, r.closer, r.sdr, r.origem, r.tipoPag]);
+  const passaAt = r => passaSet(F.produtos, r.produto) && passaSet(F.sdrs, r.sdr) &&
+    passaSet(F.closers, r.closer) &&
+    passaBusca([r.lead, r.id, r.etapa, r.closer, r.sdr, r.produto, r.telefone, r.resultado]);
+  const passaMd = r => passaBusca([r.campanha]);
+
+  const noMes = (lista, k) => lista.filter(r => r.mes === k && passaCli(r));
+  const mdMes = (lista, k) => lista.filter(r => r.mes === k && passaMd(r));
   /* Reuniao REALIZADA e a que tem data de atendimento; a agendada conta pela
      data do agendamento. Sao coisas diferentes e o no-show vive na diferenca. */
-  const realizadas = (lista, k) => lista.filter(r => r.dAtend && chaveMes(r.dAtend) === k);
-  const agendadas  = (lista, k) => lista.filter(r => r.dAgenda && chaveMes(r.dAgenda) === k);
+  const realizadas = (lista, k) => lista.filter(r => r.dAtend && chaveMes(r.dAtend) === k && passaAt(r));
+  const agendadas  = (lista, k) => lista.filter(r => r.dAgenda && chaveMes(r.dAgenda) === k && passaAt(r));
 
   const todosCli = reg(DADOS.clientes), todosAt = reg(DADOS.atend), todosMd = reg(DADOS.metaDia);
 
@@ -5553,14 +5695,17 @@ function ctxArea() {
     rotMes: rotuloMes(mes), rotAnt: rotuloMesCurto(ant), serie: serie,
     nomeMes: MESES_ACENTO[+mes.slice(5, 7) - 1],
     cli: noMes(todosCli, mes), cliAnt: noMes(todosCli, ant),
-    at: noMes(todosAt, mes),
+    at: todosAt.filter(r => r.mes === mes && passaAt(r)),
     reun: realizadas(todosAt, mes), reunAnt: realizadas(todosAt, ant),
     marc: agendadas(todosAt, mes), marcAnt: agendadas(todosAt, ant),
-    md: noMes(todosMd, mes), mdAnt: noMes(todosMd, ant),
+    md: mdMes(todosMd, mes), mdAnt: mdMes(todosMd, ant),
     todosCli: todosCli, todosAt: todosAt, todosMd: todosMd,
     serieCli: k => noMes(todosCli, k),
-    serieMd:  k => noMes(todosMd, k),
-    serieReun: k => realizadas(todosAt, k)
+    serieMd:  k => mdMes(todosMd, k),
+    serieReun: k => realizadas(todosAt, k),
+    /* Alguma dimensao escolhida na barra? Os indicadores que vem dos KRs da
+       planilha sao totais do mes e nao sabem filtrar - a tela avisa. */
+    filtrando: !!(F.produtos.size || F.closers.size || F.sdrs.size || F.origens.size || F.busca)
   };
 
   /* KR da planilha de metas: traz meta mensal, meta proporcional e o
@@ -6712,6 +6857,7 @@ function moduloKpisDash() {
   const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = barraTela(c, true);
+  h += avisoFiltro(c);
   h += resumoArea(todos);
   if (c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das leituras que vivem sendo confundidas: ' +
     'o <b>realizado</b>, quanto ele representa da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia, ' +
@@ -6754,6 +6900,171 @@ function moduloClientes() {
   return telaClientesFluxo() + telaEquipe('modulo');
 }
 /* ==========================================================================
+   METAS  -  configurar todas, com a media realizada ao lado
+   --------------------------------------------------------------------------
+   Meta sem referencia e chute. Ao lado de cada campo vai a MEDIA REALIZADA
+   dos ultimos meses fechados: nao para virar meta - media nao e meta -, mas
+   para a conversa comecar do que a operacao de fato entrega.
+
+   O mes corrente fica FORA da media de proposito: ele esta pela metade, e
+   incluir um mes parcial puxaria toda referencia para baixo.
+   ========================================================================== */
+const MESES_REFERENCIA = 6;
+
+/* Realizado de um indicador num mes fechado. As contas sao as mesmas dos
+   cartoes - se divergirem, a referencia mente. */
+function realizadoNoMes(chave, mes) {
+  const cli = (DADOS.clientes && DADOS.clientes.reg || []).filter(r => r.mes === mes);
+  const md  = (DADOS.metaDia && DADOS.metaDia.reg || []).filter(r => r.mes === mes);
+  const reun = (DADOS.atend && DADOS.atend.reg || []).filter(r => r.dAtend && chaveMes(r.dAtend) === mes);
+  const leads = soma(md, r => r.leadsTotal);
+  const invest = soma(md, r => r.gasto);
+  const fat = soma(cli, r => r.honIni);
+  const nomeMes = MESES_ACENTO[+mes.slice(5, 7) - 1];
+  const krDe = txt => {
+    const m = DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nomeMes];
+    if (!m || m.erro || !m.krs) return null;
+    const k = chaveBusca(txt).replace(/[^a-z0-9]+/g, ' ').trim();
+    const x = m.krs.find(y => chaveBusca(y.kr).replace(/[^a-z0-9]+/g, ' ').trim().indexOf(k) >= 0);
+    return x ? x.resultado : null;
+  };
+  switch (chave) {
+    case 'leadsAds':     return leads || null;
+    case 'leadsAbord':   return krDe('novos leads');
+    case 'leadsQual':    return krDe('leads qualificados');
+    case 'reunioes':     return reun.length || null;
+    case 'clientes':     return cli.length || null;
+    case 'faturamento':  return fat || null;
+    case 'ticket':       return ticketMedio(cli);
+    case 'investimento': return invest || null;
+    case 'cac':          return cli.length ? invest / cli.length : null;
+    case 'convReunCli':  return taxa(cli.length, reun.length);
+    case 'convLeadReun': return taxa(reun.length, leads);
+    case 'convLeadCli':  return taxa(cli.length, leads);
+    case 'roi':          return invest ? fat / invest : null;
+    default:             return null;
+  }
+}
+
+/* Media dos ultimos meses FECHADOS em que houve movimento. */
+function referenciaDaMeta(chave) {
+  const vals = [];
+  for (let i = 1; i <= MESES_REFERENCIA; i++) {
+    const v = realizadoNoMes(chave, mesMais(MES_ATUAL, -i));
+    if (v != null && isFinite(v)) vals.push(v);
+  }
+  if (!vals.length) return null;
+  return { media: vals.reduce((a, b) => a + b, 0) / vals.length,
+           n: vals.length,
+           melhor: Math.max.apply(null, vals),
+           pior: Math.min.apply(null, vals) };
+}
+
+/* ===================== A TELA ===================== */
+function telaMetasConfig() {
+  const metas = metasAtivas();
+  const chaves = Object.keys(METAS_PADRAO);
+
+  let h = '<div class="barra-tela"><span class="rot"><b>Metas do painel</b> &middot; usadas em todos os módulos</span>' +
+    '<span class="dir">' +
+    '<button class="btn-acao primario" data-metas-salvar type="button">Salvar metas</button>' +
+    '<button class="btn-acao" data-metas-padrao type="button">Restaurar padrão</button>' +
+    '</span></div>';
+
+  h += aviso('info', 'Estas são as metas que o painel usa para calcular atingimento, projeção e ' +
+    'quanto falta por dia. Ficam guardadas <b>neste navegador</b>, não na planilha &mdash; cada pessoa tem as suas. ' +
+    'A coluna <b>média realizada</b> é referência, não sugestão: média não é meta. ' +
+    'Ela cobre os últimos ' + n0(MESES_REFERENCIA) + ' meses <b>fechados</b> &mdash; o mês corrente fica de fora porque ' +
+    'está pela metade e puxaria a referência para baixo.');
+
+  h += '<div class="lista-met" style="margin-bottom:1rem">';
+  chaves.forEach(k => {
+    const d = METAS_PADRAO[k];
+    const f = fmtPorTipo(d.tipo);
+    const ref = referenciaDaMeta(k);
+    const atual = metas[k];
+    const passo = d.tipo === 'moeda' ? 100 : d.tipo === 'pct' ? 0.5 : d.tipo === 'mult' ? 0.1 : 1;
+    h += '<div class="met-linha meta-linha">';
+    h += '<div class="met-rot"><b>' + esc(d.rot) + '</b>' +
+      '<i>' + (d.inverso ? 'teto &mdash; menos é melhor' : d.acumula ? 'acumula no mês' : 'taxa ou média, não acumula') +
+      (d.tipo === 'moeda' ? ' &middot; em R$' : d.tipo === 'pct' ? ' &middot; em %' : d.tipo === 'mult' ? ' &middot; em vezes' : '') +
+      '</i></div>';
+    h += '<div class="met-val"><input class="campo-meta" type="number" step="' + passo + '" min="0" ' +
+      'data-meta="' + k + '" value="' + (atual == null ? '' : atual) + '" aria-label="' + esc(d.rot) + '"></div>';
+    h += '<div class="met-barra">' + (ref
+      ? '<span class="met-pct" style="color:var(--texto-2)">média ' + f(ref.media) + '</span>' +
+        '<button class="btn-acao" style="padding:.2rem .45rem;font-size:.66rem" type="button" ' +
+        'data-usar-media="' + k + '" data-valor="' + ref.media + '">usar</button>'
+      : '<span class="marca-sem">sem histórico</span>') + '</div>';
+    h += '<div class="met-fim">' + (ref
+      ? 'pior ' + f(ref.pior) + ' &middot; melhor ' + f(ref.melhor) + '<br><span style="opacity:.75">' +
+        n0(ref.n) + ' ' + (ref.n === 1 ? 'mês' : 'meses') + ' com dado</span>'
+      : '&mdash;') + '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+
+  /* ----- As metas que vivem na planilha, nao aqui ----- */
+  const nomeMes = MESES_ACENTO[new Date().getMonth()];
+  const m = DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nomeMes];
+  h += '<div class="secao-titulo">Metas que vivem na planilha</div>';
+  if (!m || m.erro || !m.krs || !m.krs.length) {
+    h += aviso('atencao', 'Não consegui ler a aba <code>KPIS ' + esc(nomeMes) + '</code> da planilha de Metas.');
+  } else {
+    h += aviso('info', 'Estas <b>não se editam aqui</b>: elas são os Resultados Chaves da aba ' +
+      '<code>KPIS ' + esc(nomeMes) + '</code>, e o painel as usa de lá sempre que existem &mdash; ' +
+      'a meta que o time combinou vale mais que a configurada no navegador. ' +
+      'Para mudar, mude na planilha.');
+    h += tabelaInterativa('metas-config-kr', [
+      { k: 'resp', rot: 'Responsável', tipo: 'txt' },
+      { k: 'kr', rot: 'Resultado Chave', tipo: 'txt', cls: 'forte wrap' },
+      { k: 'metaMes', rot: 'Meta mensal', tipo: 'num',
+        html: r => r.tipo === 'moeda' ? brl0(r.metaMes) : r.tipo === 'pct' ? pct(r.metaMes, 0) : n0(r.metaMes) },
+      { k: 'metaProp', rot: 'Meta até hoje', tipo: 'num',
+        html: r => r.tipo === 'moeda' ? brl0(r.metaProp) : r.tipo === 'pct' ? pct(r.metaProp, 0) : n0(r.metaProp) },
+      { k: 'resultado', rot: 'Resultado anotado', tipo: 'num',
+        html: r => r.tipo === 'moeda' ? brl0(r.resultado) : r.tipo === 'pct' ? pct(r.resultado, 0) : n0(r.resultado) },
+      { k: 'ating', rot: 'Atingimento', tipo: 'num',
+        html: r => { const t = r.inverso ? (r.resultado > 0 ? taxa(r.metaProp, r.resultado) : null) : taxa(r.resultado, r.metaProp);
+                     return t == null ? '&mdash;' : selo(nivelMeta(t), pct(t, 0)); } }
+    ], m.krs.map(x => Object.assign({ ating: 0 }, x)),
+      { titulo: 'Resultados Chaves da planilha', limite: 40, ativa: false });
+  }
+  return h;
+}
+
+/* Salvar, restaurar e usar a media - a memoria das areas cai junto, senao a
+   tela continuaria mostrando o atingimento calculado com a meta antiga. */
+document.addEventListener('click', ev => {
+  const usar = ev.target.closest('[data-usar-media]');
+  if (usar) {
+    const campo = document.querySelector('[data-meta="' + usar.dataset.usarMedia + '"]');
+    if (campo) {
+      const d = METAS_PADRAO[usar.dataset.usarMedia];
+      const v = Number(usar.dataset.valor);
+      campo.value = d.tipo === 'num' || d.tipo === 'moeda' ? Math.round(v) : Math.round(v * 100) / 100;
+      campo.focus();
+    }
+    return;
+  }
+  if (ev.target.closest('[data-metas-salvar]')) {
+    const novas = {};
+    document.querySelectorAll('[data-meta]').forEach(c => {
+      const v = Number(c.value);
+      if (c.value !== '' && isFinite(v) && v >= 0) novas[c.dataset.meta] = v;
+    });
+    try { localStorage.setItem(K_METAS, JSON.stringify(novas)); } catch (e) {}
+    GERACAO++;
+    redesenhar();
+    return;
+  }
+  if (ev.target.closest('[data-metas-padrao]')) {
+    try { localStorage.removeItem(K_METAS); } catch (e) {}
+    GERACAO++;
+    redesenhar();
+  }
+});
+/* ==========================================================================
    NAVEGACAO
    ========================================================================== */
 const IC = {
@@ -6768,6 +7079,7 @@ const IC = {
   metas:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
   fin:     '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
   semanal: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="8 14 11 17 16 12"/></svg>',
+  metasconfig: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>',
   kpisdash: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
   clientes: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>',
   campanhas: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>',
@@ -6787,6 +7099,8 @@ const TELAS = [
   { k: 'prequal',   rot: 'Funil de Pré-Qualificação', sub: 'Do lead que chega até a reunião marcada', fn: moduloPrequal },
   { k: 'fechamento', rot: 'Negociação e Fechamento',  sub: 'Esteira, vendas, financeiro e metas', fn: moduloFechamento },
   { k: 'clientes',  rot: 'Fluxo de clientes',  sub: 'Quem assina, por onde chega e quem fecha', fn: moduloClientes },
+  { grupo: 'Ajustes' },
+  { k: 'metasconfig', rot: 'Metas',             sub: 'Configurar todas as metas, com a m\u00e9dia realizada ao lado', fn: telaMetasConfig },
   /* Fontes e dados nao entra no menu: e manutencao, nao leitura diaria. O
      rodape da lateral leva ate ela quando alguma fonte falha. */
   { k: 'fontes',    rot: 'Fontes e dados',     sub: 'De onde vem cada número e o que falhou', fn: telaFontes, oculta: true }
@@ -6997,6 +7311,8 @@ document.addEventListener('click', ev => {
     repintarTabela(id);
     return;
   }
+  const csv = ev.target.closest('[data-csv]');
+  if (csv) { exportarCSV(csv.dataset.csv); return; }
   const mais = ev.target.closest('[data-mais]');
   if (mais) {
     const t = TABELAS[mais.dataset.mais];
@@ -7028,10 +7344,10 @@ document.addEventListener('click', ev => {
 /* ==========================================================================
    EXPORTAR CSV - leva o recorte inteiro, na ordem da tela
    ========================================================================== */
-function exportarCSV() {
-  const id = TABELA_ATIVA;
+function exportarCSV(qual) {
+  const id = qual || TABELA_ATIVA;
   const t = id && TABELAS[id];
-  if (!t) { alert('Esta tela nao tem tabela para exportar. Abra Negociacao, Vendas, Trafego ou Metas.'); return; }
+  if (!t) return;
   const d = linhasOrdenadas(id);
   const tiraTag = s => String(s).replace(/<[^>]*>/g, '').replace(/&mdash;/g, '').replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
@@ -7194,8 +7510,6 @@ async function iniciar(recarregar) {
 }
 
 document.getElementById('btnAtualizar').addEventListener('click', () => iniciar(true));
-document.getElementById('btnExportar').addEventListener('click', exportarCSV);
-document.getElementById('btnPlanilhas').addEventListener('click', () => irPara('fontes'));
 document.getElementById('btnFiltros').addEventListener('click', () => {
   const el = document.getElementById('filtros');
   el.classList.toggle('aberto');
@@ -7212,24 +7526,11 @@ document.getElementById('sidebarOverlay').addEventListener('click', fecharSideba
 document.addEventListener('change', ev => {
   if (ev.target.dataset && ev.target.dataset.selmes !== undefined) { F.mesKpi = ev.target.value; redesenhar(); }
 });
+/* Configurar metas abre a TELA de metas. Antes eram treze prompt() em
+   fila: para mudar a ultima era preciso passar por todas as outras, e
+   cancelar no meio perdia tudo. */
 document.addEventListener('click', ev => {
-  if (!ev.target.closest('[data-metas]')) return;
-  const atuais = metasAtivas();
-  const novas = {};
-  let mudou = false;
-  for (const k of Object.keys(METAS_PADRAO)) {
-    const d = METAS_PADRAO[k];
-    const unidade = d.tipo === 'moeda' ? 'R$' : d.tipo === 'pct' ? '%' : d.tipo === 'mult' ? 'x' : '';
-    const r = prompt('Meta mensal — ' + d.rot + (unidade ? ' (' + unidade + ')' : ''), String(atuais[k]));
-    if (r === null) return;                 /* cancelou: nao salva nada */
-    const v = num(r);
-    novas[k] = v;
-    if (v !== atuais[k]) mudou = true;
-  }
-  try { localStorage.setItem(K_METAS, JSON.stringify(novas)); } catch (e) {}
-  /* Meta nova muda o atingimento de toda a area: a memoria tem de cair. */
-  GERACAO++;
-  if (mudou) redesenhar();
+  if (ev.target.closest('[data-metas]')) irPara('metasconfig');
 });
 
 /* Endereco do proxy: fica no navegador, nao no codigo. */
