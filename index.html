@@ -289,6 +289,108 @@ if (window.self !== window.top) {
   .delta.neg { color: #e98a8a; background: rgba(208,59,59,0.14); }
   .delta.neu { color: var(--texto-muted); background: rgba(148,163,184,0.1); }
 
+  /* ===================== DUAS DENSIDADES DE KPI =====================
+     A hierarquia e deliberada: o indicador PRINCIPAL ocupa um cartao
+     inteiro e se le de longe; o do ESPECIALISTA entra numa ficha compacta e
+     se consulta quando o principal acende. Misturar as duas numa grade so
+     faria 40 numeros do mesmo tamanho - que e o mesmo que nenhum. */
+  .g-destaque { grid-template-columns: repeat(auto-fit, minmax(238px, 1fr)); }
+  .destaque {
+    background: var(--bg2); border: 1px solid var(--borda); border-radius: var(--radius);
+    padding: 1rem 1.1rem 0.9rem; min-width: 0; position: relative; overflow: hidden;
+  }
+  /* Fio de status na borda de cima: a cor nunca aparece sozinha - o selo ao
+     lado do valor repete a mesma leitura em texto. */
+  .destaque::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--fio, transparent);
+  }
+  .destaque-rot {
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--texto-muted); font-weight: 700; line-height: 1.35;
+    display: flex; align-items: flex-start; gap: 0.35rem;
+  }
+  .destaque-val {
+    font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.08;
+    font-variant-numeric: tabular-nums; color: var(--texto); margin: 0.5rem 0 0.1rem;
+  }
+  .destaque-val.sm { font-size: 1.55rem; }
+  .destaque-linha { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.3rem; }
+  .destaque-pe {
+    font-size: 0.69rem; color: var(--texto-muted); line-height: 1.45; margin-top: 0.45rem;
+    padding-top: 0.45rem; border-top: 1px solid var(--borda);
+  }
+  .destaque-pe b { color: var(--texto-2); font-weight: 700; }
+
+  .g-ficha { grid-template-columns: repeat(auto-fit, minmax(182px, 1fr)); gap: 0.6rem; }
+  .ficha {
+    background: var(--bg2); border: 1px solid var(--borda); border-radius: 10px;
+    padding: 0.68rem 0.78rem; min-width: 0;
+  }
+  .ficha-rot {
+    font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.055em;
+    color: var(--texto-muted); font-weight: 700; line-height: 1.32;
+    display: flex; align-items: flex-start; gap: 0.3rem;
+  }
+  .ficha-val {
+    font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2;
+    font-variant-numeric: tabular-nums; color: var(--texto); margin-top: 0.32rem;
+  }
+  .ficha-pe { font-size: 0.65rem; color: var(--texto-muted); line-height: 1.42; margin-top: 0.2rem; }
+  .ficha .delta { margin-top: 0.28rem; font-size: 0.68rem; }
+
+  /* ===== LACUNA DECLARADA =====
+     Indicador sem fonte NAO e zero. Borda tracejada, valor em travessao e o
+     que falta escrito no pe: quem olha ve na hora que ali nao ha medicao, em
+     vez de ler um numero que o painel inventou. */
+  .ficha.sem, .destaque.sem { border-style: dashed; border-color: #2e3a52; background: rgba(22,27,38,0.55); }
+  .ficha.sem .ficha-val, .destaque.sem .destaque-val { color: var(--texto-muted); font-weight: 600; }
+  /* ===== QUADRO COMPARATIVO DO INDICADOR PRINCIPAL =====
+     Quatro leituras que respondem coisas diferentes e vivem sendo
+     confundidas: o realizado, o que DEVERIA estar feito a esta altura
+     (meta proporcional), a meta cheia do mes e onde o mes termina se o
+     ritmo de hoje continuar. A primeira linha e a razao entre as duas
+     primeiras - e a unica que leva cor. */
+  .quadro {
+    margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid var(--borda);
+    display: flex; flex-direction: column; gap: 0.26rem; font-size: 0.715rem;
+  }
+  .q-linha { display: flex; justify-content: space-between; gap: 0.7rem; align-items: baseline; }
+  .q-rot { color: var(--texto-muted); display: flex; align-items: center; gap: 0.25rem; min-width: 0; }
+  .q-val { font-variant-numeric: tabular-nums; color: var(--texto-2); white-space: nowrap; }
+  .q-linha.forte { padding-bottom: 0.1rem; }
+  .q-linha.forte .q-rot { color: var(--texto-2); }
+  .q-linha.forte .q-val { font-weight: 700; }
+  .q-ind {
+    display: inline-flex; align-items: center; gap: 0.32rem;
+    font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  /* A cor nunca carrega o veredito sozinha: vem com icone e com o numero. */
+  .q-ind svg { width: 10px; height: 10px; flex-shrink: 0; }
+  .q-sec { color: var(--texto-muted); font-weight: 400; }
+  .marca-sem {
+    display: inline-flex; align-items: center; font-size: 0.6rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--texto-muted);
+    border: 1px dashed #37435d; border-radius: 99px; padding: 0.06rem 0.38rem; white-space: nowrap;
+  }
+
+  /* Faixa de resumo da area: quantos indicadores no verde, quantos sem fonte. */
+  .resumo-area {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; align-items: center;
+    background: var(--bg2); border: 1px solid var(--borda); border-radius: var(--radius);
+    padding: 0.8rem 1.05rem; margin-bottom: 0.9rem;
+  }
+  .resumo-item { display: flex; align-items: baseline; gap: 0.4rem; font-size: 0.72rem; color: var(--texto-muted); }
+  .resumo-item b { font-size: 1.05rem; color: var(--texto); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+  @media (max-width: 760px) {
+    .g-destaque { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .destaque-val { font-size: 1.5rem; }
+    .destaque-val.sm { font-size: 1.22rem; }
+    .g-ficha { grid-template-columns: repeat(auto-fit, minmax(142px, 1fr)); }
+    .ficha-rot { font-size: 0.6rem; }
+  }
+
   /* Barra de ritmo (meta) */
   .ritmo { margin-top: 0.55rem; }
   .ritmo-trilha { height: 7px; background: var(--bg4); border-radius: 99px; position: relative; }
@@ -652,13 +754,16 @@ if (window.self !== window.top) {
         <div class="spin"></div>
         Lendo as planilhas&hellip;
       </div>
+      <section class="tela oculto" id="tela-semanal"></section>
       <section class="tela oculto" id="tela-visao"></section>
       <section class="tela oculto" id="tela-kpis"></section>
       <section class="tela oculto" id="tela-funil"></section>
       <section class="tela oculto" id="tela-esteira"></section>
       <section class="tela oculto" id="tela-vendas"></section>
       <section class="tela oculto" id="tela-clifluxo"></section>
+      <section class="tela oculto" id="tela-comercial"></section>
       <section class="tela oculto" id="tela-trafego"></section>
+      <section class="tela oculto" id="tela-marketing"></section>
       <section class="tela oculto" id="tela-fin"></section>
       <section class="tela oculto" id="tela-equipe"></section>
       <section class="tela oculto" id="tela-metas"></section>
@@ -1089,6 +1194,20 @@ const CAMPOS_ATEND = {
   proxAcao:   ['Proxima acao'],
   dtProxAcao: ['Data da proxima acao'],
   historico:  ['Historico'],
+  /* Colunas que a planilha ja tem e o time ainda nao preenche. Leio de
+     proposito: o painel mede a COBERTURA de cada uma e acende o indicador
+     sozinho no dia em que o preenchimento comecar - sem mexer no codigo. */
+  decisor:    ['Decisor presente na reuniao'],
+  cartao:     ['Tem cartao de credito'],
+  desfecho:   ['Desfecho da reuniao'],
+  dtAceite:   ['Data do aceite'],
+  dtPagto:    ['Data do pagamento'],
+  ofertaFechou:['Oferta que fechou'],
+  desconto:   ['Desconto extra autorizado'],
+  ligacao:    ['Ligacao'],
+  fupInformal:['FUP Informal'],
+  economia:   ['Economia Mensal'],
+  restituicao:['Valor da Restituicao'],
   pasta:      ['Pasta do Processo (Link Drive)'],
   processo:   ['No do Processo (CNJ)', 'N do Processo (CNJ)']
 };
@@ -1178,6 +1297,16 @@ async function carregarAtend() {
       proxAcao: m.cel(l, 'proxAcao'),
       dProxAcao: parseData(m.cel(l, 'dtProxAcao')),
       historico: m.cel(l, 'historico'),
+      decisor: m.cel(l, 'decisor'),
+      desfecho: m.cel(l, 'desfecho'),
+      ofertaFechou: m.cel(l, 'ofertaFechou'),
+      dAceite: parseData(m.cel(l, 'dtAceite')),
+      dPagto: parseData(m.cel(l, 'dtPagto')),
+      desconto: num(m.cel(l, 'desconto')),
+      ligacao: /^(sim|true|1|x)$/i.test(m.cel(l, 'ligacao')),
+      fupInformal: /^(sim|true|1|x)$/i.test(m.cel(l, 'fupInformal')),
+      economia: num(m.cel(l, 'economia')),
+      restituicao: num(m.cel(l, 'restituicao')),
       pasta: m.cel(l, 'pasta'),
       processo: m.cel(l, 'processo'),
       atualizado: m.cel(l, 'atualizado')
@@ -1375,9 +1504,26 @@ async function carregarMetaReun() {
 /* ------------------------------------------------------------ 4. METAS/KPIs
    Metas e Resultados [NOVA]. O cabecalho nao esta na linha 1: acho a linha
    que comeca com "Responsavel" e leio dali. */
-function lerKpis(linhas) {
+function lerKpis(linhas, mesEsperado) {
   const t = tabela(linhas, 0);
   if (idxDe(t, ['Resultados Chaves']) < 0) throw new Error('nao achei a coluna Resultados Chaves');
+
+  /* ARMADILHA DO GVIZ: quando o nome da aba nao existe, ele NAO devolve erro -
+     devolve a PRIMEIRA aba da planilha. Como todas as abas KPIS tem o mesmo
+     cabecalho, o painel receberia setembro inteiro achando que e outubro, e
+     nada na tela denunciaria isso.
+     O titulo da planilha carrega o mes ("... | COMERCIAL | OUTUBRO 2026") e o
+     gviz o cola no rotulo da coluna quando o cabecalho ocupa varias linhas.
+     So recuso quando o titulo nomeia um mes DIFERENTE do pedido: se um dia a
+     planilha deixar de ter titulo, a leitura continua valendo. */
+  if (mesEsperado) {
+    const titulo = normCab(t.cab.join(' '));
+    const achado = MES_ABA.findIndex(m => titulo.indexOf(normCab(m)) >= 0);
+    if (achado >= 0 && normCab(MES_ABA[achado]) !== normCab(mesEsperado)) {
+      throw new Error('a aba "KPIS ' + mesEsperado + '" nao existe: o Google devolveu "' +
+        MES_ABA[achado] + '" no lugar');
+    }
+  }
   const m = mapear(t, {
     resp: ['Responsavel'], kr: ['Resultados Chaves'], metaMes: ['Meta Mensal'],
     metaProp: ['Meta Proporcional'], resultado: ['Resultado do Mes'],
@@ -1535,9 +1681,28 @@ async function carregarMetas() {
   /* Nas abas KPIS o cabecalho esta na linha 5 (linhas 1-4 sao titulo). */
   for (const i of [mi, (mi + 11) % 12]) {
     const nome = MES_ABA[i];
-    const r = await tentarAbas(CONFIG.SHEETS.metas, ['KPIS ' + nome, 'KPIS ' + semAcento(nome)], lerKpis, 5,
-      i === mi ? 'kpisAtual' : 'kpisAnterior');
+    const r = await tentarAbas(CONFIG.SHEETS.metas, ['KPIS ' + nome, 'KPIS ' + semAcento(nome)],
+      l => lerKpis(l, nome), 5, i === mi ? 'kpisAtual' : 'kpisAnterior');
     out.meses[nome] = r.ok || { erro: r.erro };
+  }
+
+  /* Aba de marketing: OPCIONAL. Audiencia, conteudo e social seller nao tem
+     fonte em nenhuma das planilhas de hoje - esses numeros vivem dentro do
+     Instagram. Em vez de inventar uma estrutura nova, o painel espera a MESMA
+     que o time ja sabe preencher: uma aba "KPIS Marketing" com Resultados
+     Chaves. Se ela nao existir, a tela de Marketing declara a lacuna. */
+  const mk = await tentarAbas(CONFIG.SHEETS.metas, ['KPIS Marketing', 'KPIS MARKETING'], lerKpis, 5, 'kpisMkt');
+  /* Mesma armadilha do gviz, e aqui o titulo nao salva: a aba devolvida no
+     lugar e uma KPIS de mes, com o mesmo cabecalho. A confirmacao e pelo
+     CONTEUDO - se nenhum Resultado Chave falar de audiencia, conteudo ou
+     social seller, a aba de marketing nao existe. */
+  const MARCAS_MKT = ['seguidor', 'perfil', 'conteudo', 'bio', 'whatsapp', 'social seller',
+    'engajamento', 'alcance', 'reels', 'nps', 'avaliac', 'mencao', 'oab', 'publicad',
+    'calendario', 'salvament', 'comentario', 'tempo de resposta', 'interacoes'];
+  if (mk.ok && mk.ok.krs && !mk.ok.krs.some(k => MARCAS_MKT.some(m => chaveBusca(k.kr).includes(m)))) {
+    out.marketing = { erro: 'a aba "KPIS Marketing" ainda nao existe na planilha de Metas' };
+  } else {
+    out.marketing = mk.ok || { erro: mk.erro };
   }
 
   const abasProd = i => {
@@ -1552,7 +1717,8 @@ async function carregarMetas() {
   if (pb.ok) out.produtos.anterior = pb.ok;
   try {
     /* Na aba OKRS o cabecalho esta na linha 4. */
-    const l = await lerAba(CONFIG.SHEETS.metas, 'OKRS', { headers: 4, fonte: 'okrs' });
+    const l = await lerAba(CONFIG.SHEETS.metas, 'OKRS', { headers: 4, fonte: 'okrs',
+      esperado: ['Acao', 'Status'] });
     const t = tabela(l, 0);
     const m = mapear(t, { acao: ['Acao'], resp: ['Responsavel'], prazo: ['Data Conclusao (prevista)'], status: ['Status'], obs: ['Observacao do Resultado'] });
     out.okrs = t.linhas.map(x => ({
@@ -1934,7 +2100,7 @@ let ULTIMA_LEITURA = null;
    abas (Metas usa cinco), por isso esta lista nao e igual a FONTES. */
 const FONTES_PROXY = ['atend', 'clientes', 'metaDia', 'metaCamp', 'metaReun',
   'metaAnuncios', 'metaJanelas',
-  'kpisAtual', 'kpisAnterior', 'prodAtual', 'prodAnterior', 'okrs',
+  'kpisAtual', 'kpisAnterior', 'kpisMkt', 'prodAtual', 'prodAnterior', 'okrs',
   'hist', 'fin', 'kommo', 'cerebro'];
 
 async function carregarTudo() {
@@ -2089,7 +2255,9 @@ function vizBarras(o) {
   const H = dados.length * linha + 10;
   const rotW = o.rotuloW || 196;
   const numW = 96;
-  const max = Math.max.apply(null, dados.map(d => Math.abs(d.v)).concat([0])) || 1;
+  /* A referencia entra na escala: senao uma linha de 100% nunca apareceria
+     num grafico em que todas as barras estao abaixo de 100. */
+  const max = Math.max.apply(null, dados.map(d => Math.abs(d.v)).concat([0, o.ref || 0])) || 1;
   const pista = W - rotW - numW;
 
   let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
@@ -2108,6 +2276,58 @@ function vizBarras(o) {
     s += '<path d="' + barraFimRedondo(rotW, meio - 6, Math.max(w, 2), 12, 4) + '" fill="' + cor + '"/>';
     s += '<text class="rotulo-dado" x="' + (W - 2) + '" y="' + (meio + 4) + '" text-anchor="end" style="font-size:11.5px">' + fmt(d.v) + '</text>';
     s += '</g>';
+  });
+  /* Referencia opcional (ex.: 100% da meta). Linha unica, tracejada, sem
+     rotulo: o que ela significa esta dito no subtitulo do cartao. */
+  if (o.ref != null && o.ref > 0 && o.ref <= max) {
+    const xr = rotW + (o.ref / max) * pista;
+    s += '<line x1="' + xr + '" x2="' + xr + '" y1="4" y2="' + (H - 4) +
+         '" stroke="var(--texto-2)" stroke-width="1" stroke-dasharray="3 3" opacity=".7" vector-effect="non-scaling-stroke"/>';
+  }
+  return s + '</svg>';
+}
+
+/* ------------------------------------------------- COLUNAS AGRUPADAS (x2/x3)
+   Mesma unidade, duas ou tres series lado a lado. E a forma certa para
+   "este mes x mes anterior": empilhar somaria coisas que nao se somam, e uma
+   linha com dois pontos nao desenha tendencia nenhuma. */
+function vizGrupos(o) {
+  const x = o.x || [];
+  const series = (o.series || []).slice(0, 3);
+  if (!x.length || !series.length) return '<div class="vazio">Sem dados no recorte.</div>';
+  const W = VW, H = o.altura || 230;
+  const mE = 54, mD = 12, mT = 20, mB = 30;
+  const fmt = o.fmt || n0;
+  let max = 0;
+  series.forEach(se => se.vals.forEach(v => { if (v != null && v > max) max = v; }));
+  const topo = escalaTopo(max);
+  const pw = (W - mE - mD) / x.length;
+  /* 2px de respiro entre as barras do grupo, e o grupo ocupa 64% do passo. */
+  const gw = Math.min(pw * 0.64, 54 * series.length);
+  const bw = Math.max(4, (gw - 2 * (series.length - 1)) / series.length);
+  const ph = H - mT - mB;
+  const py = v => mT + ph - (v / topo) * ph;
+
+  let s = '<svg class="viz" viewBox="0 0 ' + W + ' ' + H + '" role="img">';
+  ticks(topo, 4).forEach(t => {
+    s += '<line class="grade" x1="' + mE + '" x2="' + (W - mD) + '" y1="' + py(t) + '" y2="' + py(t) + '" vector-effect="non-scaling-stroke"/>';
+    s += '<text class="eixo" x="' + (mE - 8) + '" y="' + (py(t) + 3.6) + '" text-anchor="end">' + (o.fmtEixo || n0)(t) + '</text>';
+  });
+  x.forEach((rot, i) => {
+    const cx = mE + pw * i + pw / 2;
+    const x0 = cx - gw / 2;
+    const tip = '<span class="d-tit">' + esc(rot) + '</span>' + series.map((se, si) =>
+      se.vals[i] == null ? '' : tipLinha(se.cor || corSerie(si), esc(se.nome), fmt(se.vals[i]))).join('');
+    s += '<g data-tip="' + esc(tip) + '">';
+    s += '<rect class="alvo" x="' + (cx - pw / 2) + '" y="' + mT + '" width="' + pw + '" height="' + ph + '"/>';
+    series.forEach((se, si) => {
+      const v = se.vals[i];
+      if (v == null || v <= 0) return;
+      const bx = x0 + si * (bw + 2);
+      s += '<path d="' + barraTopoRedondo(bx, py(v), bw, ph - (py(v) - mT), 4) + '" fill="' + (se.cor || corSerie(si)) + '"/>';
+    });
+    s += '</g>';
+    s += '<text class="eixo" x="' + cx + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(rot) + '</text>';
   });
   return s + '</svg>';
 }
@@ -3405,33 +3625,64 @@ function telaTrafego() {
   const md = selMetaDia();
   const cli = selClientes();
   const meses = mesesDoEixo();
-  const gasto = soma(md, r => r.gasto);
-  const leads = soma(md, r => r.leadsTotal);
-  const impr = soma(md, r => r.impressoes);
-  const cliques = soma(md, r => r.cliques);
-  const hon = soma(cli, r => r.honIni);
   const reun = selMetaReun();
 
+  /* A tela tem DOIS escopos, de proposito, e o aviso diz qual e qual:
+     . os INDICADORES sao do mes selecionado, porque meta e mensal - nao
+       existe meta de "ultimos 6 meses";
+     . o DETALHE de campanha, criativo e alerta segue o filtro de periodo da
+       barra de cima, porque e ali que se investiga. */
+  const c = ctxArea();
+  const KT = kpisTrafego(c);
+  const todosT = KT.principais.concat(KT.grupos.reduce((a, g) => a.concat(g.l), []));
+
   let h = '';
-  h += '<div class="secao-titulo primeiro">Trafego pago &middot; ' + esc(rotuloPeriodo()) + '</div>';
-  h += '<div class="grid g-kpi">';
-  h += kpi({ rotulo: 'Investimento', valor: brl0(gasto), pequeno: true });
-  h += kpi({ rotulo: 'Leads', valor: n0(leads), nota: 'Formulario + conversas + pixel' });
-  h += kpi({ rotulo: 'CPL', valor: leads ? brl(gasto / leads) : '&mdash;', pequeno: true });
-  h += kpi({ rotulo: 'Impressoes', valor: n0(impr), pequeno: true });
-  h += kpi({ rotulo: 'CTR', valor: pctOuTraco(taxa(cliques, impr), 2),
-    nota: n0(cliques) + ' cliques' });
-  h += kpi({ rotulo: 'Reunioes do CRM', valor: n0(reun.length),
-    nota: ERROS.metaReun ? 'aba Reunioes indisponivel' : 'aba Reunioes da planilha do Meta' });
-  h += kpi({ rotulo: 'Custo por reuniao', valor: reun.length ? brl0(gasto / reun.length) : '&mdash;', pequeno: true });
-  h += kpi({ rotulo: 'CAC', valor: cli.length ? brl0(gasto / cli.length) : '&mdash;', pequeno: true,
-    dica: 'Investimento em midia do recorte dividido pelos clientes fechados no mesmo recorte. Nao e coorte: o cliente pode ter entrado antes.' });
-  h += kpi({ rotulo: 'ROI sobre midia', valor: gasto ? n1(hon / gasto) + 'x' : '&mdash;', pequeno: true,
-    selo: gasto ? selo(hon / gasto >= 3 ? 'ok' : hon / gasto >= 1.5 ? 'atencao' : 'critico',
-      hon / gasto >= 3 ? 'saudavel' : hon / gasto >= 1.5 ? 'apertado' : 'no vermelho') : null });
+  h += '<div class="secao-titulo primeiro">Tráfego pago &middot; ' + esc(c.rotMes) + '</div>';
+  h += seletorMes(true);
+  h += resumoArea(todosT);
+  h += '<div class="secao-titulo">Principais</div>';
+  h += gradeDestaque(KT.principais);
+
+  h += '<div class="secao-titulo">Comparativos</div>';
+  h += '<div class="grid g-2">';
+  h += cartao('Atingimento dos principais', 'Percentual da meta de referência &mdash; a única escala em que indicadores de unidades diferentes dividem o mesmo gráfico. A linha tracejada marca 100%.',
+    vizAtingimento(KT.principais, { rotuloW: 246 }));
+
+  h += cartao('Investimento por campanha · ' + rotuloMesCurto(c.mes) + ' x ' + rotuloMesCurto(c.ant),
+    'Onde a verba mudou de lugar de um mês para o outro. Mesma unidade nas duas barras.',
+    (() => {
+      const atual = porVolume(agrupar(c.md, r => r.campanha, r => r.gasto)).slice(0, 6);
+      if (!atual.length) return '<div class="vazio">Sem investimento no mes selecionado.</div>';
+      const antPor = {};
+      c.mdAnt.forEach(r => { antPor[chaveBusca(r.campanha)] = (antPor[chaveBusca(r.campanha)] || 0) + r.gasto; });
+      const curto = s2 => s2.length > 18 ? s2.slice(0, 17) + '…' : s2;
+      return vizGrupos({ x: atual.map(g => curto(g.k)), fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k',
+        series: [
+          { nome: rotuloMes(c.ant), cor: 'var(--s4)', vals: atual.map(g => antPor[chaveBusca(g.k)] || 0) },
+          { nome: rotuloMes(c.mes), cor: 'var(--s2)', vals: atual.map(g => g.v) }
+        ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s2)' }]);
+    })());
+
+  h += cartao('Leads por tipo de conversão · ' + rotuloMesCurto(c.mes) + ' x ' + rotuloMesCurto(c.ant),
+    'Formulário, conversa no WhatsApp e pixel. Mesma unidade, magnitudes comparáveis.',
+    vizGrupos({ x: ['Formulário', 'Conversas', 'Pixel'], fmt: n0, series: [
+      { nome: rotuloMes(c.ant), cor: 'var(--s4)', vals: [soma(c.mdAnt, r => r.leadsForm), soma(c.mdAnt, r => r.conversas), soma(c.mdAnt, r => r.leadsPixel)] },
+      { nome: rotuloMes(c.mes), cor: 'var(--s1)', vals: [soma(c.md, r => r.leadsForm), soma(c.md, r => r.conversas), soma(c.md, r => r.leadsPixel)] }
+    ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s1)' }]));
   h += '</div>';
 
-  h += '<div class="secao-titulo">Evolucao</div>';
+  h += '<div class="secao-titulo">Diagnóstico do gestor de tráfego</div>';
+  h += '<div style="font-size:0.73rem;color:var(--texto-muted);line-height:1.5;margin:-0.35rem 0 0.9rem;max-width:74ch">' +
+    'O detalhe que se consulta quando um principal acende. Indicador com borda tracejada não tem fonte: ' +
+    'o pé do cartão diz exatamente o que falta para ele existir.</div>';
+  KT.grupos.forEach(g => { h += blocoEsp(g.t, g.s, g.l); });
+
+  h += '<div class="secao-titulo">Todos os indicadores da area</div>';
+  h += tabelaKpi('kpi-trafego', todosT, 'Indicadores de tráfego');
+
+  h += '<div class="secao-titulo">Evolucao &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += aviso('info', 'Daqui para baixo o recorte volta a ser o <b>filtro de período</b> da barra de cima (' +
+    esc(rotuloPeriodo()) + '), não o mês do painel: é a parte de investigar campanha e criativo.');
   h += '<div class="grid g-2">';
   h += cartao('Investimento por mes', 'Gasto no Meta Ads.',
     vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: soma(md.filter(r => r.mes === k), x => x.gasto) })),
@@ -4198,11 +4449,11 @@ function telaKpis() {
   const meses12 = [];
   for (let i = 0; i < 12; i++) meses12.push(mesMais(MES_ATUAL, -i));
   h += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.9rem">' +
-    '<div class="filtro"><label class="filtro-rotulo">Mes</label><select id="selMesKpi">' +
+    '<div class="filtro"><label class="filtro-rotulo">Mes</label><select data-selmes>' +
     meses12.filter(k => k >= '2026-01').map(k =>
       '<option value="' + k + '"' + (k === mes ? ' selected' : '') + '>' + rotuloMes(k) + '</option>').join('') +
     '</select></div>' +
-    '<button class="btn-acao" id="btnMetas" type="button">&#9881; Configurar metas</button></div>';
+    '<button class="btn-acao" data-metas type="button">&#9881; Configurar metas</button></div>';
 
   if (emCurso) {
     h += aviso('info', '<b>Mes em andamento</b> &mdash; dados parciais ate ' + hoje_.toLocaleDateString('pt-BR') +
@@ -4599,6 +4850,1404 @@ function rotuloPeriodo() {
   return (p ? p.rot.toLowerCase() : '') + ' (' + rotuloMesCurto(chaveMes(f.de)) + ' a ' + rotuloMesCurto(chaveMes(f.ate)) + ')';
 }
 /* ==========================================================================
+   INDICADORES POR AREA  -  trafego, marketing e comercial
+   --------------------------------------------------------------------------
+   Duas densidades em cada area, e a hierarquia e o ponto:
+
+     PRINCIPAIS   - o que decide a semana. Cartao inteiro, numero grande,
+                    meta, comparacao com o mes anterior e historico de 6 meses.
+     ESPECIALISTA - o diagnostico. Ficha compacta, agrupada por assunto,
+                    consultada quando um principal acende.
+
+   Tres regras valem em todas as telas daqui:
+
+   1. Indicador sem fonte NAO e zero. Ele aparece com borda tracejada,
+      travessao no lugar do numero e, no pe, exatamente o que falta para ele
+      existir. Inventar um numero seria pior que a lacuna: o gestor decidiria
+      sobre ele sem saber.
+   2. Toda conta carrega o escopo escrito. "Custo por lead elegivel" divide o
+      investimento do Meta por um total do CRM que tambem conta organico -
+      isso subestima o custo, e o pe do cartao diz isso.
+   3. Comparar realizado com meta CHEIA no dia 10 do mes so produz panico. Em
+      indicador que acumula, a referencia e a meta PROPORCIONAL ao dia.
+   ========================================================================== */
+
+/* ===== NATUREZA DA ORIGEM =====
+   O time nomeia campanha do Meta entre colchetes ("[ENG] [FORM] Rev. Plano
+   de Saude"), e e esse rotulo que chega na coluna ORIGEM da planilha de
+   clientes. O resto e nominal: Organico, Indicacao, Recompra, Site. Daqui sai
+   o unico recorte pago x nao pago que existe em nivel de REGISTRO - e por
+   isso que clientes e faturamento tem o corte por origem e os leads nao. */
+function naturezaOrigem(o) {
+  const t = String(o == null ? '' : o).trim();
+  const k = chaveBusca(t);
+  if (!k) return 'indefinido';
+  if (t.charAt(0) === '[' || /remarketing/.test(k)) return 'ads';
+  if (/indicacao/.test(k)) return 'indicacao';
+  if (/recompra|cliente bm/.test(k)) return 'base';
+  if (/organico|site|calculadora|reuniao fechada/.test(k)) return 'organico';
+  return 'outras';
+}
+const ROT_NAT = { ads: 'Meta Ads', organico: 'Orgânico', indicacao: 'Indicação',
+                  base: 'Base / recompra', outras: 'Outras origens', indefinido: 'Sem origem' };
+const COR_NAT = { ads: 'var(--s1)', organico: 'var(--s3)', indicacao: 'var(--s7)',
+                  base: 'var(--s4)', outras: 'var(--texto-muted)', indefinido: 'var(--texto-muted)' };
+const NATS = ['ads', 'organico', 'indicacao', 'base', 'outras'];
+
+/* ===== DEGRAU DA ESTEIRA EM QUE O FECHAMENTO ACONTECEU =====
+   A esteira tem 9 follow ups com significado proprio: 1 = oferta de 24h,
+   7 = D21 Buckner, 8 = D28 honorarios em liminar, 9 = D45 apenas exito. O FUP
+   mais alto marcado "Feito" e, literalmente, o degrau alcancado.
+   Quando "Tipo de Contrato (Honorarios)" esta preenchido ele manda: diz a
+   OFERTA que fechou, nao so quando o toque aconteceu. */
+const ETAPA_FECHA = [
+  { k: '24h',     rot: 'Oferta de 24h',               cor: 'var(--s3)' },
+  { k: 'normal',  rot: 'Negociação normal (D3–D14)',  cor: 'var(--s1)' },
+  { k: 'buckner', rot: 'D21 · Buckner',               cor: 'var(--s4)' },
+  { k: 'liminar', rot: 'D28 · honorários em liminar', cor: 'var(--s7)' },
+  { k: 'exito',   rot: 'D45 · apenas êxito',          cor: 'var(--s5)' }
+];
+function etapaFechamento(r) {
+  const th = chaveBusca(r.tipoHon);
+  if (/liminar/.test(th)) return 'liminar';
+  if (/exito/.test(th) && !/inicial/.test(th)) return 'exito';
+  const n = r.etapaFup || 0;
+  if (n >= 9) return 'exito';
+  if (n === 8) return 'liminar';
+  if (n === 7) return 'buckner';
+  if (n <= 1) return '24h';
+  return 'normal';
+}
+
+/* ===================== RENDERIZACAO DE INDICADOR ===================== */
+const FMT_K = {
+  num:    n0,
+  moeda:  brl0,
+  moeda2: brl,
+  pct:    v => pct(v, v != null && Math.abs(v) < 10 ? 2 : 1),
+  mult:   v => n1(v) + 'x',
+  dias:   v => n1(v) + ' d'
+};
+const fmtK = k => FMT_K[k.tipo] || n0;
+const CORNV = { ok: 'var(--ok)', atencao: 'var(--atencao)', grave: 'var(--grave)',
+                critico: 'var(--critico)', neutro: 'transparent' };
+/* Sobre fundo escuro o token puro de status nao tem contraste para texto.
+   Estes sao os mesmos tons que o selo usa. */
+const CORTX = { ok: '#5fd35f', atencao: '#f3c45a', grave: '#f0a681',
+                critico: '#e98a8a', neutro: 'var(--texto-2)' };
+
+/* Meta de referencia do indicador. metaProp vem da propria planilha quando
+   ela ja calcula; senao, rateia pela fracao do mes ja corrida. */
+function metaRefK(k) {
+  if (k.meta == null || !isFinite(k.meta)) return null;
+  if (k.metaProp != null && isFinite(k.metaProp) && k.emCurso) return k.metaProp;
+  return k.acumula && k.emCurso ? k.meta * (k.fracao == null ? 1 : k.fracao) : k.meta;
+}
+/* Atingimento. Em indicador INVERSO (custo, CAC, no-show) menos e melhor,
+   entao a fracao vira meta/realizado. */
+function atingK(k) {
+  const m = metaRefK(k);
+  if (k.valor == null || !isFinite(k.valor) || m == null || m === 0) return null;
+  return k.inverso ? (k.valor > 0 ? taxa(m, k.valor) : null) : taxa(k.valor, m);
+}
+function nivelK(k) { const a = atingK(k); return a == null ? 'neutro' : nivelMeta(a); }
+/* Variacao contra o mes anterior, em percentual do valor anterior. */
+function varK(k) {
+  if (k.valor == null || k.ant == null || !isFinite(k.ant) || k.ant === 0) return null;
+  return ((k.valor - k.ant) / Math.abs(k.ant)) * 100;
+}
+const alertaK = k => ['grave', 'critico'].indexOf(nivelK(k)) >= 0;
+
+function rotuloK(k, cls) {
+  return '<div class="' + cls + '">' + esc(k.rot) +
+    (k.dica ? '<span data-tip="' + esc(k.dica) + '" style="cursor:help;opacity:.55;margin-left:auto">&#9432;</span>' : '') +
+    '</div>';
+}
+
+/* Projecao do mes a partir do resultado parcial.
+   Em indicador que ACUMULA (leads, clientes, faturamento), projetar e dividir
+   o realizado pela fracao do mes ja corrida. Em TAXA, ticket ou custo nao se
+   projeta assim: numerador e denominador crescem juntos, e a razao de hoje ja
+   e a melhor estimativa do mes - entao a projecao e o proprio valor. */
+function projecaoK(k) {
+  if (k.valor == null || !isFinite(k.valor)) return null;
+  if (!k.emCurso) return k.valor;
+  return (k.acumula && k.fracao) ? k.valor / k.fracao : k.valor;
+}
+
+/* Uma linha do quadro comparativo. */
+function qLinha(rot, val, cls, dica) {
+  return '<div class="q-linha' + (cls ? ' ' + cls : '') + '">' +
+    '<span class="q-rot">' + rot +
+    (dica ? '<span data-tip="' + esc(dica) + '" style="cursor:help;opacity:.55">&#9432;</span>' : '') +
+    '</span><span class="q-val">' + val + '</span></div>';
+}
+const qInd = (nv, txt) => '<span class="q-ind" style="color:' + CORTX[nv] + '">' +
+  (nv === 'ok' ? ICO.ok : nv === 'neutro' ? '' : ICO.alerta) + txt + '</span>';
+
+/* O quadro das quatro leituras. Sem meta nao existe quadro: sobraria uma
+   tabela de uma linha repetindo o numero grande logo acima. */
+function quadroK(k) {
+  if (k.meta == null || !isFinite(k.meta)) return '';
+  const f = fmtK(k);
+  const mProp = metaRefK(k);
+  const a = atingK(k);
+  const nv = nivelK(k);
+  const proj = projecaoK(k);
+  const prop = k.emCurso && k.acumula;
+  /* Projecao contra a meta CHEIA do mes - e a pergunta "o mes fecha na meta?". */
+  const aProj = (proj == null || !k.meta) ? null
+    : (k.inverso ? (proj > 0 ? taxa(k.meta, proj) : null) : taxa(proj, k.meta));
+
+  let h = '<div class="quadro">';
+  h += qLinha('Realizado × ' + (prop ? 'meta proporcional' : 'meta mensal'),
+    a == null ? '&mdash;' : qInd(nv, pct(a, 0)), 'forte',
+    k.inverso ? 'Indicador invertido: a meta é um teto. Acima de 100% significa que o realizado está DENTRO do limite.'
+              : null);
+  if (prop) h += qLinha('Meta proporcional (' + n0(k.dias) + 'd)', f(mProp), null,
+    'O quanto deveria estar entregue a esta altura do mês: ' + n0(k.dias) + ' de ' + n0(k.diasMes) + ' dias do mês.');
+  h += qLinha((k.inverso ? 'Limite' : 'Meta') + ' mensal', f(k.meta));
+  if (k.emCurso) {
+    h += qLinha('Projeção (mês)',
+      (proj == null ? '&mdash;' : f(proj)) +
+      (aProj == null ? '' : ' <span class="q-sec">(' + pct(aProj, 0) + ')</span>'), null,
+      k.acumula ? 'Onde o mês termina se o ritmo de hoje continuar. O percentual é contra a meta cheia.'
+                : 'Taxa e custo não acumulam: numerador e denominador crescem juntos, então a razão de hoje já é a estimativa do mês.');
+  }
+  h += '</div>';
+
+  /* Barra de ritmo: a mesma leitura da primeira linha, em forma. O risco
+     marca onde o ritmo esperado esta hoje. */
+  if (prop && k.valor != null) {
+    const pFill = Math.min(100, Math.max(0, k.inverso
+      ? (k.valor > 0 ? (k.meta / k.valor) * 100 : 0)
+      : (taxa(k.valor, k.meta) || 0)));
+    h += '<div class="ritmo"><div class="ritmo-trilha">' +
+      '<div class="ritmo-fill" style="width:' + pFill.toFixed(1) + '%;background:' +
+      (CORNV[nv] === 'transparent' ? 'var(--s1)' : CORNV[nv]) + '"></div>' +
+      '<div class="ritmo-alvo" style="left:' + (k.fracao * 100).toFixed(1) + '%" data-tip="' +
+      esc('Ritmo esperado para hoje: ' + pct(k.fracao * 100, 0) + ' da meta do mês') + '"></div>' +
+      '</div></div>';
+  }
+  return h;
+}
+
+/* Cartao do indicador principal: numero grande, comparacao e o quadro. */
+function destaque(k) {
+  if (k.falta) {
+    return '<div class="destaque sem">' + rotuloK(k, 'destaque-rot') +
+      '<div class="destaque-val sm">&mdash;</div>' +
+      '<div class="destaque-linha"><span class="marca-sem">sem fonte</span></div>' +
+      '<div class="destaque-pe">' + k.falta + '</div></div>';
+  }
+  const f = fmtK(k), nv = nivelK(k), a = atingK(k), v = varK(k);
+  let h = '<div class="destaque" style="--fio:' + CORNV[nv] + '">' + rotuloK(k, 'destaque-rot');
+  h += '<div class="destaque-val' + (k.largo === false ? ' sm' : '') + '">' +
+       (k.valor == null ? '&mdash;' : f(k.valor)) + '</div>';
+  const linha = [];
+  /* Sem meta nao ha quadro, e entao o selo e o unico lugar onde o status
+     cabe. Com meta, o quadro logo abaixo ja diz realizado x meta com cor e
+     percentual - repetir aqui seria o mesmo numero sob dois rotulos. */
+  if (a != null && k.meta == null) linha.push(selo(nv, pct(a, 0) + ' da meta'));
+  if (v != null) linha.push(delta(v, { inverso: !!k.inverso, sufixo: 'vs ' + k.rotAnt }));
+  if (linha.length) h += '<div class="destaque-linha">' + linha.join('') + '</div>';
+  h += quadroK(k);
+  if (k.nota) h += '<div class="destaque-pe">' + k.nota + '</div>';
+  if (k.serie && k.serie.filter(x => x != null && x !== 0).length > 2)
+    h += '<div class="kpi-spark">' + spark(k.serie, 'var(--s1)') + '</div>';
+  return h + '</div>';
+}
+
+/* Ficha compacta do indicador de especialista. */
+function ficha(k) {
+  if (k.falta) {
+    return '<div class="ficha sem">' + rotuloK(k, 'ficha-rot') +
+      '<div class="ficha-val">&mdash;</div>' +
+      '<div class="ficha-pe"><span class="marca-sem">sem fonte</span> ' + k.falta + '</div></div>';
+  }
+  const f = fmtK(k), nv = nivelK(k), a = atingK(k), v = varK(k);
+  let h = '<div class="ficha">' + rotuloK(k, 'ficha-rot');
+  h += '<div class="ficha-val">' + (k.valor == null ? '&mdash;' : f(k.valor)) + '</div>';
+  if (a != null) h += '<div style="margin-top:.25rem">' +
+    selo(nv, k.inverso ? 'limite ' + f(metaRefK(k)) : pct(a, 0) + ' da meta') + '</div>';
+  else if (v != null) h += delta(v, { inverso: !!k.inverso });
+  if (k.nota) h += '<div class="ficha-pe">' + k.nota + '</div>';
+  return h + '</div>';
+}
+
+const gradeDestaque = lista => '<div class="grid g-destaque">' + lista.map(destaque).join('') + '</div>';
+const gradeFicha    = lista => '<div class="grid g-ficha">' + lista.map(ficha).join('') + '</div>';
+
+/* Bloco de especialista: titulo, uma linha de contexto e a grade de fichas. */
+function blocoEsp(titulo, sub, lista) {
+  if (!lista || !lista.length) return '';
+  const sem = lista.filter(k => k.falta).length;
+  let h = '<div class="secao-titulo">' + esc(titulo) +
+    (sem ? '<span class="marca-sem">' + sem + ' sem fonte</span>' : '') + '</div>';
+  if (sub) h += '<div style="font-size:0.73rem;color:var(--texto-muted);line-height:1.5;margin:-0.35rem 0 0.7rem;max-width:74ch">' + sub + '</div>';
+  return h + gradeFicha(lista);
+}
+
+/* Faixa de resumo da area - a leitura de uma linha so. */
+function resumoArea(lista) {
+  const com = lista.filter(k => !k.falta && k.valor != null);
+  const comMeta = com.filter(k => atingK(k) != null);
+  const verdes = comMeta.filter(k => nivelK(k) === 'ok').length;
+  const vermelhos = comMeta.filter(k => alertaK(k)).length;
+  const sem = lista.filter(k => k.falta).length;
+  return '<div class="resumo-area">' +
+    '<div class="resumo-item"><b>' + n0(com.length) + '</b> indicadores medidos</div>' +
+    '<div class="resumo-item"><b>' + n0(verdes) + '/' + n0(comMeta.length) + '</b> no verde</div>' +
+    '<div class="resumo-item"><b style="color:' + (vermelhos ? '#e98a8a' : 'var(--texto)') + '">' + n0(vermelhos) +
+      '</b> pedindo diagnóstico</div>' +
+    (sem ? '<div class="resumo-item"><b>' + n0(sem) + '</b> sem fonte</div>' : '') +
+    '</div>';
+}
+
+/* Comparativo entre indicadores: a unica escala em que KPIs de unidades
+   diferentes podem dividir o mesmo grafico e o ATINGIMENTO em percentual.
+   A linha tracejada marca 100%. */
+function vizAtingimento(lista, opc) {
+  const o = opc || {};
+  const d = lista.filter(k => !k.falta && atingK(k) != null)
+    .map(k => ({ k: k.rot, v: atingK(k), nivel: nivelK(k), kk: k }))
+    .sort((a, b) => a.v - b.v);
+  if (!d.length) return '<div class="vazio">Nenhum indicador com meta definida neste recorte.</div>';
+  return vizBarras({
+    rotuloW: o.rotuloW || 230, fmt: v => pct(v, 0), nome: 'Atingimento', ref: 100,
+    dados: d.map(x => ({
+      k: x.k, v: x.v, cor: CORNV[x.nivel] === 'transparent' ? 'var(--s1)' : CORNV[x.nivel],
+      extra: [{ rot: 'Realizado', val: fmtK(x.kk)(x.kk.valor) },
+              { rot: 'Meta de referência', val: fmtK(x.kk)(metaRefK(x.kk)) }]
+    }))
+  });
+}
+
+/* Tabela de diagnostico: todos os indicadores da area, com fonte declarada. */
+function tabelaKpi(id, lista, titulo) {
+  const linhas = lista.map(k => ({
+    rot: k.rot, grupo: k.grupo || '', kk: k,
+    valorTxt: k.falta ? null : (k.valor == null ? null : fmtK(k)(k.valor)),
+    valorOrd: k.valor == null ? null : k.valor,
+    metaTxt: k.meta == null ? null : fmtK(k)(k.meta),
+    ating: k.falta ? null : atingK(k),
+    fonte: k.falta ? 'sem fonte' : (k.fonte || '')
+  }));
+  return tabelaInterativa(id, [
+    { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap' },
+    { k: 'grupo', rot: 'Bloco', tipo: 'txt' },
+    { k: 'valorOrd', rot: 'Realizado', tipo: 'num',
+      html: r => r.valorTxt == null ? '<span class="marca-sem">sem fonte</span>' : '<b style="color:var(--texto)">' + r.valorTxt + '</b>' },
+    { k: 'metaTxt', rot: 'Meta', tipo: 'txt', ord: false,
+      html: r => r.metaTxt == null ? '<span style="color:var(--texto-muted)">sem meta</span>'
+        : r.metaTxt + (r.kk.inverso ? ' <span style="color:var(--texto-muted)">(teto)</span>' : '') },
+    { k: 'ating', rot: 'Atingimento', tipo: 'num',
+      html: r => r.ating == null ? '&mdash;' : selo(nivelMeta(r.ating), pct(r.ating, 0)) },
+    { k: 'fonte', rot: 'De onde vem', tipo: 'txt', cls: 'wrap' }
+  ], linhas, { titulo: titulo, limite: 80, ativa: false });
+}
+
+/* Seletor do mes do painel - o mesmo estado de F.mesKpi em todas as telas
+   de indicador, para nao existirem dois "mes atual" diferentes na cabeca. */
+function seletorMes(comMetas) {
+  const atual = F.mesKpi || MES_ATUAL;
+  const ms = [];
+  for (let i = 0; i < 12; i++) ms.push(mesMais(MES_ATUAL, -i));
+  return '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.9rem">' +
+    '<div class="filtro"><label class="filtro-rotulo">Mês do painel</label><select data-selmes>' +
+    ms.filter(k => k >= '2026-01').map(k => '<option value="' + k + '"' + (k === atual ? ' selected' : '') +
+      '>' + rotuloMes(k) + '</option>').join('') + '</select></div>' +
+    (comMetas ? '<button class="btn-acao" data-metas type="button">&#9881; Configurar metas</button>' : '') +
+    '</div>';
+}
+
+/* ==========================================================================
+   CONTEXTO MENSAL  -  um unico recorte, montado uma vez por desenho de tela
+   ========================================================================== */
+function ctxArea() {
+  const mes = F.mesKpi || MES_ATUAL;
+  const ant = mesMais(mes, -1);
+  const emCurso = mes === MES_ATUAL;
+  const diasMes = new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0).getDate();
+  const dias = emCurso ? Math.min(new Date().getDate(), diasMes) : diasMes;
+  const fracao = diasMes ? dias / diasMes : 1;
+
+  const serie = [];
+  for (let i = 5; i >= 0; i--) serie.push(mesMais(mes, -i));
+
+  const reg = f => (f && f.reg) || [];
+  const noMes = (lista, k) => lista.filter(r => r.mes === k);
+  /* Reuniao REALIZADA e a que tem data de atendimento; a agendada conta pela
+     data do agendamento. Sao coisas diferentes e o no-show vive na diferenca. */
+  const realizadas = (lista, k) => lista.filter(r => r.dAtend && chaveMes(r.dAtend) === k);
+  const agendadas  = (lista, k) => lista.filter(r => r.dAgenda && chaveMes(r.dAgenda) === k);
+
+  const todosCli = reg(DADOS.clientes), todosAt = reg(DADOS.atend), todosMd = reg(DADOS.metaDia);
+
+  const c = {
+    mes: mes, ant: ant, emCurso: emCurso, dias: dias, diasMes: diasMes, fracao: fracao,
+    rotMes: rotuloMes(mes), rotAnt: rotuloMesCurto(ant), serie: serie,
+    nomeMes: MESES_ACENTO[+mes.slice(5, 7) - 1],
+    cli: noMes(todosCli, mes), cliAnt: noMes(todosCli, ant),
+    at: noMes(todosAt, mes),
+    reun: realizadas(todosAt, mes), reunAnt: realizadas(todosAt, ant),
+    marc: agendadas(todosAt, mes), marcAnt: agendadas(todosAt, ant),
+    md: noMes(todosMd, mes), mdAnt: noMes(todosMd, ant),
+    todosCli: todosCli, todosAt: todosAt, todosMd: todosMd,
+    serieCli: k => noMes(todosCli, k),
+    serieMd:  k => noMes(todosMd, k),
+    serieReun: k => realizadas(todosAt, k)
+  };
+
+  /* KR da planilha de metas: traz meta mensal, meta proporcional e o
+     resultado que o time anotou a mao.
+     A pontuacao do rotulo varia ("No-Show", "No Show", "Conversao em Reuniao
+     [Automatico]"), entao a comparacao ignora pontuacao - senao um hifen na
+     planilha faz o indicador aparecer como "sem fonte". */
+  const chaveKr = t => chaveBusca(t).replace(/[^a-z0-9]+/g, ' ').trim();
+  const achaKr = (m, texto) => {
+    if (!m || m.erro || !m.krs) return null;
+    const kk = chaveKr(texto);
+    return m.krs.find(x => chaveKr(x.kr).indexOf(kk) >= 0) || null;
+  };
+  c.kr = texto => achaKr(DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[c.nomeMes], texto);
+  c.krAnt = texto => {
+    const nome = MESES_ACENTO[+ant.slice(5, 7) - 1];
+    const x = achaKr(DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nome], texto);
+    return x ? x.resultado : null;
+  };
+  /* A aba KPIS Marketing e opcional: so existe se o time criar. */
+  c.krMkt = texto => achaKr(DADOS.metas && DADOS.metas.marketing, texto);
+  c.temMkt = !!(DADOS.metas && DADOS.metas.marketing && !DADOS.metas.marketing.erro &&
+                DADOS.metas.marketing.krs && DADOS.metas.marketing.krs.length);
+
+  /* A aba Produtos Juridicos existe para o mes corrente e o anterior. */
+  const p = DADOS.metas && DADOS.metas.produtos;
+  c.prod = p ? (emCurso ? p.atual : (mes === mesMais(MES_ATUAL, -1) ? p.anterior : null)) : null;
+  c.prodAnt = p ? (emCurso ? p.anterior : null) : null;
+  c.vProd = (o, kk) => (o && o.real && o.real[kk] != null && o.real[kk] !== '') ? num(o.real[kk]) : null;
+
+  /* Base do indicador: fracao do mes e rotulo do mes anterior entram em todos. */
+  c.base = o => Object.assign({ emCurso: emCurso, fracao: fracao, dias: dias, diasMes: diasMes,
+    rotAnt: c.rotAnt, tipo: 'num' }, o);
+  return c;
+}
+
+/* Soma de uma lista de clientes por natureza de origem. */
+const porNat = (lista, nat) => (lista || []).filter(r => naturezaOrigem(r.origem) === nat);
+
+/* ==========================================================================
+   AREA 1 - TRAFEGO PAGO (META ADS)
+   ========================================================================== */
+function kpisTrafego(c) {
+  const B = c.base;
+  const gasto = soma(c.md, r => r.gasto), gastoAnt = soma(c.mdAnt, r => r.gasto);
+  const leads = soma(c.md, r => r.leadsTotal), leadsAnt = soma(c.mdAnt, r => r.leadsTotal);
+  const leadsForm = soma(c.md, r => r.leadsForm);
+  const conversasMeta = soma(c.md, r => r.conversas);
+  const impr = soma(c.md, r => r.impressoes);
+  const cliques = soma(c.md, r => r.cliques);
+  const cliqLink = soma(c.md, r => r.cliquesLink);
+
+  /* "Conversa iniciada", na definicao da casa, e o lead que avancou para
+     elegivel ou inelegivel - quem travou na primeira mensagem nao conta.
+     Na planilha isso e exatamente "Responderam a Triagem": elegiveis (260) +
+     inelegiveis (43) = 303 respostas. A metrica homonima do Meta conta outra
+     coisa e entra separada, no bloco de especialista. */
+  const triagem = c.vProd(c.prod, 'responderam a triagem');
+  const triagemAnt = c.vProd(c.prodAnt, 'responderam a triagem');
+
+  const krEleg = c.kr('leads elegiveis');
+  const krQual = c.kr('leads qualificados');
+  const elegiveis = krEleg ? krEleg.resultado : null;
+  const qualificados = krQual ? krQual.resultado : null;
+
+  const cliAds = porNat(c.cli, 'ads'), cliAdsAnt = porNat(c.cliAnt, 'ads');
+  const honAds = soma(cliAds, r => r.honIni);
+  const honAdsAnt = soma(cliAdsAnt, r => r.honIni);
+
+  /* Orcamento diario: so das campanhas que estao de fato no ar. */
+  const camps = (DADOS.metaCamp && DADOS.metaCamp.reg) || [];
+  const ativas = camps.filter(x => /^active$/i.test(x.status || ''));
+  const orcDia = soma(ativas, r => r.orcDia);
+
+  /* Criativos novos no ar. A planilha nao guarda data de criacao do anuncio,
+     mas guarda a MESMA peca medida em duas janelas fechadas (7d e 30d). Se o
+     gasto dos ultimos 7 dias e praticamente todo o gasto dos ultimos 30, a
+     peca comecou a rodar dentro da janela - ou seja, e nova no ar. */
+  const ads = (DADOS.metaAnuncios && DADOS.metaAnuncios.reg) || [];
+  const a7 = ads.filter(r => r.janela === '7d' && r.impressoes > 0);
+  const a30 = {};
+  ads.filter(r => r.janela === '30d').forEach(r => { a30[chaveBusca(r.anuncio) + '|' + chaveBusca(r.campanha)] = r; });
+  /* Comparo por IMPRESSAO, nao por gasto, e com piso de entrega: uma peca que
+     gastou R$ 0,11 em 7 dias e R$ 0,11 em 30 passaria no teste de razao sem
+     dizer nada - a razao de dois numeros minusculos e ruido, nao criativo novo. */
+  const PISO_IMPR = 300;
+  const novos = a7.filter(r => {
+    if (r.impressoes < PISO_IMPR) return false;
+    const v = a30[chaveBusca(r.anuncio) + '|' + chaveBusca(r.campanha)];
+    return !v || !v.impressoes || r.impressoes / v.impressoes >= 0.85;
+  });
+  const entregando = a7.filter(r => r.impressoes >= PISO_IMPR);
+  const temJanelas = a7.length && Object.keys(a30).length;
+  const janelaAds = temJanelas
+    ? 'Peças cuja entrega de 7 dias é praticamente toda a entrega de 30 — começaram a rodar dentro da janela. ' +
+      'Só as que passaram de ' + n0(PISO_IMPR) + ' impressões: ' + n0(entregando.length) + ' de ' + n0(a7.length) + ' peças no ar.'
+    : null;
+
+  /* Metas: as que a planilha de metas define por KR entram de lá; as de
+     midia vem do painel de metas configuravel. */
+  const metas = metasAtivas();
+  const krReun = c.kr('reunioes realizadas');
+  const metaReun = krReun ? krReun.metaMes : metas.reunioes;
+
+  const fonteIns = 'Insights diários do Meta Ads';
+  const fonteCli = 'ORIGEM da planilha de clientes';
+  const fonteKr = 'KR da aba KPIS ' + c.nomeMes;
+
+  const principais = [
+    B({ k: 'criativos', rot: 'Criativos novos no ar', valor: temJanelas ? novos.length : null,
+        falta: temJanelas ? null : 'A aba <b>Anúncios</b> precisa das duas janelas (7d e 30d) para o painel distinguir peça nova de peça antiga.',
+        nota: janelaAds, fonte: 'Aba Anúncios (janelas 7d e 30d)',
+        dica: 'Sem coluna de data de criação, o painel deduz pela comparação das janelas: impressões de 7d ≈ impressões de 30d significa que a peça começou a rodar agora.' }),
+    B({ k: 'invest', rot: 'Investimento em tráfego', tipo: 'moeda', valor: gasto, ant: gastoAnt,
+        meta: metas.investimento, acumula: true, serie: c.serie.map(k => soma(c.serieMd(k), r => r.gasto)),
+        fonte: fonteIns, nota: c.emCurso ? n0(c.dias) + ' de ' + n0(c.diasMes) + ' dias do mês' : null }),
+    B({ k: 'orcDia', rot: 'Orçamento diário no ar', tipo: 'moeda', valor: orcDia,
+        fonte: 'Aba Campanhas (status ACTIVE)', largo: false,
+        nota: n0(ativas.length) + ' de ' + n0(camps.length) + ' campanhas ativas · ritmo de ' + brl0(orcDia * c.diasMes) + '/mês' }),
+    B({ k: 'leads', rot: 'Leads (total)', valor: leads, ant: leadsAnt, meta: metas.leadsAds, acumula: true,
+        serie: c.serie.map(k => soma(c.serieMd(k), r => r.leadsTotal)), fonte: fonteIns,
+        nota: 'Formulário ' + n0(leadsForm) + ' · conversas ' + n0(conversasMeta) + ' · pixel ' + n0(soma(c.md, r => r.leadsPixel)) }),
+    B({ k: 'eleg', rot: 'Leads elegíveis', valor: elegiveis, ant: c.krAnt('leads elegiveis'),
+        meta: krEleg ? krEleg.metaMes : null, metaProp: krEleg ? krEleg.metaProp : null, acumula: true,
+        falta: krEleg ? null : 'O KR <b>Leads Elegíveis</b> não foi lido na aba KPIS ' + esc(c.nomeMes) + '.',
+        fonte: fonteKr, nota: 'Conta todas as origens, não só o Meta Ads',
+        dica: 'A planilha mede elegibilidade no total do CRM. O corte por origem não existe em nível de lead — ver o bloco de Mensuração.' }),
+    B({ k: 'custoConversa', rot: 'Custo por conversa iniciada', tipo: 'moeda2', inverso: true,
+        valor: triagem ? gasto / triagem : null,
+        ant: (triagemAnt && gastoAnt) ? gastoAnt / triagemAnt : null,
+        falta: triagem ? null : 'Depende de <b>Responderam a Triagem</b> na aba Produtos Jurídicos, que não foi lida para ' + esc(c.rotMes) + '.',
+        fonte: 'Investimento ÷ Responderam a Triagem',
+        nota: triagem ? n0(triagem) + ' leads passaram da primeira mensagem' : null,
+        dica: 'Conversa iniciada = lead que avançou para elegível ou inelegível. O denominador conta todas as origens, então o custo real é um pouco maior.' }),
+    B({ k: 'cpl', rot: 'Custo por lead (total)', tipo: 'moeda2', inverso: true,
+        valor: leads ? gasto / leads : null, ant: leadsAnt ? gastoAnt / leadsAnt : null,
+        serie: c.serie.map(k => { const g = c.serieMd(k); const l = soma(g, r => r.leadsTotal); return l ? soma(g, r => r.gasto) / l : null; }),
+        fonte: fonteIns }),
+    B({ k: 'cplEleg', rot: 'Custo por lead elegível', tipo: 'moeda2', inverso: true,
+        valor: elegiveis ? gasto / elegiveis : null,
+        falta: elegiveis ? null : 'Depende do KR Leads Elegíveis.',
+        fonte: 'Investimento ÷ KR Leads Elegíveis',
+        dica: 'Denominador com todas as origens: o custo verdadeiro por elegível DE MÍDIA é maior que este.' }),
+    B({ k: 'custoReuniao', rot: 'Custo por reunião', tipo: 'moeda', inverso: true,
+        valor: c.reun.length ? gasto / c.reun.length : null,
+        ant: c.reunAnt.length ? gastoAnt / c.reunAnt.length : null,
+        fonte: 'Investimento ÷ reuniões realizadas (Fluxo de Atendimentos)',
+        nota: n0(c.reun.length) + ' reuniões realizadas no mês' }),
+    B({ k: 'convReuniao', rot: 'Conversão de lead em reunião', tipo: 'pct',
+        valor: taxa(c.reun.length, leads), ant: taxa(c.reunAnt.length, leadsAnt),
+        meta: metaReun && metas.leadsAds ? taxa(metaReun, metas.leadsAds) : null,
+        fonte: 'Reuniões realizadas ÷ leads do Meta',
+        dica: 'Lead é o do Meta Ads; reunião é a realizada no CRM. A conversão real por campanha depende da atribuição — ver Mensuração.' }),
+    B({ k: 'clientesAds', rot: 'Clientes', valor: cliAds.length, ant: cliAdsAnt.length,
+        meta: metas.clientes, acumula: true, serie: c.serie.map(k => porNat(c.serieCli(k), 'ads').length),
+        fonte: fonteCli, nota: n0(cliAds.length) + ' de ' + n0(c.cli.length) + ' fechamentos vieram de campanha' }),
+    B({ k: 'cacMidia', rot: 'Custo por cliente (CAC de mídia)', tipo: 'moeda', inverso: true,
+        valor: cliAds.length ? gasto / cliAds.length : null,
+        ant: cliAdsAnt.length ? gastoAnt / cliAdsAnt.length : null,
+        meta: metas.cac,
+        serie: c.serie.map(k => { const n = porNat(c.serieCli(k), 'ads').length; return n ? soma(c.serieMd(k), r => r.gasto) / n : null; }),
+        fonte: 'Investimento ÷ clientes de origem campanha',
+        dica: 'Só os clientes cuja ORIGEM é uma campanha entram no divisor — é o CAC de mídia pedido, não o CAC do escritório inteiro.' }),
+    B({ k: 'retorno', rot: 'Retorno financeiro', tipo: 'moeda', valor: honAds, ant: honAdsAnt,
+        serie: c.serie.map(k => soma(porNat(c.serieCli(k), 'ads'), r => r.honIni)),
+        fonte: fonteCli, nota: 'Honorários iniciais dos clientes de campanha' }),
+    B({ k: 'roi', rot: 'ROI de mídia', tipo: 'mult', valor: gasto ? honAds / gasto : null,
+        ant: gastoAnt ? honAdsAnt / gastoAnt : null, meta: metas.roi,
+        serie: c.serie.map(k => { const g = soma(c.serieMd(k), r => r.gasto); return g ? soma(porNat(c.serieCli(k), 'ads'), r => r.honIni) / g : null; }),
+        fonte: 'Retorno atribuído ÷ investimento' })
+  ];
+
+  /* ----- ESPECIALISTA: investimento e entrega -----
+     Alcance e frequencia vem das JANELAS fechadas, nao da soma dos dias: o
+     alcance diario conta pessoas unicas POR DIA, e somar 30 dias contaria a
+     mesma pessoa 30 vezes. */
+  const jan = (DADOS.metaJanelas && DADOS.metaJanelas.reg) || [];
+  const j7 = jan.filter(r => r.janela === '7d');
+  const alc7 = soma(j7, r => r.alcance), impr7 = soma(j7, r => r.impressoes);
+  /* Frequencia correta e a que a Meta calcula por campanha. A razao entre as
+     SOMAS daria um numero menor que o real, porque a soma dos alcances conta
+     a mesma pessoa uma vez por campanha em que ela aparece. */
+  const freq7 = impr7 ? soma(j7, r => r.frequencia * r.impressoes) / impr7 : null;
+  const metaInv = metas.investimento;
+
+  const entrega = [
+    B({ k: 'ritmoVerba', rot: 'Ritmo de verba', tipo: 'pct',
+        valor: metaInv && c.fracao ? taxa(gasto, metaInv * c.fracao) : null,
+        fonte: 'Gasto acumulado ÷ orçamento proporcional ao dia',
+        dica: 'Sem selo de meta de propósito: aqui passar de 100% é tão informativo quanto ficar abaixo, e um sinal verde para gasto acima do previsto enganaria.',
+        nota: brl0(gasto) + ' de ' + brl0(metaInv * c.fracao) + ' previstos até hoje' }),
+    B({ k: 'impressoes', rot: 'Impressões', valor: impr, fonte: fonteIns }),
+    B({ k: 'alcance7', rot: 'Alcance (7 dias)', valor: alc7 || null,
+        falta: alc7 ? null : 'A aba <b>Janelas</b> não trouxe a janela de 7 dias.',
+        fonte: 'Soma do alcance por campanha na janela de 7d',
+        dica: 'E um teto, nao pessoas unicas: quem foi alcancado por duas campanhas conta duas vezes. A Meta so da o alcance unico por campanha, nao o da conta.' }),
+    B({ k: 'freq7', rot: 'Frequência (7 dias)', tipo: 'mult', valor: freq7,
+        falta: freq7 ? null : 'Depende da janela de 7 dias na aba Janelas.',
+        fonte: 'Média das frequências por campanha, ponderada por impressão',
+        nota: freq7 && freq7 >= 3 ? 'Acima de 3: o mesmo público já viu demais' : null,
+        dica: 'Ponderada de propósito: a razao entre as somas daria menos que o real, porque a soma dos alcances conta a mesma pessoa mais de uma vez.' }),
+    B({ k: 'cpm', rot: 'CPM', tipo: 'moeda2', inverso: true, valor: impr ? (gasto / impr) * 1000 : null,
+        fonte: 'Investimento ÷ impressões × 1.000' }),
+    B({ k: 'conjAtivos', rot: 'Conjuntos ativos', valor: soma(ativas, r => r.conjAtivos) || null,
+        fonte: 'Aba Campanhas' }),
+    B({ k: 'aprendizado', rot: 'Fora da fase de aprendizado', falta:
+        'A aba Campanhas traz conjuntos ativos, mas não o <b>status de aprendizado</b> de cada conjunto. Precisa do campo <code>learning_stage_info</code> no coletor.' }),
+    B({ k: 'reprovados', rot: 'Anúncios reprovados ou restritos', falta:
+        'A aba Anúncios não tem coluna de <b>status de revisão</b>. Precisa de <code>effective_status</code> no nível do anúncio.' })
+  ];
+
+  /* ----- ESPECIALISTA: criativo ----- */
+  const totGasto7 = soma(a7, r => r.gasto);
+  const fadiga = entregando.filter(r => {
+    const v = a30[chaveBusca(r.anuncio) + '|' + chaveBusca(r.campanha)];
+    return r.frequencia >= 2.5 && v && v.ctrLink > 0 && r.ctrLink < v.ctrLink * 0.85;
+  });
+  const criativo = [
+    B({ k: 'ctrLink', rot: 'CTR do link', tipo: 'pct', valor: taxa(cliqLink, impr), fonte: fonteIns }),
+    B({ k: 'cpcLink', rot: 'CPC do link', tipo: 'moeda2', inverso: true, valor: cliqLink ? gasto / cliqLink : null,
+        fonte: 'Investimento ÷ cliques no link' }),
+    B({ k: 'criativosAtivos', rot: 'Peças entregando (7d)', valor: entregando.length || null,
+        falta: a7.length ? null : 'A aba Anúncios não trouxe a janela de 7 dias.',
+        fonte: 'Aba Anúncios (7d)', nota: a7.length ? brl0(totGasto7) + ' na janela' : null }),
+    B({ k: 'fadiga', rot: 'Peças em fadiga', valor: temJanelas ? fadiga.length : null,
+        falta: temJanelas ? null : 'Precisa das janelas 7d e 30d na aba Anúncios.',
+        fonte: 'Frequência ≥ 2,5 com CTR de 7d abaixo do CTR de 30d',
+        dica: 'Fadiga é frequência subindo junto com CTR caindo. Com as duas janelas o painel compara a entrega recente com a do mês.',
+        nota: temJanelas && fadiga.length ? fadiga.slice(0, 2).map(x => esc(x.anuncio)).join(' · ') : null }),
+    B({ k: 'hook', rot: 'Hook rate (3s ÷ impressões)', falta:
+        'O coletor não traz <code>video_3_sec_watched_actions</code>. A coluna Ações (JSON) tem só <code>video_view</code>, que não separa 3 segundos.' }),
+    B({ k: 'hold', rot: 'Hold rate (ThruPlay ÷ 3s)', falta:
+        'Precisa de <code>video_thruplay_watched_actions</code> no coletor da aba Insights.' }),
+    B({ k: 'retencao', rot: 'Retenção 25/50/75/95%', falta:
+        'Precisa de <code>video_p25…p95_watched_actions</code> no coletor.' }),
+    B({ k: 'relevancia', rot: 'Classificações de relevância', falta:
+        'Precisa de <code>quality_ranking</code>, <code>engagement_rate_ranking</code> e <code>conversion_rate_ranking</code> no nível do anúncio.' }),
+    B({ k: 'cplQualAd', rot: 'Custo por lead qualificado por anúncio', falta:
+        'A qualificação é anotada no CRM sem o anúncio de origem. Precisa do <code>ad_id</code> (ou UTM de conteúdo) chegando no lead.' })
+  ];
+
+  /* ----- ESPECIALISTA: conversao no destino ----- */
+  const campsForm = c.md.filter(r => /\[form\]/i.test(r.campanha));
+  const gastoForm = soma(campsForm, r => r.gasto), leadsFormCamp = soma(campsForm, r => r.leadsForm);
+  const destino = [
+    B({ k: 'cliqueConversa', rot: 'Clique → conversa', tipo: 'pct', valor: taxa(conversasMeta, cliqLink),
+        fonte: 'Conversas iniciadas (Meta) ÷ cliques no link',
+        dica: 'Aqui a conversa é a métrica do Meta, não a definição da casa — é ela que fala a mesma língua do clique.' }),
+    B({ k: 'custoConversaMeta', rot: 'Custo por conversa (métrica do Meta)', tipo: 'moeda2', inverso: true,
+        valor: conversasMeta ? gasto / conversasMeta : null,
+        fonte: 'Investimento ÷ conversas iniciadas (Meta)',
+        nota: n0(conversasMeta) + ' conversas · a maior parte da verba está em campanha de formulário' }),
+    B({ k: 'cplForm', rot: 'Custo por lead de formulário', tipo: 'moeda2', inverso: true,
+        valor: leadsFormCamp ? gastoForm / leadsFormCamp : null,
+        falta: leadsFormCamp ? null : 'Nenhuma campanha com <code>[FORM]</code> no nome teve lead de formulário no mês.',
+        fonte: 'Campanhas [FORM]: investimento ÷ leads de formulário' }),
+    B({ k: 'conexoes', rot: 'Novas conexões ÷ conversas', falta:
+        'Precisa de <code>messaging_first_reply</code> e <code>messaging_conversation_started</code> separados no coletor.' }),
+    B({ k: 'convLp', rot: 'Conversão da landing page', falta:
+        'Não há fonte de site no painel. Precisa de uma aba com sessões e conversões (GA4 ou similar).' }),
+    B({ k: 'velocidadeLp', rot: 'Velocidade da landing page', falta: 'Mesma lacuna: nenhuma fonte de site conectada.' })
+  ];
+
+  /* ----- ESPECIALISTA: qualidade e fundo de funil ----- */
+  const fin = DADOS.fin;
+  const custoComercial = fin && fin.comercial ? (fin.comercial.meses[c.mes] || 0) : null;
+  const cacTotal = custoComercial && c.cli.length ? custoComercial / c.cli.length : null;
+  /* ROAS de caixa: receita que ENTROU nos ultimos tres meses fechados contra
+     o investimento dos mesmos meses. A DRE e de caixa, a planilha de clientes
+     e de competencia - aqui o numero de caixa e o certo. */
+  const tri = [mesMais(c.mes, -2), mesMais(c.mes, -1), c.mes];
+  const recTri = fin && fin.receita ? soma(tri, k => fin.receita.meses[k] || 0) : null;
+  const invTri = soma(tri, k => soma(c.serieMd(k), r => r.gasto));
+  const fundo = [
+    B({ k: 'txQual', rot: 'Taxa de qualificação', tipo: 'pct',
+        valor: (qualificados != null && c.kr('novos leads')) ? taxa(qualificados, c.kr('novos leads').resultado) : null,
+        meta: krQual && c.kr('novos leads') ? taxa(krQual.metaMes, c.kr('novos leads').metaMes) : null,
+        falta: qualificados != null ? null : 'Depende do KR Leads Qualificados.',
+        fonte: 'KR Leads Qualificados ÷ KR Novos Leads' }),
+    B({ k: 'cplQual', rot: 'Custo por lead qualificado', tipo: 'moeda', inverso: true,
+        valor: qualificados ? gasto / qualificados : null,
+        falta: qualificados ? null : 'Depende do KR Leads Qualificados.',
+        fonte: 'Investimento ÷ KR Leads Qualificados' }),
+    B({ k: 'cacTotal', rot: 'CAC total (mídia + comercial)', tipo: 'moeda', inverso: true, valor: cacTotal,
+        falta: cacTotal ? null : 'Depende da linha <b>(-) SETOR COMERCIAL</b> da DRE para ' + esc(c.rotMes) + '.',
+        fonte: 'DRE COMERCIAL ÷ clientes do mês',
+        nota: custoComercial ? brl0(custoComercial) + ' de custo comercial · ' + n0(c.cli.length) + ' clientes' : null,
+        dica: 'Inclui SDR, closer, liderança, CRM, automações e mídia. É o CAC do escritório, não o de mídia.' }),
+    B({ k: 'roasCaixa', rot: 'ROAS de caixa (3 meses)', tipo: 'mult',
+        valor: (recTri && invTri) ? recTri / invTri : null,
+        falta: recTri ? null : 'Depende da linha de receitas da DRE.',
+        fonte: 'Receita de caixa ÷ investimento, nos 3 meses até ' + esc(c.rotMes),
+        dica: 'A DRE é de caixa: mede o que entrou, não o que foi contratado. Meses de calendário, não 90 dias corridos.' }),
+    B({ k: 'conversaContrato', rot: 'Conversa → contrato', tipo: 'pct',
+        valor: triagem ? taxa(cliAds.length, triagem) : null,
+        falta: triagem ? null : 'Depende de Responderam a Triagem.',
+        fonte: 'Clientes de campanha ÷ triagens respondidas' }),
+    B({ k: 'convLeadCliente', rot: 'Lead → cliente', tipo: 'pct', valor: taxa(cliAds.length, leads),
+        ant: taxa(cliAdsAnt.length, leadsAnt), fonte: 'Clientes de campanha ÷ leads do Meta' })
+  ];
+
+  /* ----- ESPECIALISTA: mensuracao -----
+     Antes de comparar campanha, medir se da para comparar. */
+  const reunMes = (DADOS.metaReun && DADOS.metaReun.reg || []).filter(r => r.mes === c.mes);
+  const cobReun = taxa(reunMes.filter(r => r.campanha).length, reunMes.length);
+  const cobCli = taxa(c.cli.filter(r => r.origem && r.origem !== 'Sem origem').length, c.cli.length);
+  const mensuracao = [
+    B({ k: 'cobReun', rot: 'Cobertura: reunião com campanha', tipo: 'pct', valor: cobReun, meta: 95,
+        fonte: 'Aba Reuniões: coluna Campanha preenchida',
+        nota: n0(reunMes.filter(r => r.campanha).length) + ' de ' + n0(reunMes.length) + ' reuniões do mês',
+        dica: 'Com cobertura baixa, campanha sem reunião pode ser só falta de anotação. O painel suspende os alertas por campanha nesse caso.' }),
+    B({ k: 'cobCli', rot: 'Cobertura: cliente com origem', tipo: 'pct', valor: cobCli, meta: 95,
+        fonte: 'Planilha de clientes: coluna ORIGEM preenchida' }),
+    B({ k: 'pixel', rot: 'Qualidade do pixel e da API', falta:
+        'Precisa da nota de correspondência de eventos do Gerenciador de Eventos — nenhuma aba traz isso hoje.' }),
+    B({ k: 'eventosCrm', rot: 'Eventos de CRM devolvidos à Meta', falta:
+        'Não existe envio de qualificado/reunião/contrato de volta para a Meta. É o que faria a otimização aprender com venda, não com lead.' })
+  ];
+
+  [['Investimento e entrega', entrega], ['Criativo', criativo], ['Conversão no destino', destino],
+   ['Qualidade e fundo de funil', fundo], ['Mensuração', mensuracao]]
+    .forEach(([g, l]) => l.forEach(k => { k.grupo = g; k.tela = 'trafego'; }));
+  principais.forEach(k => { k.grupo = 'Principais'; k.tela = 'trafego'; });
+
+  return { principais: principais, grupos: [
+    { t: 'Investimento e entrega', s: 'Quanto saiu, para quanta gente e com que repetição.', l: entrega },
+    { t: 'Criativo', s: 'Qual peça está ganhando dentro da campanha — e qual já cansou o público.', l: criativo },
+    { t: 'Conversão no destino', s: 'Do clique até a conversa: onde o lead se perde antes de existir.', l: destino },
+    { t: 'Qualidade e fundo de funil', s: 'Cruzando mídia com CRM: o que a verba virou em cliente.', l: fundo },
+    { t: 'Mensuração', s: 'Antes de acusar uma campanha, medir se dá para acusar.', l: mensuracao }
+  ], ctx: { gasto: gasto, leads: leads, triagem: triagem, cliAds: cliAds, cobReun: cobReun } };
+}
+
+/* ==========================================================================
+   AREA 2 - MARKETING
+   ========================================================================== */
+function kpisMarketing(c) {
+  const B = c.base;
+  /* O que da para medir hoje vem da ORIGEM do cliente e da linha de organico
+     da planilha de metas. Audiencia, conteudo e social seller nao tem fonte
+     nenhuma no painel - e a lacuna maior desta tela. */
+  const organicoLeads = c.vProd(c.prod, 'leads (organico)');
+  const organicoAnt = c.vProd(c.prodAnt, 'leads (organico)');
+  const cliOrg = porNat(c.cli, 'organico'), cliOrgAnt = porNat(c.cliAnt, 'organico');
+  const cliInd = porNat(c.cli, 'indicacao'), cliIndAnt = porNat(c.cliAnt, 'indicacao');
+  const cliAds = porNat(c.cli, 'ads');
+  const cliBase = porNat(c.cli, 'base');
+  const honOrg = soma(cliOrg, r => r.honIni);
+
+  /* Custo de marketing que NAO e plataforma de anuncio: social media e as
+     outras despesas de marketing da DRE. E o que divide o lead organico. */
+  const fin = DADOS.fin;
+  const custoMkt = fin ? soma((fin.itens || []).filter(x =>
+    /social media|outras despesas de marketing/.test(normCab(x.rotulo))), x => x.meses[c.mes] || 0) : null;
+
+  const mkt = t => { const k = c.krMkt(t); return k ? k.resultado : null; };
+  const metaMkt = t => { const k = c.krMkt(t); return k ? k.metaMes : null; };
+  const propMkt = t => { const k = c.krMkt(t); return k ? k.metaProp : null; };
+  const SEM_MKT = 'Nenhuma fonte de Instagram no painel. Crie a aba <code>KPIS Marketing</code> na planilha de Metas, no mesmo formato das abas KPIS, com este indicador como Resultado Chave — o painel passa a lê-lo sozinho.';
+  const kMkt = (k, rot, nome, o) => {
+    const v = mkt(nome);
+    return B(Object.assign({ k: k, rot: rot, valor: v, meta: metaMkt(nome), metaProp: propMkt(nome),
+      acumula: true, falta: v == null ? SEM_MKT : null, fonte: 'KR da aba KPIS Marketing' }, o || {}));
+  };
+
+  const principais = [
+    B({ k: 'leadsOrg', rot: 'Leads orgânicos', valor: organicoLeads, ant: organicoAnt,
+        falta: organicoLeads == null ? 'A linha <b>Leads (Orgânico)</b> da aba Produtos Jurídicos não foi lida para ' + esc(c.rotMes) + '.' : null,
+        fonte: 'Produtos Jurídicos, linha Leads (Orgânico)',
+        nota: organicoLeads ? 'Contra ' + n0(soma(c.md, r => r.leadsTotal)) + ' leads de campanha paga' : null }),
+    B({ k: 'pctIndicacao', rot: '% de clientes por indicação', tipo: 'pct',
+        valor: taxa(cliInd.length, c.cli.length), ant: taxa(cliIndAnt.length, c.cliAnt.length),
+        serie: c.serie.map(k => taxa(porNat(c.serieCli(k), 'indicacao').length, c.serieCli(k).length)),
+        fonte: 'ORIGEM = Indicação na planilha de clientes',
+        nota: n0(cliInd.length) + ' de ' + n0(c.cli.length) + ' clientes do mês' }),
+    kMkt('socialSeller', 'Conversas do social seller', 'conversas do social seller',
+      { dica: 'Só a partir de interação recebida: abordagem fria é captação vedada pelo Provimento 205.' }),
+    kMkt('seguidores', 'Novos seguidores (líquido)', 'novos seguidores'),
+    kMkt('conteudo', 'Conteúdo publicado (feed)', 'conteudo publicado')
+  ];
+
+  const audiencia = [
+    kMkt('crescimento', 'Taxa de crescimento de seguidores', 'taxa de crescimento de seguidores', { tipo: 'pct', acumula: false }),
+    kMkt('visitas', 'Visitas ao perfil', 'visitas ao perfil'),
+    kMkt('bio', 'Cliques no link da bio', 'cliques no link da bio'),
+    kMkt('wpp', 'Cliques no botão de WhatsApp', 'cliques no whatsapp'),
+    kMkt('alcanceOrg', 'Alcance orgânico', 'alcance organico'),
+    kMkt('naoSeguidores', '% de alcance de não seguidores', 'alcance de nao seguidores', { tipo: 'pct', acumula: false })
+  ];
+  const conteudo = [
+    kMkt('publicados', 'Volume publicado (posts, Reels, stories)', 'volume publicado'),
+    kMkt('calendario', 'Cumprimento do calendário', 'cumprimento do calendario', { tipo: 'pct', acumula: false }),
+    kMkt('engajamento', 'Taxa de engajamento', 'taxa de engajamento', { tipo: 'pct', acumula: false }),
+    kMkt('salvamentos', 'Salvamentos e compartilhamentos', 'salvamentos'),
+    kMkt('comentarios', 'Comentários', 'comentarios'),
+    kMkt('retencaoReels', 'Retenção dos Reels', 'retencao dos reels', { tipo: 'pct', acumula: false })
+  ];
+  const seller = [
+    kMkt('respondidas', 'Interações respondidas', 'interacoes respondidas', { tipo: 'pct', acumula: false }),
+    kMkt('tempoResp', 'Tempo de resposta nas redes', 'tempo de resposta', { tipo: 'dias', acumula: false }),
+    kMkt('convLead', 'Conversa → lead', 'conversa em lead', { tipo: 'pct', acumula: false }),
+    kMkt('encaminhados', 'Leads encaminhados à SDR', 'leads encaminhados')
+  ];
+  const site = [
+    B({ k: 'cliSite', rot: 'Clientes vindos do site', valor: c.cli.filter(r => /site|calculadora/.test(chaveBusca(r.origem))).length,
+        fonte: 'ORIGEM = Site ou Calculadora',
+        dica: 'É o que a planilha de clientes registra. Sessões e leads do site exigiriam uma fonte de analytics.' }),
+    B({ k: 'sessoes', rot: 'Sessões orgânicas do Google', falta: 'Nenhuma fonte de site conectada ao painel.' }),
+    B({ k: 'palavras', rot: 'Palavras-chave na 1ª página', falta: 'Nenhuma fonte de SEO conectada.' }),
+    B({ k: 'gbp', rot: 'Perfil da Empresa no Google', falta: 'Nenhuma fonte do Google Business Profile conectada.' })
+  ];
+  const demanda = [
+    B({ k: 'clientesOrg', rot: 'Clientes de origem orgânica', valor: cliOrg.length, ant: cliOrgAnt.length,
+        serie: c.serie.map(k => porNat(c.serieCli(k), 'organico').length), fonte: 'ORIGEM da planilha de clientes' }),
+    B({ k: 'honOrg', rot: 'Honorários de origem orgânica', tipo: 'moeda', valor: honOrg,
+        ant: soma(cliOrgAnt, r => r.honIni), fonte: 'ORIGEM da planilha de clientes' }),
+    B({ k: 'ticketOrg', rot: 'Ticket médio orgânico', tipo: 'moeda', valor: ticketMedio(cliOrg),
+        fonte: 'Honorários iniciais dos clientes orgânicos',
+        nota: ticketMedio(cliAds) != null ? 'Campanha paga: ' + brl0(ticketMedio(cliAds)) : null }),
+    B({ k: 'custoLeadOrg', rot: 'Custo por lead orgânico', tipo: 'moeda2', inverso: true,
+        valor: (custoMkt && organicoLeads) ? custoMkt / organicoLeads : null,
+        falta: custoMkt ? null : 'Depende das linhas <b>SOCIAL MEDIA</b> e <b>OUTRAS DESPESAS DE MARKETING</b> da DRE.',
+        fonte: 'Custo de marketing (DRE) ÷ leads orgânicos',
+        nota: custoMkt ? brl0(custoMkt) + ' de custo de marketing no mês' : null }),
+    B({ k: 'dependencia', rot: 'Dependência de mídia paga', tipo: 'pct', inverso: true,
+        valor: taxa(cliAds.length, c.cli.length),
+        serie: c.serie.map(k => taxa(porNat(c.serieCli(k), 'ads').length, c.serieCli(k).length)),
+        fonte: 'Clientes de campanha ÷ clientes do mês',
+        dica: 'Quanto maior, mais o resultado do mês depende de verba. Menos é melhor.' }),
+    B({ k: 'qualOrg', rot: 'Taxa de qualificação orgânica', falta:
+        'A planilha mede elegibilidade e qualificação no total, sem separar por origem. O corte existiria se o CRM marcasse a origem em cada etapa.' })
+  ];
+  const marca = [
+    B({ k: 'clientesInd', rot: 'Clientes por indicação', valor: cliInd.length, ant: cliIndAnt.length,
+        fonte: 'ORIGEM = Indicação' }),
+    B({ k: 'recompra', rot: 'Clientes por recompra', valor: cliBase.length,
+        fonte: 'ORIGEM = Recompra (Cliente BM)',
+        nota: pctOuTraco(taxa(cliBase.length, c.cli.length), 0) + ' dos clientes do mês' }),
+    kMkt('nps', 'NPS', 'nps', { acumula: false }),
+    kMkt('google', 'Nota no Google', 'nota no google', { tipo: 'mult', acumula: false }),
+    kMkt('avaliacoes', 'Avaliações novas', 'avaliacoes novas'),
+    kMkt('mencoes', 'Menções e marcações', 'mencoes')
+  ];
+  const etica = [
+    kMkt('oab', 'Peças revisadas pela regra da OAB', 'pecas revisadas', { tipo: 'pct', acumula: false,
+      dica: 'Meta 100%: nenhuma peça publicada sem passar pela revisão de publicidade.' })
+  ];
+
+  const grupos = [
+    { t: 'Audiência', s: 'Quem chega ao perfil e o que faz depois de chegar.', l: audiencia },
+    { t: 'Conteúdo', s: 'Volume, cumprimento do calendário e o que de fato engaja.', l: conteudo },
+    { t: 'Social seller', s: 'Só a partir de interação recebida — abordagem fria é captação vedada pelo Provimento 205.', l: seller },
+    { t: 'Site e SEO', s: 'O que o site e o Google trazem por conta própria.', l: site },
+    { t: 'Geração de demanda e resultado', s: 'O que o marketing entrega em cliente e em honorário, sem passar pela verba.', l: demanda },
+    { t: 'Marca e reputação', s: 'Indicação, recompra e o que se diz da banca.', l: marca },
+    { t: 'Ética', s: 'Publicidade de advocacia tem regra própria, e ela é um indicador.', l: etica }
+  ];
+  grupos.forEach(g => g.l.forEach(k => { k.grupo = g.t; k.tela = 'marketing'; }));
+  principais.forEach(k => { k.grupo = 'Principais'; k.tela = 'marketing'; });
+  return { principais: principais, grupos: grupos };
+}
+
+/* ==========================================================================
+   AREA 3 - COMERCIAL  (pre-qualificacao + atendimento e fechamento)
+   ========================================================================== */
+function kpisComercial(c) {
+  const B = c.base;
+  const metas = metasAtivas();
+  const gasto = soma(c.md, r => r.gasto);
+  const leadsAds = soma(c.md, r => r.leadsTotal), leadsAdsAnt = soma(c.mdAnt, r => r.leadsTotal);
+  const organico = c.vProd(c.prod, 'leads (organico)');
+  const crm = c.vProd(c.prod, 'leads (kommo)');
+
+  const krLeads = c.kr('novos leads'), krEleg = c.kr('leads elegiveis'),
+        krQual = c.kr('leads qualificados'), krDiag = c.kr('diagnosticos'),
+        krReun = c.kr('reunioes realizadas'), krNoShow = c.kr('no show'),
+        krCli = c.kr('clientes'), krHon = c.kr('honorarios iniciais'),
+        krLig = c.kr('ligacoes');
+
+  const diagnosticos = c.vProd(c.prod, 'diagnosticos');
+  const viaveis = c.vProd(c.prod, 'viaveis');
+
+  const esteiraTodos = (DADOS.atend && DADOS.atend.reg) || [];
+  /* Recuperacao da esteira e win rate se medem no HISTORICO inteiro: as duas
+     pontas precisam do mesmo escopo, e um mes so nao tem negociacao
+     suficiente chegando ao D21 para a taxa dizer alguma coisa. */
+  const ganhosTodos = esteiraTodos.filter(r => r.grupo === 'ganho');
+  const ganhosHist = ganhosTodos.length;
+  const perdidosTodos = esteiraTodos.filter(r => r.grupo === 'perdido');
+  const cli = c.cli, cliAnt = c.cliAnt;
+  const hon = soma(cli, r => r.honIni), honAnt = soma(cliAnt, r => r.honIni);
+  const cliAds = porNat(cli, 'ads'), cliOrg = porNat(cli, 'organico');
+
+  /* O KR de um indicador vem com meta e meta proporcional ja calculadas pela
+     planilha - uso as duas em vez de rateiar de novo. */
+  const doKr = (k, rot, kk, calc, o) => B(Object.assign({
+    k: k, rot: rot, valor: kk ? kk.resultado : null,
+    meta: kk ? kk.metaMes : null, metaProp: kk ? kk.metaProp : null, acumula: true,
+    falta: kk ? null : 'O KR correspondente não foi lido na aba KPIS ' + esc(c.nomeMes) + '.',
+    fonte: 'KR da aba KPIS ' + c.nomeMes
+  }, o || {}));
+
+  /* ----- PRE-QUALIFICACAO ----- */
+  const outras = crm != null ? Math.max(0, crm - leadsAds) : null;
+  const prequal = [
+    B({ k: 'leadsTotal', rot: 'Leads · total (CRM)', valor: krLeads ? krLeads.resultado : null,
+        ant: c.krAnt('novos leads'), meta: krLeads ? krLeads.metaMes : null,
+        metaProp: krLeads ? krLeads.metaProp : null, acumula: true,
+        falta: krLeads ? null : 'KR Novos Leads não lido na aba KPIS ' + esc(c.nomeMes) + '.',
+        fonte: 'KR Novos Leads (Meta Ads + Orgânico + Parcerias)' }),
+    B({ k: 'leadsAds', rot: 'Leads · Meta Ads (plataforma)', valor: leadsAds, ant: leadsAdsAnt,
+        serie: c.serie.map(k => soma(c.serieMd(k), r => r.leadsTotal)),
+        fonte: 'Insights diários do Meta Ads',
+        dica: 'O Meta conta lead por plataforma e o CRM conta lead criado — os dois números não batem de propósito.' }),
+    B({ k: 'leadsOrg', rot: 'Leads · orgânicos', valor: organico,
+        nota: (organico != null && crm != null) ? 'De ' + n0(crm) + ' leads que o CRM registrou no mês' : null,
+        falta: organico == null ? 'A linha Leads (Orgânico) da aba Produtos Jurídicos não foi lida.' : null,
+        fonte: 'Produtos Jurídicos, linha Leads (Orgânico)' }),
+    doKr('eleg', 'Leads elegíveis · total', krEleg, null, { nota: 'Sem corte por origem na planilha' }),
+    B({ k: 'elegAds', rot: 'Elegíveis, qualificados e diagnósticos por origem', falta:
+        'A planilha anota essas etapas <b>no total</b>, sem separar pago de orgânico — valendo para elegíveis, qualificados, taxa de qualificação, diagnósticos positivos e taxa de agendamento. O corte existiria com a origem marcada em cada etapa do CRM: é o que a planilha <b>Cérebro Comercial</b> já faz, e ela só abre pelo proxy. Clientes e faturamento, esses sim, têm o corte — a origem fica no registro.' }),
+    doKr('qual', 'Leads qualificados · total', krQual),
+    B({ k: 'txQual', rot: 'Taxa de qualificação', tipo: 'pct',
+        valor: (krQual && krLeads) ? taxa(krQual.resultado, krLeads.resultado) : null,
+        meta: (krQual && krLeads) ? taxa(krQual.metaMes, krLeads.metaMes) : null,
+        falta: (krQual && krLeads) ? null : 'Depende dos KRs Novos Leads e Leads Qualificados.',
+        fonte: 'KR Leads Qualificados ÷ KR Novos Leads' }),
+    doKr('diagKr', 'Diagnósticos (cálculos)', krDiag, null,
+      { nota: diagnosticos != null ? 'A aba de produto conta ' + n0(diagnosticos) + ' no recorte dela' : null,
+        dica: 'O KR é da SDR e cobre todos os produtos; a aba Produtos Jurídicos conta só o produto dela e com outra data de medição.' }),
+    B({ k: 'diagPos', rot: 'Diagnósticos positivos', valor: viaveis,
+        falta: viaveis == null ? 'A linha <b>Viáveis</b> da aba Produtos Jurídicos não foi lida.' : null,
+        fonte: 'Produtos Jurídicos, linha Viáveis',
+        dica: 'Diagnóstico positivo é o caso viável: o cálculo fechou com direito a revisar.' }),
+    B({ k: 'diagPct', rot: 'Diagnósticos positivos (%)', tipo: 'pct', valor: taxa(viaveis, diagnosticos),
+        falta: (viaveis != null && diagnosticos != null) ? null : 'Depende das linhas Diagnósticos e Viáveis.',
+        fonte: 'Viáveis ÷ Diagnósticos' }),
+    B({ k: 'agendamento', rot: 'Taxa de agendamento', tipo: 'pct',
+        valor: (krEleg && krEleg.resultado) ? taxa(c.marc.length, krEleg.resultado) : null,
+        falta: krEleg ? null : 'Depende do KR Leads Elegíveis.',
+        fonte: 'Reuniões marcadas ÷ leads elegíveis',
+        nota: n0(c.marc.length) + ' reuniões marcadas no mês' }),
+    doKr('noshow', 'No-show', krNoShow, null, { inverso: true,
+      nota: c.marc.length ? 'Marcadas no mês: ' + n0(c.marc.length) : null,
+      dica: 'Vem do KR da planilha. Deduzir pela diferença entre marcadas e realizadas erra: reunião marcada no fim do mês é atendida no mês seguinte.' }),
+    B({ k: 'convLeadCliente', rot: 'Lead em cliente', tipo: 'pct',
+        valor: krLeads ? taxa(cli.length, krLeads.resultado) : null,
+        ant: (c.krAnt('novos leads')) ? taxa(cliAnt.length, c.krAnt('novos leads')) : null,
+        meta: metas.convLeadCli,
+        falta: krLeads ? null : 'Depende do KR Novos Leads da aba KPIS ' + esc(c.nomeMes) + '.',
+        fonte: 'Clientes ÷ KR Novos Leads',
+        dica: 'Conversao de ponta a ponta: de cada 100 leads que o CRM registrou, quantos assinaram no mes.' }),
+    B({ k: 'tempoReuniao', rot: 'Entrada do lead até a reunião', tipo: 'dias',
+        valor: media(cli, r => (r.primeiro && r.dReuniao) ? diasEntre(r.primeiro, r.dReuniao) : null),
+        fonte: 'Planilha de clientes: 1º CONTATO até DATA DA REUNIÃO',
+        dica: 'Medido nos clientes fechados — é o único recorte em que a planilha tem as duas datas. Lead que não fechou não entra, então o número é otimista.' })
+  ];
+
+  /* ----- ATENDIMENTO E FECHAMENTO ----- */
+  /* Fechamento se conta pela DATA DO FECHAMENTO. Pelo mes da reuniao, out/26
+     mostrava 3 fechamentos enquanto a planilha de clientes registrava 26 - os
+     outros 23 foram reunioes de meses anteriores que fecharam agora. */
+  const ganhos = esteiraTodos.filter(r => r.grupo === 'ganho' && r.mesFecha === c.mes);
+  /* A perda nao tem data: a coluna "Data da perda" existe e esta vazia nas
+     907 linhas. Entao a perda e contada pelo mes da REUNIAO, e isso esta
+     dito no cartao - nao da para fingir precisao que o dado nao tem. */
+  const perdidos = c.at.filter(r => r.grupo === 'perdido');
+  const comProposta = c.reun.filter(r => r.vInicial > 0);
+  const porEtapa = ETAPA_FECHA.map(e => ({
+    k: e.k, rot: e.rot, cor: e.cor,
+    n: ganhos.filter(r => etapaFechamento(r) === e.k).length
+  }));
+  const totEtapa = soma(porEtapa, x => x.n);
+
+  const fecha = [
+    B({ k: 'reunioes', rot: 'Reuniões realizadas', valor: c.reun.length, ant: c.reunAnt.length,
+        meta: krReun ? krReun.metaMes : metas.reunioes, metaProp: krReun ? krReun.metaProp : null, acumula: true,
+        serie: c.serie.map(k => c.serieReun(k).length), fonte: 'Fluxo de Atendimentos (data do atendimento)' }),
+    B({ k: 'txFecha', rot: 'Taxa de fechamento', tipo: 'pct', valor: taxa(cli.length, c.reun.length),
+        ant: taxa(cliAnt.length, c.reunAnt.length), meta: metas.convReunCli,
+        serie: c.serie.map(k => taxa(c.serieCli(k).length, c.serieReun(k).length)),
+        fonte: 'Clientes ÷ reuniões realizadas',
+        dica: 'Reunião e fechamento podem cair em meses diferentes: no mês em curso a taxa é otimista por construção.' }),
+    B({ k: 'tempoFechar', rot: 'Reunião até o fechamento', tipo: 'dias', valor: media(cli, r => r.diasFechar),
+        ant: media(cliAnt, r => r.diasFechar), inverso: true,
+        serie: c.serie.map(k => media(c.serieCli(k), r => r.diasFechar)),
+        fonte: 'Planilha de clientes: DIAS PARA FECHAR' }),
+    B({ k: 'clientes', rot: 'Clientes · total', valor: cli.length, ant: cliAnt.length,
+        meta: krCli ? krCli.metaMes : metas.clientes, metaProp: krCli ? krCli.metaProp : null, acumula: true,
+        serie: c.serie.map(k => c.serieCli(k).length), fonte: 'Planilha de clientes',
+        nota: krCli && krCli.resp ? 'A meta de ' + n0(krCli.metaMes) + ' é o KR de ' + esc(krCli.resp) : null }),
+    B({ k: 'clientesAds', rot: 'Clientes · Meta Ads', valor: cliAds.length,
+        ant: porNat(cliAnt, 'ads').length, fonte: 'ORIGEM entre colchetes = campanha' }),
+    B({ k: 'clientesOrg', rot: 'Clientes · orgânicos', valor: cliOrg.length,
+        ant: porNat(cliAnt, 'organico').length, fonte: 'ORIGEM = Orgânico, Site, Calculadora ou Reunião Fechada' }),
+    B({ k: 'fat', rot: 'Faturamento · total', tipo: 'moeda', valor: hon, ant: honAnt,
+        meta: krHon ? krHon.metaMes : metas.faturamento, metaProp: krHon ? krHon.metaProp : null, acumula: true,
+        serie: c.serie.map(k => soma(c.serieCli(k), r => r.honIni)), fonte: 'Honorários iniciais contratados' }),
+    B({ k: 'fatAds', rot: 'Faturamento · Meta Ads', tipo: 'moeda', valor: soma(cliAds, r => r.honIni),
+        ant: soma(porNat(cliAnt, 'ads'), r => r.honIni), fonte: 'ORIGEM = campanha' }),
+    B({ k: 'fatOrg', rot: 'Faturamento · orgânico', tipo: 'moeda', valor: soma(cliOrg, r => r.honIni),
+        ant: soma(porNat(cliAnt, 'organico'), r => r.honIni), fonte: 'ORIGEM não paga' }),
+    B({ k: 'ticket', rot: 'Ticket médio', tipo: 'moeda', valor: ticketMedio(cli), ant: ticketMedio(cliAnt),
+        meta: metas.ticket, serie: c.serie.map(k => ticketMedio(c.serieCli(k))),
+        fonte: 'Honorários iniciais de quem teve honorário inicial',
+        nota: semTicket(cli) ? n0(semTicket(cli)) + ' fechamento(s) condicionado(s) a liminar ficam fora da média' : null,
+        dica: 'Fechamento com honorário condicionado a liminar entra na planilha como R$ 0: é venda, mas não é preço. Deixar esses zeros no divisor achataria o ticket.' }),
+    B({ k: 'cac', rot: 'CAC (só Meta Ads)', tipo: 'moeda', inverso: true,
+        valor: cliAds.length ? gasto / cliAds.length : null, meta: metas.cac,
+        fonte: 'Investimento ÷ clientes de campanha',
+        dica: 'Como pedido: só os leads do Meta Ads no cálculo. O CAC do escritório inteiro está em Financeiro e CAC.' })
+  ];
+
+  /* ----- ESPECIALISTA: resultado ----- */
+  const fin = DADOS.fin;
+  const recebido = fin && fin.honorarios ? fin.honorarios.meses[c.mes] : null;
+  const abertos = esteiraTodos.filter(r => r.emAberto);
+  const resultado = [
+    B({ k: 'recebido', rot: 'Honorários recebidos (caixa)', tipo: 'moeda', valor: recebido,
+        falta: recebido == null ? 'Depende da linha HONORÁRIOS INICIAIS da DRE para ' + esc(c.rotMes) + '.' : null,
+        fonte: 'DRE COMERCIAL (regime de caixa)',
+        nota: recebido != null && hon ? 'Contratado no mês: ' + brl0(hon) + ' (competência)' : null,
+        dica: 'A DRE é de caixa e a planilha de clientes é de competência. Os dois números não batem de propósito.' }),
+    B({ k: 'projecao', rot: 'Projeção de fechamento do mês', tipo: 'moeda',
+        valor: c.emCurso && c.fracao ? hon / c.fracao : hon, meta: krHon ? krHon.metaMes : metas.faturamento,
+        fonte: 'Ritmo de hoje projetado até o fim do mês' }),
+    B({ k: 'pjpf', rot: 'Perfil PJ × PF', falta:
+        'Depende do CPF/CNPJ, que não trafega para o painel. Com o proxy publicado o servidor conta os dígitos e devolve só PJ ou PF.' })
+  ];
+
+  /* ----- ESPECIALISTA: pre-venda (SDR) ----- */
+  const triagem = c.vProd(c.prod, 'responderam a triagem');
+  const remarcar = esteiraTodos.filter(r => /remarcar/i.test(r.etapa)).length;
+  const preVenda = [
+    B({ k: 'primeiraResposta', rot: 'Tempo de 1ª resposta', falta:
+        'Nenhuma planilha guarda a hora da chegada do lead e a hora da primeira resposta. Precisa das duas marcas de tempo no CRM.' }),
+    doKr('ligacoes', 'Ligações', krLig, null, { fonte: 'KR Ligações da aba KPIS ' + c.nomeMes }),
+    B({ k: 'contatoEfetivo', rot: 'Contato efetivo', tipo: 'pct', valor: taxa(triagem, crm),
+        falta: (triagem != null && crm) ? null : 'Depende das linhas Leads (Kommo) e Responderam a Triagem.',
+        fonte: 'Responderam a triagem ÷ leads do CRM' }),
+    B({ k: 'remarcacoes', rot: 'Negociações para remarcar', valor: remarcar,
+        fonte: 'Etapa do Funil = Remarcar Reunião' }),
+    B({ k: 'leadsCrm', rot: 'Leads registrados no CRM', falta:
+        'Para medir os 100% seria preciso comparar o CRM com uma fonte de entrada independente. A planilha Kommo só abre pelo proxy.' }),
+    B({ k: 'tentativas', rot: 'Tentativas por lead antes de desistir', falta:
+        'A esteira conta follow up de negociação, não tentativa de contato na pré-venda.' })
+  ];
+
+  /* ----- ESPECIALISTA: reuniao e fechamento (closer) ----- */
+  const ganhos24h = ganhos.filter(r => etapaFechamento(r) === '24h').length;
+  const piso = cli.filter(r => r.honIni > 0 && r.honIni <= 997).length;
+  const comValor = cli.filter(r => r.honIni > 0).length;
+  const semProximo = abertos.filter(r => !r.proxAcao && !r.proximoFup).length;
+  const triagemAnot = c.reun.filter(r => r.resultado || r.historico).length;
+  /* Estas tres colunas existem na planilha e ainda nao sao preenchidas. O
+     painel mede a COBERTURA em vez de declarar lacuna de fora: o numero diz
+     se o preenchimento comecou, e acende sozinho quando comecar. */
+  const comDesfecho = c.reun.filter(r => r.desfecho).length;
+  const comDesconto = esteiraTodos.filter(r => r.desconto > 0);
+  const comFormalizacao = esteiraTodos.filter(r => r.dAceite && r.dPagto && r.dPagto >= r.dAceite);
+  const closer = [
+    B({ k: 'txProposta', rot: 'Taxa de proposta', tipo: 'pct', valor: taxa(comProposta.length, c.reun.length),
+        fonte: 'Reuniões com valor de proposta ÷ reuniões realizadas' }),
+    B({ k: 'winRate', rot: 'Win rate', tipo: 'pct',
+        valor: taxa(ganhosHist, ganhosHist + perdidosTodos.length),
+        fonte: 'Ganhos ÷ (ganhos + perdidos), histórico inteiro',
+        nota: n0(ganhosHist) + ' ganhos e ' + n0(perdidosTodos.length) + ' perdas registradas',
+        dica: 'Do histórico, não do mês: a coluna Data da perda está vazia, e cruzar ganho do mês com perda sem data daria uma taxa inventada. Exclui quem não respondeu — misturar "sem resposta" com "perdido" afunda a taxa sem dizer nada.' }),
+    B({ k: 'fecha24h', rot: 'Fechamento na janela de 24h', tipo: 'pct', valor: taxa(ganhos24h, totEtapa),
+        fonte: 'Follow Up 1 (24h) como degrau de fechamento',
+        nota: n0(ganhos24h) + ' de ' + n0(totEtapa) + ' fechamentos do mês' }),
+    B({ k: 'piso', rot: 'Fechamentos no piso de R$ 997', tipo: 'pct', valor: taxa(piso, comValor), inverso: true,
+        fonte: 'Honorário inicial de até R$ 997',
+        nota: n0(piso) + ' de ' + n0(comValor) + ' com honorário inicial' }),
+    B({ k: 'continuacao', rot: 'Negociações sem próximo passo', tipo: 'pct', valor: taxa(semProximo, abertos.length),
+        inverso: true, fonte: 'Em aberto sem próxima ação nem follow up futuro',
+        nota: n0(semProximo) + ' de ' + n0(abertos.length) + ' em aberto' }),
+    B({ k: 'necessidade', rot: 'Necessidade explícita registrada', tipo: 'pct',
+        valor: taxa(triagemAnot, c.reun.length),
+        fonte: 'Resultado do Atendimento ou Histórico preenchido',
+        dica: 'A planilha não tem campo próprio para a dor nas palavras do cliente. O Resultado do Atendimento é texto livre e é onde isso aparece hoje.' }),
+    B({ k: 'desfecho', rot: 'Desfecho da reunião anotado', tipo: 'pct',
+        valor: taxa(comDesfecho, c.reun.length), meta: 100,
+        fonte: 'Coluna Desfecho da reunião',
+        nota: comDesfecho ? null : 'A coluna existe e está vazia nas ' + n0(esteiraTodos.length) + ' linhas da planilha',
+        dica: 'Pedido / avanço / continuação / não-venda. A coluna já está criada e o painel já a lê: assim que o time preencher, o indicador acende sozinho.' }),
+    B({ k: 'desconto', rot: 'Desconto médio concedido', tipo: 'moeda', inverso: true,
+        valor: media(comDesconto, r => r.desconto),
+        falta: comDesconto.length ? null : 'A coluna <b>Desconto extra autorizado</b> existe e está vazia nas ' + n0(esteiraTodos.length) + ' linhas. O painel já a lê — falta preencher.',
+        fonte: 'Coluna Desconto extra autorizado',
+        nota: comDesconto.length ? 'Entre ' + n0(comDesconto.length) + ' negociações com desconto anotado' : null }),
+    B({ k: 'formalizacao', rot: 'Do sim ao pagamento', tipo: 'dias', inverso: true,
+        valor: media(comFormalizacao, r => diasEntre(r.dAceite, r.dPagto)),
+        falta: comFormalizacao.length ? null : 'As colunas <b>Data do aceite</b> e <b>Data do pagamento</b> existem e estão vazias. São elas que medem a formalização.',
+        fonte: 'Data do aceite até Data do pagamento' })
+  ];
+
+  /* ----- ESPECIALISTA: esteira de follow up ----- */
+  const chegaram = n => esteiraTodos.filter(r => r.fups.some(f => f.n === n && f.status)).length;
+  /* Fechou NAQUELE degrau, nao "dali para frente": com >= n, o D21 e o D28
+     devolviam o mesmo numero, porque quem fecha no 8 tambem passou do 7. */
+  const fecharamNo = n => ganhosTodos.filter(r => r.etapaFup === n).length;
+  const esteira = [
+    B({ k: 'abertas', rot: 'Negociações em aberto', valor: abertos.length,
+        fonte: 'Etapa do Funil em negociação, não arquivada',
+        nota: brl0(soma(abertos, r => r.vInicial)) + ' em proposta' }),
+    B({ k: 'paradas', rot: 'Negociações paradas', valor: esteiraTodos.filter(r => r.parado).length, inverso: true,
+        fonte: 'Sem toque há mais de 7 dias e sem follow up agendado',
+        dica: 'Follow up marcado para o futuro é toque agendado, não negociação parada.' }),
+    B({ k: 'comAcao', rot: 'Com próxima ação agendada', tipo: 'pct',
+        valor: taxa(abertos.length - semProximo, abertos.length), meta: 100,
+        fonte: 'Próxima ação ou follow up futuro preenchido' }),
+    B({ k: 'recD21', rot: 'Recuperação no D21 (Buckner)', tipo: 'pct',
+        valor: taxa(fecharamNo(7), chegaram(7)),
+        fonte: 'Fechados que passaram do FUP 7 ÷ que chegaram ao FUP 7 (histórico inteiro)',
+        nota: n0(chegaram(7)) + ' negociações chegaram ao D21' }),
+    B({ k: 'recD28', rot: 'Recuperação no D28 (liminar)', tipo: 'pct',
+        valor: taxa(fecharamNo(8), chegaram(8)),
+        fonte: 'Fechados que passaram do FUP 8 ÷ que chegaram ao FUP 8 (histórico inteiro)' }),
+    B({ k: 'ciclo', rot: 'Ciclo de venda', tipo: 'dias', valor: media(cli, r => r.jornada), inverso: true,
+        serie: c.serie.map(k => media(c.serieCli(k), r => r.jornada)),
+        fonte: 'Planilha de clientes: JORNADA COMPLETA (1º contato até assinatura)' })
+  ];
+
+  /* ----- ESPECIALISTA: perdas ----- */
+  const perdComMotivo = perdidosTodos.filter(r => r.motivoPerda).length;
+  const perdComCat = perdidosTodos.filter(r => r.catPerda).length;
+  const perdas = [
+    B({ k: 'perdidos', rot: 'Perdas no mês', valor: perdidos.length, inverso: true,
+        fonte: 'Etapa do Funil = Lead Perdido, pelo mês da reunião',
+        nota: 'A coluna <b>Data da perda</b> está vazia: a perda é datada pela reunião' }),
+    B({ k: 'motivoPct', rot: 'Perdas com motivo anotado', tipo: 'pct', valor: taxa(perdComMotivo, perdidosTodos.length),
+        meta: 100, fonte: 'Coluna Motivo de Perda do Lead (histórico inteiro)',
+        nota: n0(perdComMotivo) + ' de ' + n0(perdidosTodos.length) + ' perdas' }),
+    B({ k: 'catPct', rot: 'Perdas com categoria anotada', tipo: 'pct', valor: taxa(perdComCat, perdidosTodos.length),
+        meta: 100, fonte: 'Coluna Categoria da perda (histórico inteiro)',
+        nota: perdComCat ? null : 'A coluna existe e está vazia em toda a planilha' }),
+    B({ k: 'objecoes', rot: 'Objeções mais frequentes', falta:
+        'Não há campo de objeção. O motivo de perda é o mais próximo, e ele é anotado no fim, não durante a reunião.' })
+  ];
+
+  /* ----- ESPECIALISTA: equipe e economia ----- */
+  const custoComercial = fin && fin.comercial ? (fin.comercial.meses[c.mes] || 0) : null;
+  /* ultimoFup guarda so o toque mais recente de cada linha: contar por ele
+     daria no maximo uma atividade por negociacao. Conto os follow ups
+     executados com data no mes, um por um. */
+  const fupsNoMes = esteiraTodos.reduce((a, r) => a +
+    r.fups.filter(f => f.data && /feito/i.test(f.status) && chaveMes(f.data) === c.mes).length, 0);
+  const atividades = c.reun.length + fupsNoMes;
+  const equipe = [
+    B({ k: 'cacTotal', rot: 'CAC total', tipo: 'moeda', inverso: true,
+        valor: (custoComercial && cli.length) ? custoComercial / cli.length : null,
+        falta: custoComercial ? null : 'Depende da linha (-) SETOR COMERCIAL da DRE para ' + esc(c.rotMes) + '.',
+        fonte: 'Linha (-) SETOR COMERCIAL da DRE ÷ clientes do mês',
+        nota: custoComercial ? brl0(custoComercial) + ' de custo comercial no mês' : null,
+        dica: 'A linha da DRE JÁ inclui a mídia, além de SDR, closer, liderança, CRM e automações: somar o investimento do Meta por fora dobraria a conta. É o mesmo número que "CAC real" em Financeiro e CAC.' }),
+    B({ k: 'atividades', rot: 'Atividades por dia', tipo: 'num', valor: c.dias ? atividades / c.dias : null,
+        fonte: 'Reuniões + ' + n0(fupsNoMes) + ' follow ups executados, ÷ dias do mês',
+        dica: 'Conta o que a planilha registra: reunião realizada e follow up com data. Mensagem e ligação sem registro não entram.' }),
+    B({ k: 'ltvCac', rot: 'LTV ÷ CAC', falta:
+        'LTV exigiria o honorário de êxito efetivamente recebido por caso, que só aparece no fim do processo. A planilha guarda o percentual contratado, não o valor realizado.' }),
+    B({ k: 'payback', rot: 'Payback do CAC', falta: 'Mesma lacuna do LTV: sem honorário de êxito realizado não há curva de retorno.' })
+  ];
+
+  const grupos = [
+    { t: 'Resultado', s: 'O que foi contratado, o que entrou em caixa e por quanto se negocia.', l: resultado },
+    { t: 'Pré-venda (SDR)', s: 'Da chegada do lead até a reunião marcada.', l: preVenda },
+    { t: 'Reunião e fechamento (closer)', s: 'O que acontece dentro da reunião e no caminho até a assinatura.', l: closer },
+    { t: 'Esteira de follow up', s: 'A política de 9 toques: o que ela recupera e onde ela para.', l: esteira },
+    { t: 'Perdas', s: 'Perda sem motivo anotado é perda que não ensina nada.', l: perdas },
+    { t: 'Equipe e economia', s: 'Custo de aquisição com o comercial inteiro dentro.', l: equipe }
+  ];
+  grupos.forEach(g => g.l.forEach(k => { k.grupo = g.t; k.tela = 'comercial'; }));
+  prequal.forEach(k => { k.grupo = 'Pré-qualificação'; k.tela = 'comercial'; });
+  fecha.forEach(k => { k.grupo = 'Atendimento e fechamento'; k.tela = 'comercial'; });
+
+  return { prequal: prequal, fecha: fecha, grupos: grupos,
+           porEtapa: porEtapa, totEtapa: totEtapa, outras: outras,
+           principais: prequal.concat(fecha) };
+}
+
+/* ==========================================================================
+   TELA - COMERCIAL
+   ========================================================================== */
+function telaAreaComercial() {
+  const c = ctxArea();
+  const K = kpisComercial(c);
+  const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
+
+  let h = '<div class="secao-titulo primeiro">Comercial &middot; ' + esc(c.rotMes) + '</div>';
+  h += seletorMes(true);
+  h += resumoArea(todos);
+  if (c.emCurso) h += aviso('info', '<b>Mês em andamento</b> &mdash; ' + n0(c.dias) + ' de ' + n0(c.diasMes) +
+    ' dias. Cada indicador principal traz o quadro das quatro leituras: o <b>realizado</b>, o quanto ele representa ' +
+    'da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia e a <b>projeção</b> do mês pelo ritmo de hoje. ' +
+    'No dia ' + n0(c.dias) + ' o certo é ter ' + pct(c.fracao * 100, 0) + ' da meta &mdash; é onde a marca da barra está.');
+
+  h += '<div class="secao-titulo">Pré-qualificação &middot; principais</div>';
+  /* Os dois numeros de lead nao sao o mesmo lead, e sem dizer isso o cartao
+     de Meta Ads parece maior que o total - o que faria duvidar da tela toda. */
+  const leadsPlataforma = soma(c.md, r => r.leadsTotal);
+  const krL = c.kr('novos leads');
+  if (krL && krL.resultado && leadsPlataforma > krL.resultado) {
+    h += aviso('atencao', '<b>Há duas contagens de lead, e elas não são o mesmo lead.</b> ' +
+      'O Meta conta <b>' + n0(leadsPlataforma) + '</b> na plataforma (cada formulário, conversa e evento de pixel) ' +
+      'e o CRM registrou <b>' + n0(krL.resultado) + '</b> no mês. A diferença costuma ser lead duplicado, ' +
+      'evento contado duas vezes ou lead que nunca chegou a virar registro. ' +
+      'Os indicadores de custo usam o número do <b>CRM</b> quando ele existe &mdash; é o que virou gente de verdade.');
+  }
+  h += gradeDestaque(K.prequal);
+
+  h += '<div class="secao-titulo">Atendimento e fechamento &middot; principais</div>';
+  h += gradeDestaque(K.fecha);
+
+  /* ----- Comparativos ----- */
+  h += '<div class="secao-titulo">Comparativos</div>';
+  h += '<div class="grid g-2">';
+  h += cartao('Atingimento dos principais', 'Única escala em que indicadores de unidades diferentes dividem o gráfico: percentual da meta de referência. A linha tracejada marca 100%.',
+    vizAtingimento(K.prequal.concat(K.fecha), { rotuloW: 236 }));
+
+  h += cartao('Leads por origem, mês a mês', 'Campanha paga pelos insights do Meta; orgânico pela planilha de Metas.',
+    (() => {
+      const xs = c.serie;
+      const ads = xs.map(k => soma(c.serieMd(k), r => r.leadsTotal));
+      return vizColunas({ dados: xs.map((k, i) => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: ads[i] })),
+        cor: 'var(--s1)', nome: 'Leads do Meta Ads', rotulos: false }) +
+        (c.vProd(c.prod, 'leads (organico)') != null
+          ? '<div style="font-size:0.7rem;color:var(--texto-muted);margin-top:0.5rem;line-height:1.5">Orgânico só existe mês a mês na aba de produto, que o painel lê para o mês corrente e o anterior: <b style="color:var(--texto-2)">' +
+            n0(c.vProd(c.prod, 'leads (organico)')) + '</b> em ' + esc(c.rotMes) + '.</div>' : '');
+    })());
+
+  h += cartao('Este mês x mês anterior', 'Mesma unidade nas duas barras: volume de cada etapa do funil comercial.',
+    vizGrupos({ x: ['Reuniões marcadas', 'Reuniões realizadas', 'Clientes'],
+      fmt: n0, series: [
+        { nome: rotuloMesCurto(c.ant), vals: [c.marcAnt.length, c.reunAnt.length, c.cliAnt.length], cor: 'var(--s4)' },
+        { nome: rotuloMesCurto(c.mes), vals: [c.marc.length, c.reun.length, c.cli.length], cor: 'var(--s1)' }
+      ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s1)' }]));
+
+  /* A barra conta CLIENTES, nao honorario: fechamento condicionado a liminar
+     entra como R$ 0, e uma barra de zero esconderia que o canal trouxe
+     cliente. O honorario e o ticket vao no balao. */
+  h += cartao('Clientes por natureza da origem', 'O único corte pago x não pago que existe em nível de registro. Honorário e ticket no balão — a barra conta cliente, porque fechamento em liminar entra como R$ 0.',
+    (() => {
+      const d = NATS.map(nat => ({ nat: nat, itens: porNat(c.cli, nat) })).filter(x => x.itens.length);
+      return d.length ? vizBarras({ rotuloW: 170, nome: 'Clientes',
+        dados: d.map(x => ({ k: ROT_NAT[x.nat], v: x.itens.length, cor: COR_NAT[x.nat],
+          extra: [{ rot: 'Honorários', val: brl0(soma(x.itens, r => r.honIni)) },
+                  { rot: 'Ticket médio', val: ticketMedio(x.itens) == null ? '—' : brl0(ticketMedio(x.itens)) }] })) })
+        : '<div class="vazio">Sem clientes no mês selecionado.</div>';
+    })());
+
+  /* Ticket por produto: a barra e o ticket, e o balao traz o volume. Produto
+     com 1 ou 2 clientes fica fora - a media de dois casos nao e um ticket. */
+  h += cartao('Ticket médio por produto jurídico', 'Só produtos com 3 ou mais clientes no mês: abaixo disso a média é um caso, não um preço.',
+    (() => {
+      const g = agrupar(c.cli, r => r.produto).filter(x => x.itens.length >= 3 && ticketMedio(x.itens) != null)
+        .map(x => ({ k: x.k, t: ticketMedio(x.itens), n: x.itens.length,
+                     hon: soma(x.itens, r => r.honIni), itens: x.itens }))
+        .sort((a2, b2) => b2.t - a2.t);
+      if (!g.length) return '<div class="vazio">Nenhum produto com 3 ou mais clientes em ' + esc(c.rotMes) + '.</div>';
+      const geral = ticketMedio(c.cli);
+      return vizBarras({ rotuloW: 220, fmt: brl0, nome: 'Ticket médio', ref: geral,
+        dados: g.map((x, i) => ({ k: x.k, v: x.t, cor: corSerie(i),
+          extra: [{ rot: 'Clientes', val: n0(x.n) },
+                  { rot: 'Honorários', val: brl0(x.hon) },
+                  { rot: 'Sem honorário inicial', val: n0(semTicket(x.itens)) }] })) }) +
+        (geral != null ? '<div style="font-size:0.7rem;color:var(--texto-muted);margin-top:0.5rem">A linha tracejada é o ticket médio geral do mês: <b style="color:var(--texto-2)">' + brl0(geral) + '</b>.</div>' : '');
+    })());
+  h += '</div>';
+
+  /* ----- Fechamentos por etapa da esteira ----- */
+  h += '<div class="secao-titulo">Fechamentos por etapa da esteira</div>';
+  if (!K.totEtapa) {
+    h += '<div class="cartao"><div class="vazio">Nenhum fechamento registrado na esteira em ' + esc(c.rotMes) + '.</div></div>';
+  } else {
+    h += aviso('info', 'O degrau é lido do próprio follow up: o FUP mais alto marcado <b>Feito</b> é onde a venda aconteceu ' +
+      '(1 = oferta de 24h, 7 = D21 Buckner, 8 = D28 honorários em liminar, 9 = D45 apenas êxito). ' +
+      'Quando <i>Tipo de Contrato (Honorários)</i> está preenchido, ele manda: diz a oferta que fechou, não só quando o toque aconteceu.');
+    h += '<div class="grid g-2">';
+    h += cartao('Participação de cada oferta', 'Sobre os ' + n0(K.totEtapa) + ' fechamentos do mês.',
+      vizDonut({ centro: n0(K.totEtapa), centroRot: 'fechamentos',
+        dados: K.porEtapa.filter(x => x.n).map(x => ({ k: x.rot, v: x.n, cor: x.cor })) }));
+    h += cartao('Fechamentos por degrau', 'Em quantidade e em percentual do mês.',
+      vizBarras({ rotuloW: 210, nome: 'Fechamentos',
+        dados: K.porEtapa.map(x => ({ k: x.rot, v: x.n, cor: x.cor,
+          extra: [{ rot: 'Do mês', val: pct(taxa(x.n, K.totEtapa), 1) }] })) }));
+    h += '</div>';
+  }
+
+  /* ----- Especialista ----- */
+  h += '<div class="secao-titulo">Diagnóstico do gestor comercial</div>';
+  h += '<div style="font-size:0.73rem;color:var(--texto-muted);line-height:1.5;margin:-0.35rem 0 0.9rem;max-width:74ch">' +
+    'Abaixo, o detalhe que se consulta quando um principal acende. Indicador com borda tracejada não tem fonte: ' +
+    'o pé do cartão diz o que falta para ele existir.</div>';
+  K.grupos.forEach(g => { h += blocoEsp(g.t, g.s, g.l); });
+
+  h += '<div class="secao-titulo">Todos os indicadores da área</div>';
+  h += tabelaKpi('kpi-comercial', todos, 'Indicadores do comercial');
+  return h;
+}
+
+/* ==========================================================================
+   TELA - MARKETING
+   ========================================================================== */
+function telaAreaMarketing() {
+  const c = ctxArea();
+  const K = kpisMarketing(c);
+  const todos = K.principais.concat(K.grupos.reduce((a, g) => a.concat(g.l), []));
+
+  let h = '<div class="secao-titulo primeiro">Marketing &middot; ' + esc(c.rotMes) + '</div>';
+  h += seletorMes(false);
+  h += resumoArea(todos);
+
+  if (!c.temMkt) {
+    h += aviso('atencao', '<b>Audiência, conteúdo e social seller não têm fonte no painel.</b> ' +
+      'Nenhuma das oito planilhas registra seguidores, visitas ao perfil, publicações ou cliques na bio &mdash; ' +
+      'esses números hoje só existem dentro do Instagram.<br><br>' +
+      'Para o painel passar a lê-los, crie na planilha <b>Metas e Resultados [NOVA]</b> uma aba chamada ' +
+      '<code>KPIS Marketing</code> no <b>mesmo formato</b> das abas <code>KPIS &lt;mês&gt;</code> ' +
+      '(cabeçalho na linha 5: Responsável · Resultados Chaves · Meta Mensal · Meta Proporcional · Resultado do Mês). ' +
+      'Cada indicador abaixo é um Resultado Chave com esse nome. Assim que a aba existir, esta tela acende sozinha ' +
+      '&mdash; sem mexer no painel.');
+  }
+
+  h += '<div class="secao-titulo">Principais</div>';
+  h += gradeDestaque(K.principais);
+
+  /* ----- O que já dá para medir: origem não paga ----- */
+  h += '<div class="secao-titulo">Comparativos &middot; o que o marketing entrega sem verba</div>';
+  const cliAds = porNat(c.cli, 'ads');
+  h += '<div class="grid g-2">';
+  h += cartao('Clientes por natureza da origem', 'Pago, orgânico, indicação e base, no mês selecionado.',
+    (() => {
+      const d = NATS.map(nat => ({ nat: nat, n: porNat(c.cli, nat).length })).filter(x => x.n);
+      return d.length ? vizDonut({ centro: n0(c.cli.length), centroRot: 'clientes',
+        dados: d.map(x => ({ k: ROT_NAT[x.nat], v: x.n, cor: COR_NAT[x.nat] })) })
+        : '<div class="vazio">Sem clientes no mês selecionado.</div>';
+    })());
+
+  h += cartao('Dependência de mídia paga, mês a mês', 'Clientes de campanha sobre o total. Linha subindo = o resultado depende mais de verba.',
+    vizLinhas({ x: c.serie.map(rotuloMesCurto), fmt: v => pct(v, 1), area: true, fmtEixo: v => pct(v, 0),
+      series: [{ nome: 'Dependência de mídia', cor: 'var(--s2)',
+        vals: c.serie.map(k => taxa(porNat(c.serieCli(k), 'ads').length, c.serieCli(k).length)) }] }));
+
+  h += cartao('Ticket médio por natureza da origem', 'Canal que fecha mais caro não é sempre o que traz mais volume.',
+    (() => {
+      const d = NATS.map(nat => ({ nat: nat, itens: porNat(c.cli, nat) }))
+        .filter(x => ticketMedio(x.itens) != null);
+      return d.length ? vizBarras({ rotuloW: 170, fmt: brl0, nome: 'Ticket médio',
+        dados: d.map(x => ({ k: ROT_NAT[x.nat], v: ticketMedio(x.itens), cor: COR_NAT[x.nat],
+          extra: [{ rot: 'Clientes', val: n0(x.itens.length) },
+                  { rot: 'Jornada média', val: media(x.itens, r => r.jornada) == null ? '—' : n0(media(x.itens, r => r.jornada)) + ' d' }] })) })
+        : '<div class="vazio">Sem ticket apurável no mês selecionado.</div>';
+    })());
+
+  h += cartao('Indicação e recompra, mês a mês', 'Clientes que chegam pela marca, não pela mídia.',
+    vizEmpilhado({ x: c.serie.map(rotuloMesCurto), fmt: n0, series: [
+      { nome: 'Indicação', cor: COR_NAT.indicacao, vals: c.serie.map(k => porNat(c.serieCli(k), 'indicacao').length) },
+      { nome: 'Recompra', cor: COR_NAT.base, vals: c.serie.map(k => porNat(c.serieCli(k), 'base').length) },
+      { nome: 'Orgânico', cor: COR_NAT.organico, vals: c.serie.map(k => porNat(c.serieCli(k), 'organico').length) }
+    ] }) + legenda([{ nome: 'Indicação', cor: COR_NAT.indicacao }, { nome: 'Recompra', cor: COR_NAT.base },
+                    { nome: 'Orgânico', cor: COR_NAT.organico }]));
+  h += '</div>';
+
+  if (cliAds.length && c.cli.length) {
+    const dep = taxa(cliAds.length, c.cli.length);
+    h += aviso(dep > 70 ? 'atencao' : 'info', 'Em ' + esc(c.rotMes) + ', <b>' + pct(dep, 0) +
+      '</b> dos clientes vieram de campanha paga. O resto &mdash; ' + n0(c.cli.length - cliAds.length) +
+      ' cliente(s) &mdash; chegou por orgânico, indicação, site ou recompra, sem custo de mídia por lead.');
+  }
+
+  h += '<div class="secao-titulo">Diagnóstico de marketing</div>';
+  K.grupos.forEach(g => { h += blocoEsp(g.t, g.s, g.l); });
+
+  h += '<div class="secao-titulo">Todos os indicadores da área</div>';
+  h += tabelaKpi('kpi-marketing', todos, 'Indicadores de marketing');
+  return h;
+}
+
+/* ==========================================================================
+   TELA - PAINEL SEMANAL  (os 5 primeiros de cada area, 15 no total)
+   --------------------------------------------------------------------------
+   A regra e do proprio gestor: 15 indicadores na semana, e o diagnostico
+   abre so quando um deles fica vermelho. O painel implementa isso ao pe da
+   letra - cada principal em alerta ganha o atalho para a area onde o detalhe
+   dele mora.
+   ========================================================================== */
+const TOPO5 = {
+  trafego:   ['cacMidia', 'cplQual', 'custoConversa', 'txQual', 'roi'],
+  marketing: ['leadsOrg', 'pctIndicacao', 'socialSeller', 'seguidores', 'conteudo'],
+  comercial: ['clientes', 'fat', 'txFecha', 'primeiraResposta', 'noshow']
+};
+
+function telaSemanal() {
+  const c = ctxArea();
+  const T = kpisTrafego(c), M = kpisMarketing(c), C = kpisComercial(c);
+
+  /* Os cinco primeiros de cada area podem vir dos principais ou do bloco de
+     especialista - "tempo de 1a resposta" e "custo por lead qualificado" sao
+     dos top 5 e vivem no diagnostico. Procuro nos dois. */
+  const achar = (pacote, chave) => {
+    const todos = (pacote.principais || []).concat(
+      (pacote.prequal || []), (pacote.fecha || []),
+      (pacote.grupos || []).reduce((a, g) => a.concat(g.l), []));
+    return todos.find(k => k.k === chave) || null;
+  };
+  const areas = [
+    { k: 'trafego',   rot: 'Tráfego pago',  sub: 'O que a verba virou',            tela: 'trafego',   pac: T },
+    { k: 'marketing', rot: 'Marketing',     sub: 'O que chega sem verba',          tela: 'marketing', pac: M },
+    { k: 'comercial', rot: 'Comercial',     sub: 'O que a operação fecha',         tela: 'comercial', pac: C }
+  ].map(a => Object.assign(a, {
+    lista: TOPO5[a.k].map(ch => achar(a.pac, ch)).filter(Boolean).map(k => Object.assign({}, k, { tela: a.tela }))
+  }));
+
+  const quinze = areas.reduce((a, x) => a.concat(x.lista), []);
+  const vermelhos = quinze.filter(k => !k.falta && alertaK(k));
+
+  let h = '<div class="secao-titulo primeiro">Painel semanal &middot; ' + esc(c.rotMes) + '</div>';
+  h += seletorMes(false);
+  h += aviso('info', '<b>Cinco indicadores por área, quinze no total.</b> É o recorte que se olha toda semana. ' +
+    'O resto &mdash; são mais de 120 &mdash; fica no diagnóstico de cada área, para abrir quando um destes acende. ' +
+    'Indicador com borda tracejada não tem fonte: o pé do cartão diz o que falta.');
+  h += resumoArea(quinze);
+
+  if (vermelhos.length) {
+    h += aviso('atencao', '<b>' + n0(vermelhos.length) + ' dos quinze pedem diagnóstico:</b> ' +
+      vermelhos.map(k => '<b>' + esc(k.rot) + '</b> (' +
+        (k.inverso ? fmtK(k)(k.valor) + ' contra limite de ' + fmtK(k)(metaRefK(k))
+                   : pctOuTraco(atingK(k), 0) + ' da meta') + ') &mdash; ' +
+        '<a href="#" data-ir="' + k.tela + '">abrir ' + esc(k.tela === 'trafego' ? 'Tráfego' : k.tela === 'marketing' ? 'Marketing' : 'Comercial') + '</a>').join(' &middot; ') + '.');
+  } else if (quinze.some(k => atingK(k) != null)) {
+    h += aviso('info', 'Nenhum dos quinze está no vermelho neste recorte. Sem diagnóstico a abrir.');
+  }
+
+  areas.forEach(a => {
+    const comMeta = a.lista.filter(k => !k.falta && atingK(k) != null);
+    const verdes = comMeta.filter(k => nivelK(k) === 'ok').length;
+    h += '<div class="secao-titulo">' + esc(a.rot) +
+      '<span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--texto-muted)">&middot; ' + esc(a.sub) + '</span>' +
+      (comMeta.length ? '<span style="margin-left:auto">' + selo(nivelMeta(taxa(verdes, comMeta.length)),
+        verdes + '/' + comMeta.length + ' no verde') + '</span>' : '') +
+      '<a href="#" data-ir="' + a.tela + '" style="color:var(--azul-claro);text-transform:none;letter-spacing:0;font-weight:600">abrir área &rarr;</a></div>';
+    h += gradeDestaque(a.lista);
+  });
+
+  h += '<div class="secao-titulo">Comparativo dos quinze</div>';
+  h += cartao('Atingimento da meta de referência', 'Percentual da meta &mdash; a única escala que permite indicadores de unidades diferentes no mesmo gráfico. A linha tracejada marca 100%.',
+    vizAtingimento(quinze, { rotuloW: 250 }));
+  return h;
+}
+/* ==========================================================================
    NAVEGACAO
    ========================================================================== */
 const IC = {
@@ -4612,28 +6261,34 @@ const IC = {
   equipe:  '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   metas:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
   fin:     '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  semanal: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="8 14 11 17 16 12"/></svg>',
+  comercial: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><polyline points="7 15 11 10 14 13 19 6"/><circle cx="19" cy="6" r="1.6"/></svg>',
+  marketing: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
   fontes:  '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
 };
 
 const TELAS = [
   { grupo: 'Comando' },
+  { k: 'semanal', rot: 'Painel semanal',  sub: 'Os cinco indicadores de cada area, quinze no total', fn: telaSemanal },
   { k: 'visao',   rot: 'Visao Geral',     sub: 'Ritmo do mes, evolucao e onde o resultado se forma', fn: telaVisao },
   { k: 'kpis',    rot: 'KPIs do comercial', sub: 'Realizado, meta proporcional e projecao do mes', fn: telaKpis },
+  { grupo: 'Areas' },
+  { k: 'comercial', rot: 'Comercial',     sub: 'Pre-qualificacao, fechamento e o diagnostico do gestor', fn: telaAreaComercial },
+  { k: 'trafego', rot: 'Trafego Meta Ads', sub: 'Do investimento ao honorario, campanha e criativo', fn: telaTrafego },
+  { k: 'marketing', rot: 'Marketing',     sub: 'Audiencia, conteudo, marca e demanda sem verba', fn: telaAreaMarketing },
   { grupo: 'Funil comercial' },
   { k: 'funil',   rot: 'Funil e pre-qualificacao', sub: 'Do lead ao cliente, etapa por etapa', fn: telaFunil },
   { k: 'esteira', rot: 'Negociacao',      sub: 'Esteira de proposta, follow up e fechamento', fn: telaEsteira },
   { k: 'vendas',  rot: 'Vendas e receita', sub: 'Fechamentos, honorarios, ticket e prazo', fn: telaVendas },
   { k: 'clifluxo', rot: 'Fluxo de clientes', sub: 'Quem assina, por onde chega e quem fecha', fn: telaClientesFluxo },
-  { grupo: 'Aquisicao' },
-  { k: 'trafego', rot: 'Trafego Meta Ads', sub: 'Investimento, CPL, campanhas e retorno', fn: telaTrafego },
-  { k: 'fin',     rot: 'Financeiro e CAC', sub: 'Custo real do comercial, margem e eficiencia', fn: telaFinanceiro },
   { grupo: 'Gestao' },
+  { k: 'fin',     rot: 'Financeiro e CAC', sub: 'Custo real do comercial, margem e eficiencia', fn: telaFinanceiro },
   { k: 'equipe',  rot: 'Equipe',          sub: 'Desempenho por closer e por SDR', fn: telaEquipe },
   { k: 'metas',   rot: 'Metas e OKRs',    sub: 'Metas do mes, plano de acao e acumulado do ano', fn: telaMetas },
   { k: 'fontes',  rot: 'Fontes e dados',  sub: 'De onde vem cada numero e o que falhou', fn: telaFontes }
 ];
 
-let TELA_ATIVA = 'visao';
+let TELA_ATIVA = 'semanal';
 
 function montarNav() {
   const nav = document.getElementById('nav');
@@ -5036,10 +6691,10 @@ document.getElementById('sidebarOverlay').addEventListener('click', fecharSideba
 
 /* Mes inspecionado e metas da tela de KPIs. */
 document.addEventListener('change', ev => {
-  if (ev.target.id === 'selMesKpi') { F.mesKpi = ev.target.value; redesenhar(); }
+  if (ev.target.dataset && ev.target.dataset.selmes !== undefined) { F.mesKpi = ev.target.value; redesenhar(); }
 });
 document.addEventListener('click', ev => {
-  if (!ev.target.closest('#btnMetas')) return;
+  if (!ev.target.closest('[data-metas]')) return;
   const atuais = metasAtivas();
   const novas = {};
   let mudou = false;

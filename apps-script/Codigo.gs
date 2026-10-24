@@ -147,6 +147,9 @@ function _fontes() {
     prodAnterior: { sheet: 'metas', abas: _abasDoMes('Produtos Jurídicos - ', -1, 'abrev')
                                       .concat(_abasDoMes('Produtos Juridicos - ', -1, 'abrev')), cabec: 2, colunas: null },
     okrs:         { sheet: 'metas', abas: ['OKRS'], cabec: 4, colunas: null },
+    /* Opcional: audiencia, conteudo e social seller nao tem fonte hoje. Se a
+       aba existir, no mesmo formato das abas KPIS, a tela de Marketing acende. */
+    kpisMkt:      { sheet: 'metas', abas: ['KPIS Marketing', 'KPIS MARKETING'], cabec: 5, colunas: null },
 
     hist: {
       sheet: 'antiga',
