@@ -69,6 +69,16 @@ Em indicador **invertido** (CAC, custo por lead, no-show) a meta é um teto, e o
 quadro escreve "Limite mensal" em vez de "Meta mensal": acima de 100% significa
 que o realizado está *dentro* do limite.
 
+### Dois pesos, nenhum dado a menos
+
+Catorze cartões do mesmo tamanho não são hierarquia: são uma parede onde o
+olho não tem onde pousar primeiro. Os indicadores que decidem a semana ficam
+em **cartão**, com o quadro completo. Os demais descem para uma **lista
+densa** que mostra exatamente os mesmos dados — realizado, meta, atingimento
+com barra e variação contra o mês anterior — numa linha só.
+
+Nenhum indicador prioritário sai da tela por causa disso. O que muda é o peso.
+
 ### Toda tabela diz a conta de cada coluna
 
 Coluna que ninguém sabe de onde veio não é usada — ou, pior, é usada errado.

@@ -713,6 +713,44 @@ if (window.self !== window.top) {
   .resumo-item:first-child { border-left: none; }
   .resumo-item b { font-size: 1.32rem; letter-spacing: -0.03em; font-weight: 650; line-height: 1.15; }
 
+  /* --- lista de metricas ---
+     Catorze cartoes do mesmo tamanho nao sao hierarquia, sao uma parede: o
+     olho nao tem onde pousar primeiro. Os indicadores que decidem a semana
+     ficam em cartao; o resto desce para esta lista, que mostra os MESMOS
+     dados (realizado, meta, atingimento, variação) numa linha densa. Nada
+     de informacao se perde - o que muda e o peso de cada uma. */
+  .lista-met {
+    background: linear-gradient(180deg, rgba(255,255,255,0.022) 0%, rgba(255,255,255,0) 42%), var(--bg2);
+    border: 1px solid #1b2740; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -16px rgba(0,0,0,0.9);
+  }
+  .met-linha {
+    display: grid; align-items: center; gap: 0.5rem 1.1rem;
+    grid-template-columns: minmax(0, 1.9fr) minmax(86px, auto) minmax(84px, 0.9fr) minmax(96px, auto);
+    padding: 0.66rem 1.1rem; border-top: 1px solid #16213a;
+  }
+  .met-linha:first-child { border-top: none; }
+  .met-linha:hover { background: rgba(38,54,90,0.26); }
+  .met-rot { font-size: 0.775rem; color: var(--texto-2); min-width: 0; line-height: 1.35; }
+  .met-rot b { color: var(--texto); font-weight: 600; }
+  .met-rot i { display: block; font-size: 0.645rem; color: #6b7a93; font-style: normal; margin-top: 0.1rem; }
+  .met-val {
+    font-size: 1.02rem; font-weight: 650; letter-spacing: -0.02em; text-align: right;
+    font-variant-numeric: tabular-nums lining-nums; color: var(--texto); white-space: nowrap;
+  }
+  .met-barra { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+  .met-trilha { flex: 1; height: 5px; background: var(--bg4); border-radius: 99px; overflow: hidden; min-width: 34px; }
+  .met-fill { height: 100%; border-radius: 99px; }
+  .met-pct { font-size: 0.68rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .met-fim { font-size: 0.685rem; color: #6b7a93; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .met-fim .delta { margin: 0; }
+
+  @media (max-width: 760px) {
+    .met-linha { grid-template-columns: minmax(0, 1fr) auto; padding: 0.7rem 0.9rem; }
+    .met-barra { grid-column: 1 / -1; }
+    .met-fim { grid-column: 1 / -1; text-align: left; }
+  }
+
   /* --- abas do modulo ---
      Quatro modulos na lateral, e dentro de cada um as abas que a leitura
      pede. A alternativa seria uma rolagem de quatro metros por modulo: tudo
@@ -3810,7 +3848,7 @@ function telaTrafego(aba) {
   h += barraTela(c, true);
   h += resumoArea(todosT);
   h += '<div class="secao-titulo">Principais</div>';
-  h += gradeDestaque(KT.principais);
+  h += blocoPrincipais(KT.principais);
 
   h += '<div class="secao-titulo">Comparativos</div>';
   h += '<div class="grid g-2">';
@@ -5180,6 +5218,49 @@ function ficha(k) {
 }
 
 const gradeDestaque = lista => '<div class="grid g-destaque">' + lista.map(destaque).join('') + '</div>';
+
+/* Linha densa com os mesmos dados do cartao: realizado, meta, atingimento e
+   variação. E a forma de mostrar dez indicadores sem transformar a tela
+   numa parede de cartoes iguais. */
+function metLinha(k) {
+  const f = fmtK(k);
+  if (k.falta) {
+    return '<div class="met-linha"><div class="met-rot"><b>' + esc(k.rot) + '</b>' +
+      '<i>' + k.falta.replace(/<[^>]+>/g, '') + '</i></div>' +
+      '<div class="met-val" style="color:var(--texto-muted)">&mdash;</div>' +
+      '<div class="met-barra"><span class="marca-sem">sem fonte</span></div><div class="met-fim"></div></div>';
+  }
+  const nv = nivelK(k), a = atingK(k), v = varK(k);
+  const cor = CORNV[nv] === 'transparent' ? 'var(--s1)' : CORNV[nv];
+  let h = '<div class="met-linha">';
+  h += '<div class="met-rot"><b>' + esc(k.rot) + '</b>' +
+       (k.nota ? '<i>' + k.nota + '</i>' : (k.inverso ? '<i>menos \u00e9 melhor</i>' : '')) + '</div>';
+  h += '<div class="met-val">' + (k.valor == null ? '&mdash;' : f(k.valor)) + '</div>';
+  h += '<div class="met-barra">';
+  if (a != null) {
+    h += '<div class="met-trilha"><div class="met-fill" style="width:' +
+      Math.min(100, Math.max(2, a)).toFixed(0) + '%;background:' + cor + '"></div></div>' +
+      '<span class="met-pct" style="color:' + CORTX[nv] + '">' + pct(a, 0) + '</span>';
+  }
+  h += '</div>';
+  h += '<div class="met-fim">' +
+    (k.meta != null && k.meta !== 0 ? (k.inverso ? 'limite ' : 'meta ') + f(metaRefK(k)) + '<br>' : '') +
+    (v != null ? delta(v, { inverso: !!k.inverso, sufixo: 'vs ' + k.rotAnt }) : '') + '</div>';
+  return h + '</div>';
+}
+const listaMetricas = lista => !lista.length ? '' :
+  '<div class="lista-met">' + lista.map(metLinha).join('') + '</div>';
+
+/* Os que decidem a semana vao em cartao; o resto, na lista. A divisao e por
+   marca no proprio indicador, para a tela nao precisar saber a regra. */
+const heroi = l => l.filter(k => k.hero);
+const resto = l => l.filter(k => !k.hero);
+function blocoPrincipais(lista) {
+  const hs = heroi(lista);
+  if (!hs.length) return gradeDestaque(lista);
+  return gradeDestaque(hs) + (resto(lista).length
+    ? '<div style="height:0.85rem"></div>' + listaMetricas(resto(lista)) : '');
+}
 const gradeFicha    = lista => '<div class="grid g-ficha">' + lista.map(ficha).join('') + '</div>';
 
 /* Bloco de especialista: titulo, uma linha de contexto e a grade de fichas. */
@@ -5475,13 +5556,13 @@ function kpisTrafego(c) {
         falta: temJanelas ? null : 'A aba <b>Anúncios</b> precisa das duas janelas (7d e 30d) para o painel distinguir peça nova de peça antiga.',
         nota: janelaAds, fonte: 'Aba Anúncios (janelas 7d e 30d)',
         dica: 'Sem coluna de data de criação, o painel deduz pela comparação das janelas: impressões de 7d ≈ impressões de 30d significa que a peça começou a rodar agora.' }),
-    B({ k: 'invest', rot: 'Investimento em tráfego', tipo: 'moeda', valor: gasto, ant: gastoAnt,
+    B({ hero: true, k: 'invest', rot: 'Investimento em tráfego', tipo: 'moeda', valor: gasto, ant: gastoAnt,
         meta: metas.investimento, acumula: true, serie: c.serie.map(k => soma(c.serieMd(k), r => r.gasto)),
         fonte: fonteIns, nota: c.emCurso ? n0(c.dias) + ' de ' + n0(c.diasMes) + ' dias do mês' : null }),
     B({ k: 'orcDia', rot: 'Orçamento diário no ar', tipo: 'moeda', valor: orcDia,
         fonte: 'Aba Campanhas (status ACTIVE)', largo: false,
         nota: n0(ativas.length) + ' de ' + n0(camps.length) + ' campanhas ativas · ritmo de ' + brl0(orcDia * c.diasMes) + '/mês' }),
-    B({ k: 'leads', rot: 'Leads (total)', valor: leads, ant: leadsAnt, meta: metas.leadsAds, acumula: true,
+    B({ hero: true, k: 'leads', rot: 'Leads (total)', valor: leads, ant: leadsAnt, meta: metas.leadsAds, acumula: true,
         serie: c.serie.map(k => soma(c.serieMd(k), r => r.leadsTotal)), fonte: fonteIns,
         nota: 'Formulário ' + n0(leadsForm) + ' · conversas ' + n0(conversasMeta) + ' · pixel ' + n0(soma(c.md, r => r.leadsPixel)) }),
     B({ k: 'eleg', rot: 'Leads elegíveis', valor: elegiveis, ant: c.krAnt('leads elegiveis'),
@@ -5496,7 +5577,7 @@ function kpisTrafego(c) {
         fonte: 'Investimento ÷ Responderam a Triagem',
         nota: triagem ? n0(triagem) + ' leads passaram da primeira mensagem' : null,
         dica: 'Conversa iniciada = lead que avançou para elegível ou inelegível. O denominador conta todas as origens, então o custo real é um pouco maior.' }),
-    B({ k: 'cpl', rot: 'Custo por lead (total)', tipo: 'moeda2', inverso: true,
+    B({ hero: true, k: 'cpl', rot: 'Custo por lead (total)', tipo: 'moeda2', inverso: true,
         valor: leads ? gasto / leads : null, ant: leadsAnt ? gastoAnt / leadsAnt : null,
         serie: c.serie.map(k => { const g = c.serieMd(k); const l = soma(g, r => r.leadsTotal); return l ? soma(g, r => r.gasto) / l : null; }),
         fonte: fonteIns }),
@@ -5518,7 +5599,7 @@ function kpisTrafego(c) {
     B({ k: 'clientesAds', rot: 'Clientes', valor: cliAds.length, ant: cliAdsAnt.length,
         meta: metas.clientes, acumula: true, serie: c.serie.map(k => porNat(c.serieCli(k), 'ads').length),
         fonte: fonteCli, nota: n0(cliAds.length) + ' de ' + n0(c.cli.length) + ' fechamentos vieram de campanha' }),
-    B({ k: 'cacMidia', rot: 'Custo por cliente (CAC de mídia)', tipo: 'moeda', inverso: true,
+    B({ hero: true, k: 'cacMidia', rot: 'Custo por cliente (CAC de mídia)', tipo: 'moeda', inverso: true,
         valor: cliAds.length ? gasto / cliAds.length : null,
         ant: cliAdsAnt.length ? gastoAnt / cliAdsAnt.length : null,
         meta: metas.cac,
@@ -5528,7 +5609,7 @@ function kpisTrafego(c) {
     B({ k: 'retorno', rot: 'Retorno financeiro', tipo: 'moeda', valor: honAds, ant: honAdsAnt,
         serie: c.serie.map(k => soma(porNat(c.serieCli(k), 'ads'), r => r.honIni)),
         fonte: fonteCli, nota: 'Honorários iniciais dos clientes de campanha' }),
-    B({ k: 'roi', rot: 'ROI de mídia', tipo: 'mult', valor: gasto ? honAds / gasto : null,
+    B({ hero: true, k: 'roi', rot: 'ROI de mídia', tipo: 'mult', valor: gasto ? honAds / gasto : null,
         ant: gastoAnt ? honAdsAnt / gastoAnt : null, meta: metas.roi,
         serie: c.serie.map(k => { const g = soma(c.serieMd(k), r => r.gasto); return g ? soma(porNat(c.serieCli(k), 'ads'), r => r.honIni) / g : null; }),
         fonte: 'Retorno atribuído ÷ investimento' })
@@ -5879,7 +5960,7 @@ function kpisComercial(c) {
   /* ----- PRE-QUALIFICACAO ----- */
   const outras = crm != null ? Math.max(0, crm - leadsAds) : null;
   const prequal = [
-    B({ k: 'leadsTotal', rot: 'Leads · total (CRM)', valor: krLeads ? krLeads.resultado : null,
+    B({ hero: true, k: 'leadsTotal', rot: 'Leads · total (CRM)', valor: krLeads ? krLeads.resultado : null,
         ant: c.krAnt('novos leads'), meta: krLeads ? krLeads.metaMes : null,
         metaProp: krLeads ? krLeads.metaProp : null, acumula: true,
         falta: krLeads ? null : 'KR Novos Leads não lido na aba KPIS ' + esc(c.nomeMes) + '.',
@@ -5892,10 +5973,10 @@ function kpisComercial(c) {
         nota: (organico != null && crm != null) ? 'De ' + n0(crm) + ' leads que o CRM registrou no mês' : null,
         falta: organico == null ? 'A linha Leads (Orgânico) da aba Produtos Jurídicos não foi lida.' : null,
         fonte: 'Produtos Jurídicos, linha Leads (Orgânico)' }),
-    doKr('eleg', 'Leads elegíveis · total', krEleg, null, { nota: 'Sem corte por origem na planilha' }),
+    doKr('eleg', 'Leads elegíveis · total', krEleg, null, { hero: true, nota: 'Sem corte por origem na planilha' }),
     B({ k: 'elegAds', rot: 'Elegíveis, qualificados e diagnósticos por origem', falta:
         'A planilha anota essas etapas <b>no total</b>, sem separar pago de orgânico — valendo para elegíveis, qualificados, taxa de qualificação, diagnósticos positivos e taxa de agendamento. O corte existiria com a origem marcada em cada etapa do CRM: é o que a planilha <b>Cérebro Comercial</b> já faz, e ela só abre pelo proxy. Clientes e faturamento, esses sim, têm o corte — a origem fica no registro.' }),
-    doKr('qual', 'Leads qualificados · total', krQual),
+    doKr('qual', 'Leads qualificados · total', krQual, null, { hero: true }),
     B({ k: 'txQual', rot: 'Taxa de qualificação', tipo: 'pct',
         valor: (krQual && krLeads) ? taxa(krQual.resultado, krLeads.resultado) : null,
         meta: (krQual && krLeads) ? taxa(krQual.metaMes, krLeads.metaMes) : null,
@@ -5909,6 +5990,7 @@ function kpisComercial(c) {
         fonte: 'Produtos Jurídicos, linha Viáveis',
         dica: 'Diagnóstico positivo é o caso viável: o cálculo fechou com direito a revisar.' }),
     B({ k: 'diagPct', rot: 'Diagnósticos positivos (%)', tipo: 'pct', valor: taxa(viaveis, diagnosticos),
+        meta: (c.prod && c.prod.taxasProj && numPct(c.prod.taxasProj['viaveis'])) || null,
         falta: (viaveis != null && diagnosticos != null) ? null : 'Depende das linhas Diagnósticos e Viáveis.',
         fonte: 'Viáveis ÷ Diagnósticos' }),
     B({ k: 'agendamento', rot: 'Taxa de agendamento', tipo: 'pct',
@@ -5916,15 +5998,19 @@ function kpisComercial(c) {
         falta: krEleg ? null : 'Depende do KR Leads Elegíveis.',
         fonte: 'Reuniões marcadas ÷ leads elegíveis',
         nota: n0(c.marc.length) + ' reuniões marcadas no mês' }),
-    doKr('noshow', 'No-show', krNoShow, null, { inverso: true,
+    doKr('noshow', 'No-show', krNoShow, null, { hero: true, inverso: true,
       nota: c.marc.length ? 'Marcadas no mês: ' + n0(c.marc.length) : null,
       dica: 'Vem do KR da planilha. Deduzir pela diferença entre marcadas e realizadas erra: reunião marcada no fim do mês é atendida no mês seguinte.' }),
-    B({ k: 'convLeadCliente', rot: 'Lead em cliente', tipo: 'pct',
+    B({ hero: true, k: 'convLeadCliente', rot: 'Lead em cliente', tipo: 'pct',
         valor: krLeads ? taxa(cli.length, krLeads.resultado) : null,
         ant: (c.krAnt('novos leads')) ? taxa(cliAnt.length, c.krAnt('novos leads')) : null,
-        meta: metas.convLeadCli,
+        /* A meta sai dos proprios KRs - clientes sobre leads, a mesma base do
+           realizado. A meta fixa do painel foi escrita contra os leads do
+           Meta, que sao quase quatro vezes os do CRM: compararia bases
+           diferentes e daria um atingimento inventado. */
+        meta: (krCli && krLeads && krLeads.metaMes) ? taxa(krCli.metaMes, krLeads.metaMes) : metas.convLeadCli,
         falta: krLeads ? null : 'Depende do KR Novos Leads da aba KPIS ' + esc(c.nomeMes) + '.',
-        fonte: 'Clientes ÷ KR Novos Leads',
+        fonte: 'Clientes ÷ KR Novos Leads' + ((krCli && krLeads) ? ' · meta = ' + n0(krCli.metaMes) + ' ÷ ' + n0(krLeads.metaMes) : ''),
         dica: 'Conversao de ponta a ponta: de cada 100 leads que o CRM registrou, quantos assinaram no mes.' }),
     B({ k: 'tempoReuniao', rot: 'Entrada do lead até a reunião', tipo: 'dias',
         valor: media(cli, r => (r.primeiro && r.dReuniao) ? diasEntre(r.primeiro, r.dReuniao) : null),
@@ -5949,11 +6035,14 @@ function kpisComercial(c) {
   const totEtapa = soma(porEtapa, x => x.n);
 
   const fecha = [
-    B({ k: 'reunioes', rot: 'Reuniões realizadas', valor: c.reun.length, ant: c.reunAnt.length,
+    B({ hero: true, k: 'reunioes', rot: 'Reuniões realizadas', valor: c.reun.length, ant: c.reunAnt.length,
         meta: krReun ? krReun.metaMes : metas.reunioes, metaProp: krReun ? krReun.metaProp : null, acumula: true,
         serie: c.serie.map(k => c.serieReun(k).length), fonte: 'Fluxo de Atendimentos (data do atendimento)' }),
-    B({ k: 'txFecha', rot: 'Taxa de fechamento', tipo: 'pct', valor: taxa(cli.length, c.reun.length),
-        ant: taxa(cliAnt.length, c.reunAnt.length), meta: metas.convReunCli,
+    B({ hero: true, k: 'txFecha', rot: 'Taxa de fechamento', tipo: 'pct', valor: taxa(cli.length, c.reun.length),
+        /* A planilha tem KR proprio para isto ("Conversao em Vendas"): usar a
+           meta fixa do painel ignoraria o numero que o time combinou. */
+        ant: taxa(cliAnt.length, c.reunAnt.length),
+        meta: (c.kr('conversao em vendas') || {}).metaMes || metas.convReunCli,
         serie: c.serie.map(k => taxa(c.serieCli(k).length, c.serieReun(k).length)),
         fonte: 'Clientes ÷ reuniões realizadas',
         dica: 'Reunião e fechamento podem cair em meses diferentes: no mês em curso a taxa é otimista por construção.' }),
@@ -5961,7 +6050,7 @@ function kpisComercial(c) {
         ant: media(cliAnt, r => r.diasFechar), inverso: true,
         serie: c.serie.map(k => media(c.serieCli(k), r => r.diasFechar)),
         fonte: 'Planilha de clientes: DIAS PARA FECHAR' }),
-    B({ k: 'clientes', rot: 'Clientes · total', valor: cli.length, ant: cliAnt.length,
+    B({ hero: true, k: 'clientes', rot: 'Clientes · total', valor: cli.length, ant: cliAnt.length,
         meta: krCli ? krCli.metaMes : metas.clientes, metaProp: krCli ? krCli.metaProp : null, acumula: true,
         serie: c.serie.map(k => c.serieCli(k).length), fonte: 'Planilha de clientes',
         nota: krCli && krCli.resp ? 'A meta de ' + n0(krCli.metaMes) + ' é o KR de ' + esc(krCli.resp) : null }),
@@ -5969,7 +6058,7 @@ function kpisComercial(c) {
         ant: porNat(cliAnt, 'ads').length, fonte: 'ORIGEM entre colchetes = campanha' }),
     B({ k: 'clientesOrg', rot: 'Clientes · orgânicos', valor: cliOrg.length,
         ant: porNat(cliAnt, 'organico').length, fonte: 'ORIGEM = Orgânico, Site, Calculadora ou Reunião Fechada' }),
-    B({ k: 'fat', rot: 'Faturamento · total', tipo: 'moeda', valor: hon, ant: honAnt,
+    B({ hero: true, k: 'fat', rot: 'Faturamento · total', tipo: 'moeda', valor: hon, ant: honAnt,
         meta: krHon ? krHon.metaMes : metas.faturamento, metaProp: krHon ? krHon.metaProp : null, acumula: true,
         serie: c.serie.map(k => soma(c.serieCli(k), r => r.honIni)), fonte: 'Honorários iniciais contratados' }),
     B({ k: 'fatAds', rot: 'Faturamento · Meta Ads', tipo: 'moeda', valor: soma(cliAds, r => r.honIni),
@@ -5981,7 +6070,7 @@ function kpisComercial(c) {
         fonte: 'Honorários iniciais de quem teve honorário inicial',
         nota: semTicket(cli) ? n0(semTicket(cli)) + ' fechamento(s) condicionado(s) a liminar ficam fora da média' : null,
         dica: 'Fechamento com honorário condicionado a liminar entra na planilha como R$ 0: é venda, mas não é preço. Deixar esses zeros no divisor achataria o ticket.' }),
-    B({ k: 'cac', rot: 'CAC (só Meta Ads)', tipo: 'moeda', inverso: true,
+    B({ hero: true, k: 'cac', rot: 'CAC (só Meta Ads)', tipo: 'moeda', inverso: true,
         valor: cliAds.length ? gasto / cliAds.length : null, meta: metas.cac,
         fonte: 'Investimento ÷ clientes de campanha',
         dica: 'Como pedido: só os leads do Meta Ads no cálculo. O CAC do escritório inteiro está em Financeiro e CAC.' })
@@ -6037,10 +6126,11 @@ function kpisComercial(c) {
   const closer = [
     B({ k: 'txProposta', rot: 'Taxa de proposta', tipo: 'pct', valor: taxa(comProposta.length, c.reun.length),
         fonte: 'Reuniões com valor de proposta ÷ reuniões realizadas' }),
-    B({ k: 'winRate', rot: 'Win rate', tipo: 'pct',
+    B({ k: 'winRate', rot: 'Ganho entre os decididos', tipo: 'pct',
         valor: taxa(ganhosHist, ganhosHist + perdidosTodos.length),
         fonte: 'Ganhos ÷ (ganhos + perdidos), histórico inteiro',
-        nota: n0(ganhosHist) + ' ganhos e ' + n0(perdidosTodos.length) + ' perdas registradas',
+        nota: n0(ganhosHist) + ' ganhos, ' + n0(perdidosTodos.length) + ' perdas e ' +
+          n0(esteiraTodos.filter(r => r.grupo === 'semresposta').length) + ' sem resposta, que ficam fora',
         dica: 'Do histórico, não do mês: a coluna Data da perda está vazia, e cruzar ganho do mês com perda sem data daria uma taxa inventada. Exclui quem não respondeu — misturar "sem resposta" com "perdido" afunda a taxa sem dizer nada.' }),
     B({ k: 'fecha24h', rot: 'Fechamento na janela de 24h', tipo: 'pct', valor: taxa(ganhos24h, totEtapa),
         fonte: 'Follow Up 1 (24h) como degrau de fechamento',
@@ -6073,9 +6163,10 @@ function kpisComercial(c) {
 
   /* ----- ESPECIALISTA: esteira de follow up ----- */
   const chegaram = n => esteiraTodos.filter(r => r.fups.some(f => f.n === n && f.status)).length;
-  /* Fechou NAQUELE degrau, nao "dali para frente": com >= n, o D21 e o D28
-     devolviam o mesmo numero, porque quem fecha no 8 tambem passou do 7. */
-  const fecharamNo = n => ganhosTodos.filter(r => r.etapaFup === n).length;
+  /* Fechou NAQUELE degrau, pelo mesmo criterio do grafico de fechamentos por
+     etapa - senao a mesma venda cairia em degraus diferentes nos dois
+     lugares da tela, e o painel se contradiria. */
+  const fecharamNo = degrau => ganhosTodos.filter(r => etapaFechamento(r) === degrau).length;
   const esteira = [
     B({ k: 'abertas', rot: 'Negociações em aberto', valor: abertos.length,
         fonte: 'Etapa do Funil em negociação, não arquivada',
@@ -6087,11 +6178,11 @@ function kpisComercial(c) {
         valor: taxa(abertos.length - semProximo, abertos.length), meta: 100,
         fonte: 'Próxima ação ou follow up futuro preenchido' }),
     B({ k: 'recD21', rot: 'Recuperação no D21 (Buckner)', tipo: 'pct',
-        valor: taxa(fecharamNo(7), chegaram(7)),
+        valor: taxa(fecharamNo('buckner'), chegaram(7)),
         fonte: 'Fechados que passaram do FUP 7 ÷ que chegaram ao FUP 7 (histórico inteiro)',
         nota: n0(chegaram(7)) + ' negociações chegaram ao D21' }),
     B({ k: 'recD28', rot: 'Recuperação no D28 (liminar)', tipo: 'pct',
-        valor: taxa(fecharamNo(8), chegaram(8)),
+        valor: taxa(fecharamNo('liminar'), chegaram(8)),
         fonte: 'Fechados que passaram do FUP 8 ÷ que chegaram ao FUP 8 (histórico inteiro)' }),
     B({ k: 'ciclo', rot: 'Ciclo de venda', tipo: 'dias', valor: media(cli, r => r.jornada), inverso: true,
         serie: c.serie.map(k => media(c.serieCli(k), r => r.jornada)),
@@ -6188,7 +6279,7 @@ function prequalIndicadores(parcial) {
       'evento contado duas vezes ou lead que nunca chegou a virar registro. ' +
       'Os indicadores de custo usam o número do <b>CRM</b> quando ele existe &mdash; é o que virou gente de verdade.');
   }
-  h += gradeDestaque(K.prequal);
+  h += blocoPrincipais(K.prequal);
 
   h += '<div class="secao-titulo">Comparativos</div>';
   h += '<div class="grid g-2">';
@@ -6242,7 +6333,7 @@ function fechamentoIndicadores(parcial) {
   let h = '';
   if (!parcial) h += barraTela(c, true) + resumoArea(todos);
   h += '<div class="secao-titulo' + (parcial ? '' : ' primeiro') + '">Atendimento e fechamento &middot; principais</div>';
-  h += gradeDestaque(K.fecha);
+  h += blocoPrincipais(K.fecha);
 
   h += '<div class="secao-titulo">Comparativos</div>';
   h += '<div class="grid g-2">';
