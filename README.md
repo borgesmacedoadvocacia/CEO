@@ -134,8 +134,15 @@ dados*, não como zero silencioso. Releitura automática a cada 10 minutos.
 
 ## Decisões que valem saber
 
-- **CPF/CNPJ não trafega.** Com o proxy, o servidor conta os dígitos e devolve
-  só `PJ` ou `PF`: a classificação serve à gestão, o identificador não.
+- **O CPF/CNPJ é lido, classificado e descartado.** O módulo *Fluxo de
+  clientes* replica o painel da central, que mostra o corte PJ × PF — e esse
+  corte só existe no documento. Na leitura direta o painel conta os dígitos
+  da coluna e guarda apenas `PJ` ou `PF`: o número não entra em registro
+  nenhum, não aparece na tela e não sai no CSV. Com o proxy publicado ele nem
+  chega ao navegador — o Apps Script faz a classificação no servidor.
+  CPF tem 11 dígitos e CNPJ 14; como a planilha guarda alguns CNPJ como
+  número, perdendo o zero à esquerda, qualquer documento com 12 ou mais
+  dígitos é PJ. Exigir 14 mandava um CNPJ para o lado do CPF.
 - **Ticket médio conta só quem teve honorário inicial.** Fechamento com
   honorário condicionado a liminar entra como R$ 0 (política D28): é venda, mas
   não é preço. Com os zeros no divisor, out/26 dava R$ 888 em vez de R$ 2.565.

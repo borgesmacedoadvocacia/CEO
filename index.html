@@ -1618,14 +1618,27 @@ const CAMPOS_CLI = {
   obs:        ['OBSERVACOES'],
   tipoPag:    ['TIPO DE PAGAMENTO'],
   cliente:    ['CLIENTE (O MESMO DO CONTRATO)', 'CLIENTE'],
-  /* So existe quando a leitura vem pelo proxy: o Apps Script conta os digitos
-     do CPF/CNPJ e devolve "PJ" ou "PF". O identificador nao sai do Google. */
-  tipoPessoa: ['TIPO DE PESSOA']
+  /* Pelo proxy, o Apps Script ja devolve "PJ"/"PF" pronto e o identificador
+     nem sai do Google. Na leitura direta, o painel le a coluna, conta os
+     digitos e DESCARTA o numero na mesma linha - igual ao painel da central,
+     que e de onde esta tela foi replicada. O CPF/CNPJ nao entra em nenhum
+     registro, nao vai para a tela e nao sai no CSV. */
+  tipoPessoa: ['TIPO DE PESSOA'],
+  cpf: ['CPF/CNPJ']
 };
+/* CPF tem exatamente 11 digitos; CNPJ, 14. Acima de 11 so pode ser CNPJ -
+   e a planilha guarda alguns como NUMERO, o que come o zero a esquerda e
+   deixa 12 ou 13 digitos. Classificar pelo piso de 12 acerta esses; exigir
+   14 mandava um CNPJ para o lado do CPF. Sem digito nenhum fica sem
+   classificacao, que e o "?" do painel da central. */
+function tipoPorDocumento(txt) {
+  const d = String(txt || '').replace(/\D/g, '');
+  return d.length >= 12 ? 'PJ' : d.length === 11 ? 'PF' : '';
+}
 
 async function carregarClientes() {
   const linhas = await lerAba(CONFIG.SHEETS.clientes, 'DADOS', {
-    fonte: 'clientes', tq: 'select ' + letrasAte(17),
+    fonte: 'clientes', tq: 'select ' + letrasAte(18),
     esperado: ['DATA DO FECHAMENTO', 'HONORARIOS INICIAIS', 'CLOSER']
   });
   const t = tabela(linhas);
@@ -1652,7 +1665,7 @@ async function carregarClientes() {
       pagoOk: /^(sim|s|true|1)$/i.test(m.cel(l, 'pagoOk').replace(/â/g, 'a')),
       obs: m.cel(l, 'obs'),
       tipoPag: m.cel(l, 'tipoPag') || 'Nao informado',
-      tipoPessoa: m.cel(l, 'tipoPessoa')
+      tipoPessoa: m.cel(l, 'tipoPessoa') || tipoPorDocumento(m.cel(l, 'cpf'))
     };
   }).filter(r => r.dFecha);
 
@@ -3934,8 +3947,16 @@ function telaTrafego(aba) {
      E a leitura que decide verba: CPL baixo com conversao em reuniao baixa e
      lead barato que nao vira nada - gastar mais ali so compra volume ruim. */
   const porCamp = porVolume(agrupar(md, r => r.campanha, r => r.gasto));
+  /* O cadastro guarda uma LISTA por nome, nao um registro: a conta tem
+     campanhas homonimas - "[LEADS] [CALCULADORA REV. PLANO]" existe duas
+     vezes, uma pausada desde maio e outra criada em 16/10. O gasto das duas
+     soma no mesmo nome, e assim tem de ser, porque o CRM so anota o NOME da
+     campanha - mas o status e o orcamento nao podem vir de uma so delas. */
   const cadastro = {};
-  (DADOS.metaCamp ? DADOS.metaCamp.reg : []).forEach(c => { cadastro[chaveBusca(c.campanha)] = c; });
+  (DADOS.metaCamp ? DADOS.metaCamp.reg : []).forEach(c => {
+    const k = chaveBusca(c.campanha);
+    (cadastro[k] = cadastro[k] || []).push(c);
+  });
 
   /* ELEGIVEIS POR CAMPANHA vem do KOMMO, nao do Meta: quem sabe se o lead
      passou da elegibilidade e o CRM. O Kommo guarda a etapa ATUAL do lead,
@@ -3962,8 +3983,12 @@ function telaTrafego(aba) {
   });
 
   const campanhas = porCamp.map(g => {
-    const c = cadastro[chaveBusca(g.k)] || {};
     const k = chaveBusca(g.k);
+    const homonimas = cadastro[k] || [];
+    const ativas = homonimas.filter(x => /^active$/i.test(x.status || ''));
+    /* Prefere a ativa para status e objetivo; o orcamento diario soma so as
+       que estao no ar, senao o ritmo do mes contaria verba de campanha morta. */
+    const c = ativas[0] || homonimas[0] || {};
     const l = soma(g.itens, r => r.leadsTotal);
     const rn = reunPorCamp[k] || 0;
     const cl = cliPorCamp[k] || 0;
@@ -3978,9 +4003,9 @@ function telaTrafego(aba) {
       clientes: cl, convCliente: taxa(cl, l), convReunCli: taxa(cl, rn),
       honorarios: hon, cac: cl ? g.v / cl : null, roi: g.v ? hon / g.v : null,
       custoReuniao: rn ? g.v / rn : null,
-      status: c.status || '', ativa: /^active$/i.test(c.status || ''),
+      status: c.status || '', ativa: ativas.length > 0, homonimas: homonimas.length,
       objetivo: c.objetivo || '', origemOrc: c.origemOrc || '',
-      orcDia: c.orcDia || 0, orcMes: (c.orcDia || 0) * diasDoMes,
+      orcDia: soma(ativas, x => x.orcDia), orcMes: soma(ativas, x => x.orcDia) * diasDoMes,
       dias: new Set(g.itens.map(r => chaveMes(r.d) + r.d.getDate())).size
     };
   });
@@ -4070,15 +4095,21 @@ function telaTrafego(aba) {
     '<b>Clientes</b> = fechamentos cuja ORIGEM \u00e9 esta campanha &middot; <b>Conv. cliente</b> = clientes \u00f7 leads &middot; ' +
     '<b>Retorno</b> = honor\u00e1rios iniciais desses clientes &middot; <b>CAC</b> = gasto \u00f7 clientes &middot; ' +
     '<b>ROI</b> = retorno \u00f7 gasto (quanto voltou por R$ 1) &middot; ' +
-    '<b>Or\u00e7./m\u00eas</b> = or\u00e7amento di\u00e1rio \u00d7 ' + n0(diasDoMes) + ' dias do m\u00eas corrente.',
+    '<b>Or\u00e7./dia</b> e <b>Or\u00e7./m\u00eas</b> = soma do or\u00e7amento das campanhas <b>ativas</b> com este nome, ' +
+    'a segunda multiplicada por ' + n0(diasDoMes) + ' dias do m\u00eas corrente.',
     DICA_ORDENAR + '<br><b>O Kommo n\u00e3o guarda a data de entrada em cada etapa</b>, s\u00f3 a etapa atual: ' +
-    'os eleg\u00edveis s\u00e3o contados pela etapa de hoje e situados no tempo pela data de cria\u00e7\u00e3o do lead.');
+    'os eleg\u00edveis s\u00e3o contados pela etapa de hoje e situados no tempo pela data de cria\u00e7\u00e3o do lead.' +
+    '<br><b>Campanhas de mesmo nome entram na mesma linha</b>, e a linha avisa quando isso acontece. ' +
+    'Tem de ser assim porque o CRM anota o <i>nome</i> da campanha, n\u00e3o o ID: separar por ID quebraria ' +
+    'a liga\u00e7\u00e3o com reuni\u00e3o e cliente.');
 
   h += tabelaInterativa('trafego-tab', [
     { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap',
-      html: r => esc(r.campanha) + (r.objetivo || r.origemOrc
+      html: r => esc(r.campanha) + (r.objetivo || r.origemOrc || r.homonimas > 1
         ? '<span class="cel-sub">' + esc(r.objetivo) +
-          (r.origemOrc ? ' &middot; or\u00e7amento por ' + esc(r.origemOrc) : '') + '</span>' : '') },
+          (r.origemOrc ? ' &middot; or\u00e7amento por ' + esc(r.origemOrc) : '') +
+          (r.homonimas > 1 ? ' &middot; <b style="color:#f3c45a">' + n0(r.homonimas) +
+            ' campanhas com este nome</b>' : '') + '</span>' : '') },
     { k: 'status', rot: 'Status', tipo: 'txt', ord: true, html: r => !r.status ? '&mdash;' :
       (r.ativa ? selo('ok', 'ativa') : selo('neutro', r.status.toLowerCase())) },
     { k: 'orcDia', rot: 'Or\u00e7./dia', tipo: 'moeda0' },
@@ -4209,36 +4240,47 @@ function telaClientesFluxo() {
   let h = '';
 
   /* ----- VISAO GERAL ----- */
-  h += '<div class="secao-titulo primeiro">Visao geral &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  /* Os sete cartoes abaixo sao os MESMOS do painel da central, na mesma
+     ordem e com os mesmos rotulos - inclusive o ticket medio dividido por
+     TODOS os clientes, que e como ele e calculado la. O oitavo cartao e o
+     unico acrescimo: o ticket pela regra desta casa, que nao conta
+     fechamento com honorario condicionado a liminar. Os dois lado a lado,
+     para a diferenca ficar explicita em vez de parecer erro. */
+  const pj = cli.filter(r => r.tipoPessoa === 'PJ').length;
+  const pf = cli.filter(r => r.tipoPessoa === 'PF').length;
+  const confirmados = cli.filter(r => r.pagoOk).length;
+  const entradaTot = soma(cli, r => r.entrada);
+
+  h += '<div class="secao-titulo primeiro">Vis\u00e3o Geral &middot; ' + esc(rotuloPeriodo()) + '</div>';
   h += '<div class="grid g-kpi">';
-  h += kpi({ rotulo: 'Clientes', valor: n0(cli.length) });
-  h += kpi({ rotulo: 'Total de honorarios', valor: brl0(total), pequeno: true });
-  h += kpi({ rotulo: 'Ticket medio', valor: tk == null ? '&mdash;' : brl0(tk), pequeno: true,
-    nota: 'So quem teve honorario inicial' });
-  h += kpi({ rotulo: 'Jornada media', valor: (() => { const m = media(cli, r => r.jornada); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true,
-    dica: 'Do primeiro contato ao fechamento.' });
-  h += kpi({ rotulo: 'Dias para fechar', valor: (() => { const m = media(cli, r => r.diasFechar); return m == null ? '&mdash;' : n0(m) + ' dias'; })(), pequeno: true,
-    dica: 'Da reuniao ao fechamento.' });
-  h += kpi({ rotulo: 'Pagamento confirmado', valor: pctOuTraco(taxa(cli.filter(r => r.pagoOk).length, cli.length), 0),
-    nota: n0(cli.filter(r => r.pagoOk).length) + ' de ' + n0(cli.length) });
-  h += kpi({ rotulo: 'Entrada recebida', valor: brl0(soma(cli, r => r.entrada)), pequeno: true,
-    nota: pctOuTraco(taxa(soma(cli, r => r.entrada), total), 0) + ' dos honorarios' });
-  h += kpi({ rotulo: 'Fechados com honorario inicial', valor: n0(cli.filter(r => r.honIni > 0).length), pequeno: true,
-    nota: pctOuTraco(taxa(cli.filter(r => r.honIni > 0).length, cli.length), 0) + ' dos clientes do recorte',
-    dica: 'Os demais fecharam com honorario condicionado a liminar: contam como cliente, mas nao entram no ticket medio.' });
-  h += kpi({ rotulo: 'Canais ativos', valor: n0(new Set(cli.map(r => r.origem)).size),
-    nota: 'Origens distintas no recorte' });
+  h += kpi({ rotulo: 'Total de Clientes', valor: n0(cli.length), nota: 'contratos no per\u00edodo' });
+  h += kpi({ rotulo: 'Total em Honor\u00e1rios', valor: brl(total), pequeno: true,
+    nota: 'honor\u00e1rios iniciais acumulados' });
+  h += kpi({ rotulo: 'Honor\u00e1rios de Entrada', valor: brl(entradaTot), pequeno: true,
+    nota: 'valor de entrada acumulado' });
+  h += kpi({ rotulo: 'Ticket M\u00e9dio', valor: cli.length ? brl(total / cli.length) : '&mdash;', pequeno: true,
+    nota: 'por cliente no per\u00edodo',
+    dica: 'Divide os honor\u00e1rios por TODOS os clientes, como o painel da central. O cart\u00e3o ao lado usa a regra desta casa.' });
+  h += kpi({ rotulo: 'Jornada Completa M\u00e9dia',
+    valor: (() => { const m = media(cli, r => r.jornada); return m == null ? '&mdash;' : n1(m) + ' dias'; })(), pequeno: true,
+    nota: '1\u00ba contato &rarr; fechamento' });
+  h += kpi({ rotulo: 'Dias para Fechar',
+    valor: (() => { const m = media(cli, r => r.diasFechar); return m == null ? '&mdash;' : n1(m) + ' dias'; })(), pequeno: true,
+    nota: 'da reuni\u00e3o ao fechamento' });
+  h += kpi({ rotulo: 'PJ / PF / Confirmados', valor: n0(pj) + ' / ' + n0(pf) + ' / ' + n0(confirmados), pequeno: true,
+    nota: 'PJ &middot; PF &middot; pagamento confirmado',
+    dica: 'PJ e PF saem da contagem de d\u00edgitos do CPF/CNPJ. O identificador \u00e9 lido, classificado e descartado na mesma linha: n\u00e3o entra em nenhum registro, nem na tela, nem no CSV.' });
+  h += kpi({ rotulo: 'Ticket m\u00e9dio (s\u00f3 com honor\u00e1rio)', valor: tk == null ? '&mdash;' : brl(tk), pequeno: true,
+    nota: semTicket(cli) ? 'entre os ' + n0(cli.filter(r => r.honIni > 0).length) + ' com honor\u00e1rio inicial' : 'todos tiveram honor\u00e1rio',
+    dica: 'Fechamento com honor\u00e1rio condicionado a liminar entra como R$ 0: \u00e9 venda, mas n\u00e3o \u00e9 pre\u00e7o.' });
   h += '</div>';
-  /* O painel da central divide os honorarios por TODOS os clientes e chega a
-     R$ 888. Aqui o ticket conta so quem teve honorario inicial, como pedido -
-     sao duas contas diferentes da mesma planilha, e esconder uma faria o
-     numero parecer errado quando os dois paineis forem comparados. */
   if (semTicket(cli)) {
-    h += aviso('info', 'O ticket medio acima conta <b>so os ' + n0(cli.filter(r => r.honIni > 0).length) +
-      ' clientes que tiveram honorario inicial</b>. Dividindo os mesmos ' + brl0(total) +
-      ' por todos os ' + n0(cli.length) + ' clientes do recorte &mdash; como faz o painel da central &mdash; daria <b>' +
-      brl0(total / cli.length) + '</b>. Os ' + n0(semTicket(cli)) +
-      ' fechamentos com honorario condicionado a liminar entram como R$ 0: sao venda, mas nao sao preco.');
+    h += aviso('info', 'Os dois tickets medem a mesma planilha de jeitos diferentes: <b>' +
+      brl(total / cli.length) + '</b> divide os honor\u00e1rios por todos os ' + n0(cli.length) +
+      ' clientes (como o painel da central) e <b>' + brl0(tk) + '</b> conta s\u00f3 os ' +
+      n0(cli.filter(r => r.honIni > 0).length) + ' que tiveram honor\u00e1rio inicial. A diferen\u00e7a s\u00e3o os ' +
+      n0(semTicket(cli)) + ' fechamentos com honor\u00e1rio condicionado a liminar, que entram como R$ 0: ' +
+      's\u00e3o venda, mas n\u00e3o s\u00e3o pre\u00e7o.');
   }
 
   /* Colunas comuns das tabelas de quebra. */
@@ -4261,14 +4303,14 @@ function telaClientesFluxo() {
 
   /* ----- POR ORIGEM ----- */
   const porOrigem = quebraClientes(cli, r => r.origem);
-  h += '<div class="secao-titulo">KPIs por origem</div>';
+  h += '<div class="secao-titulo">KPIs por Origem</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Honorarios por canal', 'De onde vem a receita.',
+  h += cartao('Distribui\u00e7\u00e3o por Canal', 'De onde vem a receita.',
     vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Honorarios',
       dados: topN(porOrigem.map(g => ({ k: g.chave, v: g.total, n: g.clientes })), 9)
         .map((g, i) => ({ k: g.k, v: g.v, cor: g.cor || corSerie(i),
           extra: [{ rot: 'Clientes', val: n0(g.n) }] })) }));
-  h += cartao('Clientes por canal', 'Volume, que nem sempre anda junto com a receita.',
+  h += cartao('Clientes por Origem', 'Volume, que nem sempre anda junto com a receita.',
     vizBarras({ rotuloW: 230, nome: 'Clientes',
       dados: topN(porOrigem.slice().sort((a, b) => b.clientes - a.clientes)
         .map(g => ({ k: g.chave, v: g.clientes, n: g.clientes })), 9)
@@ -4279,9 +4321,9 @@ function telaClientesFluxo() {
 
   /* ----- MEIOS DE PAGAMENTO ----- */
   const porPag = quebraClientes(cli, r => r.tipoPag);
-  h += '<div class="secao-titulo">Meios de pagamento</div>';
+  h += '<div class="secao-titulo">Meios de Pagamento</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Distribuicao por tipo de pagamento', 'Participacao de cada meio no numero de clientes.',
+  h += cartao('Distribui\u00e7\u00e3o por Tipo de Pagamento', 'Participa\u00e7\u00e3o de cada meio no n\u00famero de clientes.',
     vizDonut({ centro: n0(cli.length), centroRot: 'clientes',
       dados: topN(porPag.slice().sort((a, b) => b.clientes - a.clientes)
         .map(g => ({ k: g.chave, v: g.clientes })), 6) }) +
@@ -4289,7 +4331,7 @@ function telaClientesFluxo() {
       .map(g => ({ k: g.chave, v: g.clientes })), 6)
       .map((g, i) => ({ nome: g.k, cor: g.cor || corSerie(i), val: n0(g.v) }))));
   const porParc = quebraClientes(cli, r => r.rotParcelas);
-  h += cartao('Distribuicao por numero de parcelas', 'Lido da coluna OBSERVACOES, onde a planilha guarda "12x", "6x" ou "a vista".',
+  h += cartao('Distribui\u00e7\u00e3o por N\u00famero de Parcelas', 'Lido da coluna OBSERVA\u00c7\u00d5ES, onde a planilha guarda "12x", "6x" ou "a vista".',
     vizBarras({ rotuloW: 150, nome: 'Clientes',
       dados: porParc.slice().sort((a, b) => (a.chave === 'A vista' ? -1 : b.chave === 'A vista' ? 1 : num(a.chave) - num(b.chave)))
         .map((g, i) => ({ k: g.chave, v: g.clientes, cor: corRampa(i, porParc.length),
@@ -4306,8 +4348,8 @@ function telaClientesFluxo() {
 
   /* ----- PRODUTOS ----- */
   const porProduto = quebraClientes(cli, r => r.produto);
-  h += '<div class="secao-titulo">Produtos juridicos</div>';
-  h += cartao('Honorarios por produto', 'Concentracao da receita por tese.',
+  h += '<div class="secao-titulo">Produtos Jur\u00eddicos</div>';
+  h += cartao('Honor\u00e1rios por Produto', 'Concentra\u00e7\u00e3o da receita por tese.',
     vizBarras({ rotuloW: 230, fmt: brl0, nome: 'Honorarios',
       dados: semZero(topN(porProduto.map(g => ({ k: g.chave, v: g.total, n: g.clientes })), 8))
         .map((g, i) => ({ k: g.k, v: g.v, cor: g.cor || corSerie(i),
@@ -4316,7 +4358,7 @@ function telaClientesFluxo() {
     { ord: 'total', dir: -1, titulo: 'Clientes por produto', limite: 25, ativa: false, total: totQuebra });
 
   /* ----- PJ x PF ----- */
-  h += '<div class="secao-titulo">Perfil de clientes &middot; PJ x PF</div>';
+  h += '<div class="secao-titulo">Perfil de Clientes &mdash; PJ \u00d7 PF</div>';
   const temTipo = cli.some(r => r.tipoPessoa);
   if (!temTipo) {
     h += aviso('info', 'A natureza juridica e deduzida do CPF/CNPJ, que <b>nao trafega para o painel</b>. ' +
@@ -4346,13 +4388,13 @@ function telaClientesFluxo() {
 
   /* ----- CLOSERS ----- */
   const porCloser = quebraClientes(cli, r => r.closer);
-  h += '<div class="secao-titulo">Performance por closer</div>';
+  h += '<div class="secao-titulo">Performance por Closer</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Honorarios por closer', 'Receita fechada no recorte.',
+  h += cartao('Honor\u00e1rios por Closer', 'Receita fechada no recorte.',
     vizBarras({ rotuloW: 150, fmt: brl0, nome: 'Honorarios',
       dados: semZero(porCloser.map(g => ({ k: g.chave, v: g.total })))
         .map((g, i) => ({ k: g.k, v: g.v, cor: corSerie(i) })) }));
-  h += cartao('Radar de performance', 'Cada eixo normalizado pelo melhor do recorte. Em jornada e dias para fechar, menos e melhor &mdash; o eixo ja considera isso.',
+  h += cartao('Radar de Performance &mdash; Closers', 'Cada eixo normalizado pelo melhor do recorte. Em jornada e dias para fechar, menos e melhor &mdash; o eixo ja considera isso.',
     vizRadar({
       eixos: [
         { rot: 'Clientes', fmt: n0 },
@@ -4375,7 +4417,7 @@ function telaClientesFluxo() {
   /* ----- SDRs ----- */
   const porSdr = quebraClientes(cli, r => r.sdr);
   h += '<div class="secao-titulo">Performance por SDR</div>';
-  h += cartao('Clientes gerados por SDR', 'Fechamentos atribuidos a quem originou.',
+  h += cartao('Clientes Qualificados por SDR', 'Fechamentos atribu\u00eddos a quem originou.',
     vizBarras({ rotuloW: 150, nome: 'Clientes',
       dados: porSdr.slice().sort((a, b) => b.clientes - a.clientes).map((g, i) => ({
         k: g.chave, v: g.clientes, cor: corSerie(i),
@@ -4386,12 +4428,12 @@ function telaClientesFluxo() {
     { ord: 'total', dir: -1, titulo: 'Ranking de SDRs', limite: 20, ativa: false, total: totQuebra });
 
   /* ----- ANALISES ADICIONAIS ----- */
-  h += '<div class="secao-titulo">Analises adicionais</div>';
+  h += '<div class="secao-titulo">An\u00e1lises Adicionais</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Evolucao &mdash; honorarios', 'Duas escalas, dois graficos. Aqui a receita.',
+  h += cartao('Evolu\u00e7\u00e3o &mdash; Honor\u00e1rios', 'Duas escalas, dois gr\u00e1ficos. Aqui a receita.',
     vizColunas({ dados: evolucao(cli, r => r.dFecha, r => r.honIni),
       cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorarios', rotulos: false }));
-  h += cartao('Evolucao &mdash; clientes', 'E aqui o volume.',
+  h += cartao('Evolu\u00e7\u00e3o &mdash; Clientes', 'E aqui o volume.',
     vizColunas({ dados: evolucao(cli, r => r.dFecha), cor: 'var(--s3)', nome: 'Clientes' }));
 
   const faixas = [
