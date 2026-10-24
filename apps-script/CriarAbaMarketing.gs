@@ -120,14 +120,18 @@ function criarAbaMarketing() {
     }
   }
 
-  /* ---- Formulas. Meta Proporcional e os dois percentuais se mantem sozinhos.
+  /* ---- Formulas. O separador de argumentos e ";" e nao ",": a planilha esta
+     em pt-BR, e nesse idioma a virgula e separador decimal. Com virgula, toda
+     formula de mais de um argumento entra como #ERROR!.
+
+     Meta Proporcional e os dois percentuais se mantem sozinhos.
      O IF em volta evita que uma linha ainda nao preenchida mostre 0 ou erro -
      no painel, celula vazia e "sem medicao" e zero e um numero. ---- */
   var prop = [], vsProp = [], vsMes = [];
   for (var r = primeira; r <= ultima; r++) {
-    prop.push(['=IF(D' + r + '="","",D' + r + '*$H$' + linhaDiasComp + '/$H$' + linhaDiasMes + ')']);
-    vsProp.push(['=IF(OR(E' + r + '="",E' + r + '=0,F' + r + '=""),"",F' + r + '/E' + r + ')']);
-    vsMes.push(['=IF(OR(D' + r + '="",D' + r + '=0,F' + r + '=""),"",F' + r + '/D' + r + ')']);
+    prop.push(['=IF(D' + r + '="";"";D' + r + '*$H$' + linhaDiasComp + '/$H$' + linhaDiasMes + ')']);
+    vsProp.push(['=IF(OR(E' + r + '="";E' + r + '=0;F' + r + '="");"";F' + r + '/E' + r + ')']);
+    vsMes.push(['=IF(OR(D' + r + '="";D' + r + '=0;F' + r + '="");"";F' + r + '/D' + r + ')']);
   }
   aba.getRange(primeira, 5, n, 1).setFormulas(prop);
   aba.getRange(primeira, 7, n, 1).setFormulas(vsProp);
@@ -169,7 +173,7 @@ function criarAbaMarketing() {
   aba.getRange(linhaAtualizacao, 7).setValue('Última Atualização').setFontWeight('bold');
   aba.getRange(linhaDiasMes, 7).setValue('Dias no Mês').setFontWeight('bold');
   aba.getRange(linhaDiasComp, 7).setValue('Dias Computados').setFontWeight('bold');
-  aba.getRange(linhaDiasMes, 8).setFormula('=DAY(EOMONTH(TODAY(),0))');
+  aba.getRange(linhaDiasMes, 8).setFormula('=DAY(EOMONTH(TODAY();0))');
   aba.getRange(linhaDiasComp, 8).setFormula('=DAY(TODAY())');
   aba.getRange(linhaAtualizacao, 8).setNumberFormat('dd/mm/yyyy');
   aba.getRange(linhaAtualizacao, 7, 3, 2).setHorizontalAlignment('center');
@@ -186,4 +190,44 @@ function criarAbaMarketing() {
     'No painel do CEO, a tela de Marketing passa a ler esta aba na proxima ' +
     'atualizacao. Os indicadores sao achados pelo NOME do Resultado Chave: ' +
     'renomear uma linha desliga o indicador dela.');
+}
+
+
+/**
+ * REPARO: reescreve so as formulas da aba que ja existe.
+ * ---------------------------------------------------------------------------
+ * A primeira versao gravou as formulas com virgula entre os argumentos e a
+ * planilha, em pt-BR, recusou todas - cada celula de Meta Proporcional e dos
+ * dois percentuais virou #ERROR!. Esta funcao reescreve essas celulas com
+ * ponto-e-virgula. Nao toca em nada mais: nem no cabecalho, nem nos nomes dos
+ * Resultados Chaves, nem no que ja tiver sido digitado nas colunas D e F.
+ *
+ * Rode  corrigirFormulasMarketing  uma vez e confira a aba.
+ */
+function corrigirFormulasMarketing() {
+  var aba = SpreadsheetApp.getActive().getSheetByName('KPIS Marketing');
+  if (!aba) throw new Error('A aba "KPIS Marketing" nao existe. Rode criarAbaMarketing antes.');
+
+  var n = KRS_MARKETING.length;
+  var primeira = LINHA_CABEC + 1;
+  var ultima   = LINHA_CABEC + n;
+  var linhaDiasMes  = ultima + 3;
+  var linhaDiasComp = ultima + 4;
+
+  var prop = [], vsProp = [], vsMes = [];
+  for (var r = primeira; r <= ultima; r++) {
+    prop.push(['=IF(D' + r + '="";"";D' + r + '*$H$' + linhaDiasComp + '/$H$' + linhaDiasMes + ')']);
+    vsProp.push(['=IF(OR(E' + r + '="";E' + r + '=0;F' + r + '="");"";F' + r + '/E' + r + ')']);
+    vsMes.push(['=IF(OR(D' + r + '="";D' + r + '=0;F' + r + '="");"";F' + r + '/D' + r + ')']);
+  }
+  aba.getRange(primeira, 5, n, 1).setFormulas(prop);
+  aba.getRange(primeira, 7, n, 1).setFormulas(vsProp);
+  aba.getRange(primeira, 8, n, 1).setFormulas(vsMes);
+  aba.getRange(linhaDiasMes, 8).setFormula('=DAY(EOMONTH(TODAY();0))');
+  aba.getRange(linhaDiasComp, 8).setFormula('=DAY(TODAY())');
+  SpreadsheetApp.flush();
+
+  SpreadsheetApp.getActive().toast(
+    n + ' linhas de formula reescritas com ";". Confira a coluna Meta Proporcional.',
+    'KPIS Marketing', 8);
 }

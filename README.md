@@ -165,6 +165,10 @@ dados*, não como zero silencioso. Releitura automática a cada 10 minutos.
   com `-`, e marca quantos foram. Integração que serve duas campanhas não
   deduz nada — seria chute. Em outubro/2026 isso recuperou 74 leads da
   campanha de WhatsApp e levou a cobertura de 86,3% para 95,8%.
+- **"Sem fonte" e "a preencher" são coisas diferentes.** Indicador que nenhuma
+  planilha alimenta é problema de engenharia; indicador cuja linha já existe na
+  planilha e só espera o número do mês é problema de digitação. A tela mostra os
+  dois selos separados e conta cada um na faixa de resumo.
 - **Caixa ≠ competência.** A DRE é de caixa, a planilha de clientes é de
   competência. O painel mostra os dois e a diferença, em vez de escolher um.
 - **Taxa de ganho exclui quem não respondeu.** Ganhos sobre ganhos + perdidos.
