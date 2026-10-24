@@ -147,6 +147,18 @@ dados*, não como zero silencioso. Releitura automática a cada 10 minutos.
   competência. O painel mostra os dois e a diferença, em vez de escolher um.
 - **Taxa de ganho exclui quem não respondeu.** Ganhos sobre ganhos + perdidos.
 - **Nunca dois eixos Y.** Duas medidas de escalas diferentes viram dois gráficos.
+- **O painel abre no mês corrente.** É a pergunta de quem abre o painel hoje;
+  histórico se pede no filtro, não se recebe por padrão.
+- **A granularidade acompanha o recorte.** Com o período num mês só, um
+  gráfico de "evolução" viraria uma coluna — e uma coluna não é evolução, é um
+  número com moldura. Até dois meses o eixo é **diário**; acima disso, mensal.
+- **Razão no eixo diário é acumulada.** Ticket, CPL e ROI num dia isolado são
+  ruído: a maioria dos dias não tem fechamento. No eixo diário essas séries
+  mostram o acumulado do recorte — "o ticket médio do mês até aqui" —, que é o
+  número que a gestão acompanha no meio do mês. Cada cartão diz quando é assim.
+- **A DRE não tem granularidade diária.** Na tela Financeiro os números do topo
+  seguem o recorte, mas os gráficos olham os últimos seis meses fechados, e a
+  tela diz isso.
 - **Paleta de dados validada** para daltonismo e contraste sobre a superfície
   escura (pior par adjacente ΔE 8,4; todas as séries ≥ 3:1).
 - **Duas contagens de lead não são o mesmo lead.** O Meta conta por plataforma

@@ -204,10 +204,10 @@ if (window.self !== window.top) {
   .filtro select, .filtro input {
     background: var(--bg3); border: 1px solid var(--borda); color: var(--texto);
     border-radius: 8px; padding: 0.42rem 0.6rem; font-size: 0.8rem;
-    font-family: inherit; outline: none; min-width: 152px; max-width: 230px;
+    font-family: inherit; outline: none; min-width: 132px; max-width: 200px;
   }
   .filtro select:focus, .filtro input:focus { border-color: var(--azul-claro); }
-  .filtro input[type="search"] { min-width: 215px; }
+  .filtro input[type="search"] { min-width: 186px; }
   .chip-multi { position: relative; }
   .chip-botao {
     background: var(--bg3); border: 1px solid var(--borda); color: var(--texto);
@@ -622,6 +622,171 @@ if (window.self !== window.top) {
   .selo { font-size: 0.655rem; letter-spacing: 0.015em; }
   .aviso { font-size: 0.775rem; border-radius: 9px; }
 
+
+  /* =======================================================================
+     ACABAMENTO
+     Uma regra so vale aqui: nenhuma cor nova. A identidade ja esta definida -
+     azul #2563eb da marca, superficies #0f1117/#161b26, paleta de dados
+     validada para daltonismo. O que falta nao e cor, e HIERARQUIA: elevacao,
+     ritmo de espacamento, peso de tipo e estado visivel. Tudo abaixo mexe
+     nisso e em nada de matiz.
+     ======================================================================= */
+
+  /* --- barra lateral: superficie propria e item ativo com fio --- */
+  .sidebar {
+    background: linear-gradient(180deg, #12151f 0%, #0e111a 100%);
+    border-right: 1px solid #141c30;
+  }
+  .sidebar-topo { border-bottom: 1px solid #141c30; padding: 1.15rem 1.15rem; }
+  .nav-grupo-titulo { font-size: 0.575rem; letter-spacing: 0.17em; color: #5a6a85; }
+  .nav-item {
+    border-radius: 8px; border: 1px solid transparent; color: #a6b4c9;
+    transition: background .14s, color .14s, border-color .14s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.045); color: var(--texto); }
+  .nav-item.ativo {
+    background: linear-gradient(90deg, rgba(37,99,235,0.24) 0%, rgba(37,99,235,0.05) 100%);
+    border-color: rgba(59,130,246,0.3); color: #fff; position: relative;
+  }
+  /* O fio da esquerda e o que faz o item ativo se ler de relance, sem
+     depender so do preenchimento de fundo. */
+  .nav-item.ativo::before {
+    content: ''; position: absolute; left: -1px; top: 6px; bottom: 6px;
+    width: 2.5px; border-radius: 0 2px 2px 0; background: var(--azul-claro);
+  }
+  .sidebar-rodape { border-top-color: #141c30; }
+
+  /* --- topo: so o titulo acompanha a rolagem ---
+     Os filtros sairam do cabecalho fixo de proposito. Grudados ali, eles
+     comiam 110px do alto da tela o tempo todo; o que precisa acompanhar a
+     rolagem e saber em que tela se esta, nao o seletor de SDR. */
+  .topo { padding: 0.9rem 1.4rem; background: rgba(15,17,23,0.8); border-bottom-color: #141c30; }
+  .topo-titulo { font-size: 1.05rem; letter-spacing: -0.018em; }
+  .topo-sub { font-size: 0.715rem; }
+  .filtros { padding: 0.95rem 1.4rem 0.2rem; }
+
+  /* --- controles --- */
+  .btn-acao {
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0)), var(--bg3);
+    border-color: #223150;
+  }
+  .btn-acao:hover { background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0)), var(--bg4); border-color: #2e4166; }
+  .btn-acao.primario { background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%); border-color: #2f6fe0; }
+  .btn-acao.primario:hover { background: linear-gradient(180deg, #5096f8 0%, #2f6fe0 100%); }
+  .filtro select, .filtro input, .chip-botao { border-color: #223150; }
+  .filtro select:focus, .filtro input:focus { box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
+
+  /* Foco visivel em tudo que recebe teclado - navegar sem mouse nao pode
+     ser navegar as cegas. */
+  button:focus-visible, select:focus-visible, input:focus-visible,
+  a:focus-visible, th[data-col]:focus-visible {
+    outline: 2px solid var(--azul-claro); outline-offset: 2px;
+  }
+
+  /* --- cartoes: profundidade e resposta --- */
+  .cartao, .kpi, .destaque { border-radius: 14px; }
+  .ficha { border-radius: 11px; }
+  .cartao, .kpi, .destaque, .ficha {
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .destaque, .ficha, .resumo-area {
+    background: linear-gradient(180deg, rgba(255,255,255,0.022) 0%, rgba(255,255,255,0) 42%), var(--bg2);
+    border-color: #1b2740;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -16px rgba(0,0,0,0.9);
+  }
+  .cartao:hover, .kpi:hover, .destaque:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.36), 0 16px 34px -20px rgba(0,0,0,1);
+    border-color: #26365a;
+  }
+  .ficha:hover { border-color: #26365a; }
+  .ficha.sem:hover, .destaque.sem:hover { border-color: #3a4868; transform: none; box-shadow: none; }
+
+  /* --- faixa de resumo: numero em cima, rotulo embaixo, fio entre itens --- */
+  .resumo-area { gap: 0; padding: 0.95rem 0.25rem; border-radius: 14px; }
+  .resumo-item {
+    flex-direction: column; align-items: flex-start; gap: 0.08rem;
+    padding: 0.05rem 1.2rem; border-left: 1px solid #1b2740;
+    font-size: 0.645rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #6b7a93; font-weight: 700;
+  }
+  .resumo-item:first-child { border-left: none; }
+  .resumo-item b { font-size: 1.32rem; letter-spacing: -0.03em; font-weight: 650; line-height: 1.15; }
+
+  /* --- barra da tela ---
+     O cabecalho fixo ja diz em que tela se esta; repetir o nome num titulo
+     logo abaixo so gastava uma linha. Aqui fica o que o cabecalho nao tem: o
+     mes do recorte e os controles dele. */
+  .barra-tela {
+    display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+    margin: 0 0 0.95rem;
+  }
+  .barra-tela .rot {
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.14em;
+    color: #8695ad; font-weight: 700;
+  }
+  .barra-tela .rot b { color: var(--texto); font-weight: 700; }
+  .barra-tela .dir { margin-left: auto; display: flex; align-items: flex-end; gap: 0.55rem; flex-wrap: wrap; }
+  .barra-tela select {
+    background: var(--bg3); border: 1px solid #223150; color: var(--texto);
+    border-radius: 8px; padding: 0.42rem 0.6rem; font-size: 0.8rem;
+    font-family: inherit; outline: none; min-width: 160px;
+  }
+  .barra-tela select:focus { border-color: var(--azul-claro); box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
+
+  /* --- quadro do indicador --- */
+  .q-linha.forte { border-bottom: 1px solid #17213a; padding-bottom: 0.34rem; margin-bottom: 0.1rem; }
+  .destaque-val { font-weight: 650; font-variant-numeric: tabular-nums lining-nums; }
+  .ficha-val { font-weight: 650; font-variant-numeric: tabular-nums lining-nums; }
+
+  /* --- tabela --- */
+  table.dados thead th {
+    background: rgba(25,33,50,0.94);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  table.dados tbody tr:hover td:first-child { box-shadow: inset 2px 0 0 var(--azul-claro); }
+  table.dados tfoot td { background: rgba(25,33,50,0.94); }
+
+  /* --- barras de rolagem, em todo o painel --- */
+  * { scrollbar-width: thin; scrollbar-color: #253349 transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #223047; border-radius: 6px;
+    border: 2px solid transparent; background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #2e4060; background-clip: content-box; }
+
+  /* --- esqueleto de carregamento ---
+     Um giro no meio da tela nao diz o que vem depois. O esqueleto ja mostra a
+     forma do painel: a espera fica igual, a sensacao de espera diminui. */
+  .carregando { padding: 0; text-align: left; color: inherit; }
+  .esq-faixa, .esq-cartao {
+    border-radius: 14px; background: var(--bg2); border: 1px solid #1b2740;
+    position: relative; overflow: hidden;
+  }
+  .esq-faixa { height: 62px; margin-bottom: 0.85rem; }
+  .esq-cartao { height: 150px; }
+  .esq-cartao.alto { height: 272px; }
+  .esq-faixa::after, .esq-cartao::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+    transform: translateX(-100%); animation: brilho 1.6s infinite;
+  }
+  @keyframes brilho { to { transform: translateX(100%); } }
+  .carregando-txt {
+    display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+    margin-top: 1.5rem; color: var(--texto-muted); font-size: 0.8rem;
+  }
+  .carregando-txt .spin { width: 15px; height: 15px; margin: 0; border-width: 2px; }
+
+  /* Quem pediu menos movimento ao sistema recebe menos movimento. */
+  @media (prefers-reduced-motion: reduce) {
+    .esq-faixa::after, .esq-cartao::after { animation: none; }
+    .cartao:hover, .kpi:hover, .destaque:hover { transform: none; }
+    .ritmo-fill { transition: none; }
+  }
+
   /* =======================================================================
      MOBILE
      Abaixo de 640px a tabela deixa de ser tabela: cada registro vira um
@@ -746,13 +911,26 @@ if (window.self !== window.top) {
           </button>
         </div>
       </div>
-      <div class="filtros" id="filtros"></div>
     </header>
 
+    <!-- Fora do <header> de proposito: o cabecalho fixo carrega o titulo da
+         tela, nao a barra de filtros. Grudada la em cima, ela comia 110px do
+         alto da tela o tempo todo. -->
+    <div class="filtros" id="filtros"></div>
+
     <div id="telas">
+      <!-- Esqueleto com a forma do painel: ja diz o que vem, em vez de um
+           giro no vazio. -->
       <div class="carregando" id="carregando">
-        <div class="spin"></div>
-        Lendo as planilhas&hellip;
+        <div class="esq-faixa"></div>
+        <div class="grid g-destaque">
+          <div class="esq-cartao"></div><div class="esq-cartao"></div>
+          <div class="esq-cartao"></div><div class="esq-cartao"></div>
+        </div>
+        <div class="grid g-2" style="margin-top:0.85rem">
+          <div class="esq-cartao alto"></div><div class="esq-cartao alto"></div>
+        </div>
+        <div class="carregando-txt"><span class="spin"></span> Lendo as planilhas&hellip;</div>
       </div>
       <section class="tela oculto" id="tela-semanal"></section>
       <section class="tela oculto" id="tela-visao"></section>
@@ -2369,7 +2547,11 @@ function vizLinhas(o) {
     if (o.area && series.length === 1) {
       const prim = se.vals.findIndex(v => v != null);
       let ult = -1; se.vals.forEach((v, i) => { if (v != null) ult = i; });
-      if (prim >= 0 && ult > prim) {
+      /* Com buraco no meio, o preenchimento fecha por baixo dos trechos
+         soltos e desenha um triangulo que nao existe nos dados. */
+      let inteiro = true;
+      for (let i = prim; i <= ult; i++) if (se.vals[i] == null) inteiro = false;
+      if (prim >= 0 && ult > prim && inteiro) {
         s += '<path d="' + d + 'L' + px(ult) + ',' + py(0) + 'L' + px(prim) + ',' + py(0) + 'Z" fill="' + cor + '" opacity=".12"/>';
       }
     }
@@ -2773,7 +2955,9 @@ function barraCelula(v, max, cor, texto) {
    RECORTE (filtros) - um unico estado global que todas as telas respeitam.
    ========================================================================== */
 const F = {
-  periodo: 'u6',
+  /* O painel abre no MES CORRENTE: e a pergunta de quem abre o painel hoje.
+     Historico se pede no filtro, nao se recebe por padrao. */
+  periodo: 'mes',
   produtos: new Set(), sdrs: new Set(), closers: new Set(), origens: new Set(),
   busca: '',
   /* Recorte de situacao, so da tabela da esteira. Comeca em "em aberto"
@@ -2794,13 +2978,13 @@ function mesMais(chave, delta) {
 }
 
 const PERIODOS = [
-  { k: 'mes',   rot: 'Mes atual' },
-  { k: 'ant',   rot: 'Mes anterior' },
-  { k: 'u3',    rot: 'Ultimos 3 meses' },
-  { k: 'u6',    rot: 'Ultimos 6 meses' },
-  { k: 'u12',   rot: 'Ultimos 12 meses' },
+  { k: 'mes',   rot: 'Mês atual' },
+  { k: 'ant',   rot: 'Mês anterior' },
+  { k: 'u3',    rot: 'Últimos 3 meses' },
+  { k: 'u6',    rot: 'Últimos 6 meses' },
+  { k: 'u12',   rot: 'Últimos 12 meses' },
   { k: 'ano',   rot: 'Ano corrente' },
-  { k: 'tudo',  rot: 'Todo o historico' }
+  { k: 'tudo',  rot: 'Todo o histórico' }
 ];
 
 /* Resolve o periodo em uma faixa de datas e na lista de meses do eixo X. */
@@ -2919,6 +3103,74 @@ function serieMensal(lista, dataFn, valorFn, meses) {
 }
 
 const soma  = (l, f) => l.reduce((a, r) => a + (f(r) || 0), 0);
+
+/* ===== EIXO DO TEMPO =====
+   Com o recorte num mes so, um grafico de "evolucao" vira uma coluna - e uma
+   coluna nao e evolucao, e um numero com moldura em volta. Entao a
+   granularidade acompanha o recorte: ate dois meses o eixo e DIARIO, acima
+   disso e mensal. E o que o painel precisa fazer agora que abre no mes
+   corrente, senao o padrao de abertura mataria metade dos graficos. */
+const chaveDia = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+                      '-' + String(d.getDate()).padStart(2, '0');
+
+function eixoTempo() {
+  const meses = mesesDoEixo();
+  if (meses.length > 2) {
+    return { tipo: 'mes', chaves: meses, rot: rotuloMesCurto, rotLongo: rotuloMes, chave: chaveMes };
+  }
+  const f = faixa();
+  const agora = new Date();
+  const fim = f.ate < agora ? f.ate : agora;
+  const chaves = [];
+  const d = new Date(f.de.getFullYear(), f.de.getMonth(), f.de.getDate());
+  /* Teto de 93 dias: acima disso o eixo diario vira um borrao. */
+  while (d <= fim && chaves.length < 93) { chaves.push(chaveDia(d)); d.setDate(d.getDate() + 1); }
+  if (!chaves.length) chaves.push(chaveDia(agora));
+  return { tipo: 'dia', chaves: chaves,
+           rot: k => k.slice(8, 10), rotLongo: k => k.slice(8, 10) + '/' + k.slice(5, 7),
+           chave: chaveDia };
+}
+const rotuloEixo = e => e.tipo === 'dia' ? 'dia a dia' : 'mes a mes';
+
+/* Itens de cada balde do eixo - base de todo grafico de evolucao. */
+function baldes(lista, dataFn) {
+  const e = eixoTempo();
+  const m = {};
+  (lista || []).forEach(r => {
+    const d = dataFn(r); if (!d) return;
+    const k = e.chave(d);
+    (m[k] = m[k] || []).push(r);
+  });
+  return { eixo: e, x: e.chaves.map(e.rot), itens: e.chaves.map(k => m[k] || []) };
+}
+/* Soma por balde, pronta para vizColunas. */
+function evolucao(lista, dataFn, valorFn) {
+  const b = baldes(lista, dataFn);
+  return b.eixo.chaves.map((k, i) => ({
+    k: b.eixo.rot(k), rot: b.eixo.rotLongo(k),
+    v: valorFn ? soma(b.itens[i], valorFn) : b.itens[i].length
+  }));
+}
+/* Serie de RAZAO (ticket, CPL, ROI): o valor do balde depende dos itens
+   dele, nao de uma soma - dividir somas de baldes diferentes daria outra
+   coisa.
+
+   No eixo DIARIO a razao fica rarefeita: a maioria dos dias nao tem nenhum
+   fechamento, e a linha vira ponto solto com buraco no meio - que parece
+   ruido e nao e leitura nenhuma. Entao ela passa a ser ACUMULADA no recorte:
+   "o ticket medio do mes ate aqui", que e justamente o numero que a gestao
+   acompanha no meio do mes. No eixo mensal cada mes fecha sozinho. */
+function evolucaoRazao(lista, dataFn, fn) {
+  const b = baldes(lista, dataFn);
+  if (b.eixo.tipo === 'dia') {
+    let acc = [];
+    return { x: b.x, acum: true,
+             vals: b.itens.map(it => { acc = acc.concat(it); return acc.length ? fn(acc) : null; }) };
+  }
+  return { x: b.x, acum: false, vals: b.itens.map(fn) };
+}
+/* Sufixo honesto para o subtitulo do cartao. */
+const notaAcum = e => e.acum ? ' Acumulado no recorte, dia a dia.' : '';
 
 /* ===== TICKET MEDIO =====
    Conta SO quem teve honorario inicial. Fechamento com honorario condicionado
@@ -3077,31 +3329,35 @@ function telaVisao() {
   h += '</div>';
 
   /* ----- Series do periodo filtrado ----- */
-  h += '<div class="secao-titulo">Evolucao &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  const eixoV = eixoTempo();
+  h += '<div class="secao-titulo">Evolucao &middot; ' + esc(rotuloPeriodo()) +
+    '<span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--texto-muted)">&middot; ' +
+    rotuloEixo(eixoV) + '</span></div>';
   h += '<div class="grid g-2">';
 
-  const sClientes = serieMensal(cli, r => r.dFecha, null, meses);
-  const sHon      = serieMensal(cli, r => r.dFecha, r => r.honIni, meses);
-  const sReun     = serieMensal(at.filter(r => r.dAtend), r => r.dAtend, null, meses);
-  const sInv      = serieMensal(md, r => r.d, r => r.gasto, meses);
-  const sLeads    = serieMensal(md, r => r.d, r => r.leadsTotal, meses);
-  const eixo      = meses.map(rotuloMesCurto);
+  const dClientes = evolucao(cli, r => r.dFecha);
+  const dHon      = evolucao(cli, r => r.dFecha, r => r.honIni);
+  const dReun     = evolucao(at.filter(r => r.dAtend), r => r.dAtend);
+  const dInv      = evolucao(md, r => r.d, r => r.gasto);
+  const eixoX     = dClientes.map(x => x.k);
 
-  h += cartao('Clientes por mes de fechamento', 'Fonte: FLUXO DE CLIENTES [2026], aba DADOS.',
-    vizColunas({ dados: meses.map((k, i) => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: sClientes[i] })), cor: 'var(--s3)', nome: 'Clientes' }));
+  h += cartao('Clientes fechados', 'Fonte: FLUXO DE CLIENTES [2026], aba DADOS.',
+    vizColunas({ dados: dClientes, cor: 'var(--s3)', nome: 'Clientes' }));
 
-  h += cartao('Honorarios iniciais por mes', 'Soma da coluna HONORARIOS INICIAIS, por data de fechamento.',
-    vizColunas({ dados: meses.map((k, i) => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: sHon[i] })), cor: 'var(--s1)', nome: 'Honorarios', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', rotulos: false }));
+  h += cartao('Honorarios iniciais', 'Soma da coluna HONORARIOS INICIAIS, por data de fechamento.',
+    vizColunas({ dados: dHon, cor: 'var(--s1)', nome: 'Honorarios', fmt: brl0,
+      fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', rotulos: false }));
 
   /* Duas medidas de escalas diferentes = dois graficos. Nunca dois eixos Y. */
   h += cartao('Reunioes realizadas x clientes fechados', 'Mesma escala (contagem), por isso dividem o grafico.',
-    vizLinhas({ x: eixo, fmt: n0, series: [
-      { nome: 'Reunioes', vals: sReun, cor: 'var(--s1)' },
-      { nome: 'Clientes', vals: sClientes, cor: 'var(--s3)' }
+    vizLinhas({ x: eixoX, fmt: n0, series: [
+      { nome: 'Reunioes', vals: dReun.map(x => x.v), cor: 'var(--s1)' },
+      { nome: 'Clientes', vals: dClientes.map(x => x.v), cor: 'var(--s3)' }
     ] }) + legenda([{ nome: 'Reunioes', cor: 'var(--s1)' }, { nome: 'Clientes', cor: 'var(--s3)' }]));
 
-  h += cartao('Investimento em midia por mes', 'Gasto no Meta Ads. O retorno aparece no grafico ao lado, em escala propria.',
-    vizColunas({ dados: meses.map((k, i) => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: sInv[i] })), cor: 'var(--s2)', nome: 'Investimento', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', rotulos: false }));
+  h += cartao('Investimento em midia', 'Gasto no Meta Ads. O retorno aparece no grafico ao lado, em escala propria.',
+    vizColunas({ dados: dInv, cor: 'var(--s2)', nome: 'Investimento', fmt: brl0,
+      fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', rotulos: false }));
   h += '</div>';
 
   /* ----- Quebras ----- */
@@ -3364,12 +3620,12 @@ function telaFunil() {
     h += kpi({ rotulo: 'Com reuniao agendada', valor: n0(kk.filter(r => r.reuniao).length) });
     h += '</div>';
 
-    const meses = mesesDoEixo();
+    const evK = evolucao(kk, r => r.d);
     h += '<div class="grid g-2" style="margin-top:0.85rem">';
-    h += cartao('Leads por mes de entrada', 'Total e quantos responderam a triagem.',
-      vizLinhas({ x: meses.map(rotuloMesCurto), fmt: n0, series: [
-        { nome: 'Leads', vals: serieMensal(kk, r => r.d, null, meses), cor: 'var(--s1)' },
-        { nome: 'Responderam a triagem', vals: serieMensal(preq, r => r.d, null, meses), cor: 'var(--s3)' }
+    h += cartao('Leads por data de entrada', 'Total e quantos responderam a triagem.',
+      vizLinhas({ x: evK.map(x => x.k), fmt: n0, series: [
+        { nome: 'Leads', vals: evK.map(x => x.v), cor: 'var(--s1)' },
+        { nome: 'Responderam a triagem', vals: evolucao(preq, r => r.d).map(x => x.v), cor: 'var(--s3)' }
       ] }) + legenda([{ nome: 'Leads', cor: 'var(--s1)' }, { nome: 'Responderam a triagem', cor: 'var(--s3)' }]));
 
     h += cartao('Etapas do CRM', 'Onde os leads do recorte estao parados.',
@@ -3575,19 +3831,24 @@ function telaVendas() {
     'Sao vendas com honorario condicionado (politica D28), nao vendas sem valor. Elas contam como cliente, ' +
     'mas <b>ficam fora do ticket medio</b>: e venda, nao e preco. O ticket mede por quanto o escritorio negocia.');
 
-  h += '<div class="secao-titulo">Evolucao</div>';
+  const eixoVd = eixoTempo();
+  h += '<div class="secao-titulo">Evolucao' +
+    '<span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--texto-muted)">&middot; ' +
+    rotuloEixo(eixoVd) + '</span></div>';
   h += '<div class="grid g-2">';
-  h += cartao('Honorarios iniciais por mes', 'Por data de fechamento.',
-    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: soma(cli.filter(r => r.mes === k), x => x.honIni) })),
+  h += cartao('Honorarios iniciais', 'Por data de fechamento.',
+    vizColunas({ dados: evolucao(cli, r => r.dFecha, r => r.honIni),
       cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorarios', rotulos: false }));
-  h += cartao('Clientes e ticket medio', 'Duas escalas diferentes, dois graficos: aqui o volume.',
-    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: cli.filter(r => r.mes === k).length })), cor: 'var(--s3)', nome: 'Clientes' }));
-  h += cartao('Ticket medio por mes', 'Honorarios iniciais divididos pelos clientes do mes.',
-    vizLinhas({ x: meses.map(rotuloMesCurto), fmt: brl0, area: true, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k',
-      series: [{ nome: 'Ticket medio', vals: meses.map(k => ticketMedio(cli.filter(r => r.mes === k))), cor: 'var(--s4)' }] }));
-  h += cartao('Tempo para fechar', 'Media de dias da reuniao ao fechamento, por mes.',
-    vizLinhas({ x: meses.map(rotuloMesCurto), fmt: v => n0(v) + ' d', area: true,
-      series: [{ nome: 'Dias para fechar', vals: meses.map(k => media(cli.filter(r => r.mes === k), r => r.diasFechar)), cor: 'var(--s7)' }] }));
+  h += cartao('Clientes fechados', 'Duas escalas diferentes, dois graficos: aqui o volume.',
+    vizColunas({ dados: evolucao(cli, r => r.dFecha), cor: 'var(--s3)', nome: 'Clientes' }));
+  const evTk = evolucaoRazao(cli, r => r.dFecha, ticketMedio);
+  h += cartao('Ticket medio', 'Honorarios iniciais divididos por quem teve honorario inicial.' + notaAcum(evTk),
+    vizLinhas({ x: evTk.x, fmt: brl0, area: true, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k',
+      series: [{ nome: 'Ticket medio', vals: evTk.vals, cor: 'var(--s4)' }] }));
+  const evDias = evolucaoRazao(cli, r => r.dFecha, l => media(l, r => r.diasFechar));
+  h += cartao('Tempo para fechar', 'Media de dias da reuniao ao fechamento.' + notaAcum(evDias),
+    vizLinhas({ x: evDias.x, fmt: v => n0(v) + ' d', area: true,
+      series: [{ nome: 'Dias para fechar', vals: evDias.vals, cor: 'var(--s7)' }] }));
   h += '</div>';
 
   h += '<div class="secao-titulo">Quebras da receita</div>';
@@ -3642,8 +3903,7 @@ function telaTrafego() {
   const todosT = KT.principais.concat(KT.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = '';
-  h += '<div class="secao-titulo primeiro">Tráfego pago &middot; ' + esc(c.rotMes) + '</div>';
-  h += seletorMes(true);
+  h += barraTela(c, true);
   h += resumoArea(todosT);
   h += '<div class="secao-titulo">Principais</div>';
   h += gradeDestaque(KT.principais);
@@ -3689,18 +3949,33 @@ function telaTrafego() {
   h += aviso('info', 'Daqui para baixo o recorte volta a ser o <b>filtro de período</b> da barra de cima (' +
     esc(rotuloPeriodo()) + '), não o mês do painel: é a parte de investigar campanha e criativo.');
   h += '<div class="grid g-2">';
-  h += cartao('Investimento por mes', 'Gasto no Meta Ads.',
-    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: soma(md.filter(r => r.mes === k), x => x.gasto) })),
+  h += cartao('Investimento', 'Gasto no Meta Ads.',
+    vizColunas({ dados: evolucao(md, r => r.d, r => r.gasto),
       cor: 'var(--s2)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Investimento', rotulos: false }));
-  h += cartao('Leads por mes', 'Soma dos leads atribuidos as campanhas.',
-    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: soma(md.filter(r => r.mes === k), x => x.leadsTotal) })),
-      cor: 'var(--s1)', nome: 'Leads' }));
-  h += cartao('CPL por mes', 'Investimento dividido pelos leads do mes. Linha subindo = lead encarecendo.',
-    vizLinhas({ x: meses.map(rotuloMesCurto), fmt: brl, area: true, fmtEixo: v => 'R$' + n0(v),
-      series: [{ nome: 'CPL', vals: meses.map(k => { const g = md.filter(r => r.mes === k); const l = soma(g, x => x.leadsTotal); return l ? soma(g, x => x.gasto) / l : null; }), cor: 'var(--s4)' }] }));
-  h += cartao('Retorno sobre a midia', 'Honorarios iniciais por real investido, mes a mes.',
-    vizLinhas({ x: meses.map(rotuloMesCurto), fmt: v => n1(v) + 'x', area: true, fmtEixo: v => n1(v) + 'x',
-      series: [{ nome: 'ROI', vals: meses.map(k => { const g = soma(md.filter(r => r.mes === k), x => x.gasto); return g ? soma(cli.filter(r => r.mes === k), x => x.honIni) / g : null; }), cor: 'var(--s3)' }] }));
+  h += cartao('Leads', 'Soma dos leads atribuidos as campanhas.',
+    vizColunas({ dados: evolucao(md, r => r.d, r => r.leadsTotal), cor: 'var(--s1)', nome: 'Leads' }));
+  const evCpl = evolucaoRazao(md, r => r.d, l => { const q = soma(l, x => x.leadsTotal); return q ? soma(l, x => x.gasto) / q : null; });
+  h += cartao('CPL', 'Investimento dividido pelos leads do mesmo recorte. Linha subindo = lead encarecendo.' + notaAcum(evCpl),
+    vizLinhas({ x: evCpl.x, fmt: brl, area: true, fmtEixo: v => 'R$' + n0(v),
+      series: [{ nome: 'CPL', vals: evCpl.vals, cor: 'var(--s4)' }] }));
+  h += cartao('Retorno sobre a midia', 'Honorarios iniciais por real investido.' + (eixoTempo().tipo === 'dia' ? ' Acumulado no recorte, dia a dia.' : ''),
+    (() => {
+      /* As duas pontas vivem em fontes diferentes: os baldes sao montados em
+         separado e casados pela posicao do eixo. No dia a dia, as duas somas
+         acumulam - ROI de um dia so seria spike, nao leitura. */
+      const g = evolucao(md, r => r.d, x => x.gasto);
+      const hn = evolucao(cli, r => r.dFecha, x => x.honIni);
+      const dia = eixoTempo().tipo === 'dia';
+      let ag = 0, ah = 0;
+      const vals = g.map((x, i) => {
+        const gi = x.v, hi = hn[i] ? hn[i].v : 0;
+        if (!dia) return gi ? hi / gi : null;
+        ag += gi; ah += hi;
+        return ag ? ah / ag : null;
+      });
+      return vizLinhas({ x: g.map(x => x.k), fmt: v => n1(v) + 'x', area: true, fmtEixo: v => n1(v) + 'x',
+        series: [{ nome: 'ROI', vals: vals, cor: 'var(--s3)' }] });
+    })());
   h += '</div>';
 
   /* ===== FUNIL POR CAMPANHA =====
@@ -4107,15 +4382,13 @@ function telaClientesFluxo() {
     { ord: 'total', dir: -1, titulo: 'Ranking de SDRs', limite: 20, ativa: false, total: totQuebra });
 
   /* ----- ANALISES ADICIONAIS ----- */
-  const meses = mesesDoEixo();
   h += '<div class="secao-titulo">Analises adicionais</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Evolucao mensal &mdash; honorarios e clientes', 'Duas escalas, dois graficos. Aqui a receita.',
-    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: soma(cli.filter(r => r.mes === k), x => x.honIni) })),
+  h += cartao('Evolucao &mdash; honorarios', 'Duas escalas, dois graficos. Aqui a receita.',
+    vizColunas({ dados: evolucao(cli, r => r.dFecha, r => r.honIni),
       cor: 'var(--s1)', fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', nome: 'Honorarios', rotulos: false }));
-  h += cartao('Clientes por mes', 'E aqui o volume.',
-    vizColunas({ dados: meses.map(k => ({ k: rotuloMesCurto(k), rot: rotuloMes(k), v: cli.filter(r => r.mes === k).length })),
-      cor: 'var(--s3)', nome: 'Clientes' }));
+  h += cartao('Evolucao &mdash; clientes', 'E aqui o volume.',
+    vizColunas({ dados: evolucao(cli, r => r.dFecha), cor: 'var(--s3)', nome: 'Clientes' }));
 
   const faixas = [
     { k: 'Ate R$ 1.000', t: v => v > 0 && v <= 1000 },
@@ -4162,6 +4435,10 @@ function telaFinanceiro() {
   const meses = f.meses.filter(noRec);
   if (!meses.length) return aviso('info', 'Nenhum mes da DRE COMERCIAL cai no periodo selecionado. Amplie o periodo no filtro acima.');
 
+  /* A DRE e mensal por natureza: nao existe DRE de um dia. Com o recorte num
+     mes so, os numeros do topo seguem o recorte e os GRAFICOS olham os
+     ultimos seis meses fechados - e a secao diz isso. */
+  const mesesGraf = meses.length >= 3 ? meses : f.meses.slice(-6);
   const somaMes = (linha, ks) => (ks || meses).reduce((a, k) => a + ((linha && linha.meses[k]) || 0), 0);
   const nClientes = ks => cli.filter(r => (ks || meses).indexOf(r.mes) >= 0).length;
   const honComp   = ks => soma(cli.filter(r => (ks || meses).indexOf(r.mes) >= 0), r => r.honIni);
@@ -4218,18 +4495,23 @@ function telaFinanceiro() {
 
   /* ----- Evolucao ----- */
   h += '<div class="secao-titulo">Evolucao mes a mes</div>';
+  if (mesesGraf !== meses) {
+    h += aviso('info', 'Os numeros acima seguem o recorte de <b>' + esc(rotuloPeriodo()) +
+      '</b>. Os graficos abaixo olham os <b>ultimos ' + n0(mesesGraf.length) +
+      ' meses fechados da DRE</b>: nao existe DRE de um dia, e uma linha com um ponto nao mostra tendencia.');
+  }
   h += '<div class="grid g-2">';
-  const eixo = meses.map(rotuloMesCurto);
+  const eixo = mesesGraf.map(rotuloMesCurto);
 
   h += cartao('Receita e custo do comercial', 'Mesma unidade (R$), por isso dividem o grafico. A distancia entre as linhas e o lucro.',
     vizLinhas({ x: eixo, fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', series: [
-      { nome: 'Receita (caixa)', vals: meses.map(k => somaMes(f.receita, [k])), cor: 'var(--s1)' },
-      { nome: 'Custo do comercial', vals: meses.map(k => somaMes(f.comercial, [k])), cor: 'var(--s2)' }
+      { nome: 'Receita (caixa)', vals: mesesGraf.map(k => somaMes(f.receita, [k])), cor: 'var(--s1)' },
+      { nome: 'Custo do comercial', vals: mesesGraf.map(k => somaMes(f.comercial, [k])), cor: 'var(--s2)' }
     ] }) + legenda([{ nome: 'Receita (caixa)', cor: 'var(--s1)' }, { nome: 'Custo do comercial', cor: 'var(--s2)' }]));
 
   /* Lucro: positivo x negativo pede par divergente, nao rampa. */
   h += cartao('Lucro liquido do comercial', 'Barra abaixo de zero e mes em que o setor consumiu caixa.',
-    vizColunas({ dados: meses.map(k => {
+    vizColunas({ dados: mesesGraf.map(k => {
       const v = somaMes(f.lucro, [k]);
       return { k: rotuloMesCurto(k), rot: rotuloMes(k), v: Math.abs(v),
                cor: v >= 0 ? 'var(--s1)' : 'var(--s8)',
@@ -4241,16 +4523,16 @@ function telaFinanceiro() {
 
   h += cartao('CAC real x ticket medio', 'As duas em R$ por cliente: quando o CAC encosta no ticket, cada venda nova para de pagar a operacao.',
     vizLinhas({ x: eixo, fmt: brl0, fmtEixo: v => 'R$' + n0(v), series: [
-      { nome: 'CAC real', vals: meses.map(k => { const n = nClientes([k]); return n ? somaMes(f.comercial, [k]) / n : null; }), cor: 'var(--s2)' },
-      { nome: 'CAC de midia', vals: meses.map(k => { const n = nClientes([k]); return n ? soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k])) / n : null; }), cor: 'var(--s4)' },
-      { nome: 'Ticket medio', vals: meses.map(k => ticketMedio(cli.filter(r => r.mes === k))), cor: 'var(--s3)' }
+      { nome: 'CAC real', vals: mesesGraf.map(k => { const n = nClientes([k]); return n ? somaMes(f.comercial, [k]) / n : null; }), cor: 'var(--s2)' },
+      { nome: 'CAC de midia', vals: mesesGraf.map(k => { const n = nClientes([k]); return n ? soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k])) / n : null; }), cor: 'var(--s4)' },
+      { nome: 'Ticket medio', vals: mesesGraf.map(k => ticketMedio(cli.filter(r => r.mes === k))), cor: 'var(--s3)' }
     ] }) + legenda([{ nome: 'CAC real', cor: 'var(--s2)' }, { nome: 'CAC de midia', cor: 'var(--s4)' }, { nome: 'Ticket medio', cor: 'var(--s3)' }]));
 
   h += cartao('Estrutura do custo comercial', 'Quanto do custo e gente, quanto e midia e quanto e ferramenta.',
     vizEmpilhado({ x: eixo, fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k', series: [
-      { nome: 'Pessoas', vals: meses.map(k => soma(f.itens.filter(i => i.bucket === 'pessoas'), i => somaMes(i, [k]))), cor: 'var(--s1)' },
-      { nome: 'Midia', vals: meses.map(k => soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k]))), cor: 'var(--s2)' },
-      { nome: 'Ferramentas', vals: meses.map(k => soma(f.itens.filter(i => i.bucket === 'ferramentas'), i => somaMes(i, [k]))), cor: 'var(--s3)' }
+      { nome: 'Pessoas', vals: mesesGraf.map(k => soma(f.itens.filter(i => i.bucket === 'pessoas'), i => somaMes(i, [k]))), cor: 'var(--s1)' },
+      { nome: 'Midia', vals: mesesGraf.map(k => soma(f.itens.filter(i => i.bucket === 'midia'), i => somaMes(i, [k]))), cor: 'var(--s2)' },
+      { nome: 'Ferramentas', vals: mesesGraf.map(k => soma(f.itens.filter(i => i.bucket === 'ferramentas'), i => somaMes(i, [k]))), cor: 'var(--s3)' }
     ] }) + legenda([
       { nome: 'Pessoas', cor: 'var(--s1)', val: brl0(custoPessoas) },
       { nome: 'Midia', cor: 'var(--s2)', val: brl0(custoMidia) },
@@ -5154,18 +5436,23 @@ function tabelaKpi(id, lista, titulo) {
   ], linhas, { titulo: titulo, limite: 80, ativa: false });
 }
 
-/* Seletor do mes do painel - o mesmo estado de F.mesKpi em todas as telas
-   de indicador, para nao existirem dois "mes atual" diferentes na cabeca. */
-function seletorMes(comMetas) {
+/* Barra da tela: o mes do recorte e os controles dele, numa linha so.
+   O estado do mes e um unico (F.mesKpi) em todas as telas de indicador -
+   dois "mes atual" diferentes na mesma cabeca nao dao certo. */
+function barraTela(c, comMetas) {
   const atual = F.mesKpi || MES_ATUAL;
   const ms = [];
   for (let i = 0; i < 12; i++) ms.push(mesMais(MES_ATUAL, -i));
-  return '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.9rem">' +
-    '<div class="filtro"><label class="filtro-rotulo">Mês do painel</label><select data-selmes>' +
-    ms.filter(k => k >= '2026-01').map(k => '<option value="' + k + '"' + (k === atual ? ' selected' : '') +
-      '>' + rotuloMes(k) + '</option>').join('') + '</select></div>' +
-    (comMetas ? '<button class="btn-acao" data-metas type="button">&#9881; Configurar metas</button>' : '') +
-    '</div>';
+  return '<div class="barra-tela">' +
+    '<span class="rot"><b>' + esc(c.rotMes) + '</b>' +
+      (c.emCurso ? ' &middot; mês em andamento &middot; dia ' + n0(c.dias) + ' de ' + n0(c.diasMes)
+                 : ' &middot; mês fechado') + '</span>' +
+    '<span class="dir">' +
+      '<select data-selmes aria-label="Mês do painel">' +
+      ms.filter(k => k >= '2026-01').map(k => '<option value="' + k + '"' + (k === atual ? ' selected' : '') +
+        '>' + rotuloMes(k) + '</option>').join('') + '</select>' +
+      (comMetas ? '<button class="btn-acao" data-metas type="button">&#9881; Configurar metas</button>' : '') +
+    '</span></div>';
 }
 
 /* ==========================================================================
@@ -6005,13 +6292,12 @@ function telaAreaComercial() {
   const K = kpisComercial(c);
   const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
 
-  let h = '<div class="secao-titulo primeiro">Comercial &middot; ' + esc(c.rotMes) + '</div>';
-  h += seletorMes(true);
+  let h = barraTela(c, true);
   h += resumoArea(todos);
-  if (c.emCurso) h += aviso('info', '<b>Mês em andamento</b> &mdash; ' + n0(c.dias) + ' de ' + n0(c.diasMes) +
-    ' dias. Cada indicador principal traz o quadro das quatro leituras: o <b>realizado</b>, o quanto ele representa ' +
-    'da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia e a <b>projeção</b> do mês pelo ritmo de hoje. ' +
-    'No dia ' + n0(c.dias) + ' o certo é ter ' + pct(c.fracao * 100, 0) + ' da meta &mdash; é onde a marca da barra está.');
+  if (c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das quatro leituras: o <b>realizado</b>, ' +
+    'o quanto ele representa da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia e a ' +
+    '<b>projeção</b> do mês pelo ritmo de hoje. No dia ' + n0(c.dias) + ' o certo é ter ' +
+    pct(c.fracao * 100, 0) + ' da meta &mdash; é onde a marca da barra de ritmo está.');
 
   h += '<div class="secao-titulo">Pré-qualificação &middot; principais</div>';
   /* Os dois numeros de lead nao sao o mesmo lead, e sem dizer isso o cartao
@@ -6125,8 +6411,7 @@ function telaAreaMarketing() {
   const K = kpisMarketing(c);
   const todos = K.principais.concat(K.grupos.reduce((a, g) => a.concat(g.l), []));
 
-  let h = '<div class="secao-titulo primeiro">Marketing &middot; ' + esc(c.rotMes) + '</div>';
-  h += seletorMes(false);
+  let h = barraTela(c, false);
   h += resumoArea(todos);
 
   if (!c.temMkt) {
@@ -6233,8 +6518,7 @@ function telaSemanal() {
   const quinze = areas.reduce((a, x) => a.concat(x.lista), []);
   const vermelhos = quinze.filter(k => !k.falta && alertaK(k));
 
-  let h = '<div class="secao-titulo primeiro">Painel semanal &middot; ' + esc(c.rotMes) + '</div>';
-  h += seletorMes(false);
+  let h = barraTela(c, false);
   h += aviso('info', '<b>Cinco indicadores por área, quinze no total.</b> É o recorte que se olha toda semana. ' +
     'O resto &mdash; são mais de 120 &mdash; fica no diagnóstico de cada área, para abrir quando um destes acende. ' +
     'Indicador com borda tracejada não tem fonte: o pé do cartão diz o que falta.');
@@ -6288,23 +6572,23 @@ const IC = {
 
 const TELAS = [
   { grupo: 'Comando' },
-  { k: 'semanal', rot: 'Painel semanal',  sub: 'Os cinco indicadores de cada area, quinze no total', fn: telaSemanal },
-  { k: 'visao',   rot: 'Visao Geral',     sub: 'Ritmo do mes, evolucao e onde o resultado se forma', fn: telaVisao },
-  { k: 'kpis',    rot: 'KPIs do comercial', sub: 'Realizado, meta proporcional e projecao do mes', fn: telaKpis },
-  { grupo: 'Areas' },
-  { k: 'comercial', rot: 'Comercial',     sub: 'Pre-qualificacao, fechamento e o diagnostico do gestor', fn: telaAreaComercial },
-  { k: 'trafego', rot: 'Trafego Meta Ads', sub: 'Do investimento ao honorario, campanha e criativo', fn: telaTrafego },
-  { k: 'marketing', rot: 'Marketing',     sub: 'Audiencia, conteudo, marca e demanda sem verba', fn: telaAreaMarketing },
+  { k: 'semanal', rot: 'Painel semanal',  sub: 'Os cinco indicadores de cada área, quinze no total', fn: telaSemanal },
+  { k: 'visao',   rot: 'Visão Geral',     sub: 'Ritmo do mês, evolução e onde o resultado se forma', fn: telaVisao },
+  { k: 'kpis',    rot: 'KPIs do comercial', sub: 'Realizado, meta proporcional e projeção do mês', fn: telaKpis },
+  { grupo: 'Áreas' },
+  { k: 'comercial', rot: 'Comercial',     sub: 'Pré-qualificação, fechamento e o diagnóstico do gestor', fn: telaAreaComercial },
+  { k: 'trafego', rot: 'Tráfego Meta Ads', sub: 'Do investimento ao honorário, campanha e criativo', fn: telaTrafego },
+  { k: 'marketing', rot: 'Marketing',     sub: 'Audiência, conteúdo, marca e demanda sem verba', fn: telaAreaMarketing },
   { grupo: 'Funil comercial' },
-  { k: 'funil',   rot: 'Funil e pre-qualificacao', sub: 'Do lead ao cliente, etapa por etapa', fn: telaFunil },
-  { k: 'esteira', rot: 'Negociacao',      sub: 'Esteira de proposta, follow up e fechamento', fn: telaEsteira },
-  { k: 'vendas',  rot: 'Vendas e receita', sub: 'Fechamentos, honorarios, ticket e prazo', fn: telaVendas },
+  { k: 'funil',   rot: 'Funil e pré-qualificação', sub: 'Do lead ao cliente, etapa por etapa', fn: telaFunil },
+  { k: 'esteira', rot: 'Negociação',      sub: 'Esteira de proposta, follow up e fechamento', fn: telaEsteira },
+  { k: 'vendas',  rot: 'Vendas e receita', sub: 'Fechamentos, honorários, ticket e prazo', fn: telaVendas },
   { k: 'clifluxo', rot: 'Fluxo de clientes', sub: 'Quem assina, por onde chega e quem fecha', fn: telaClientesFluxo },
-  { grupo: 'Gestao' },
-  { k: 'fin',     rot: 'Financeiro e CAC', sub: 'Custo real do comercial, margem e eficiencia', fn: telaFinanceiro },
+  { grupo: 'Gestão' },
+  { k: 'fin',     rot: 'Financeiro e CAC', sub: 'Custo real do comercial, margem e eficiência', fn: telaFinanceiro },
   { k: 'equipe',  rot: 'Equipe',          sub: 'Desempenho por closer e por SDR', fn: telaEquipe },
-  { k: 'metas',   rot: 'Metas e OKRs',    sub: 'Metas do mes, plano de acao e acumulado do ano', fn: telaMetas },
-  { k: 'fontes',  rot: 'Fontes e dados',  sub: 'De onde vem cada numero e o que falhou', fn: telaFontes }
+  { k: 'metas',   rot: 'Metas e OKRs',    sub: 'Metas do mês, plano de ação e acumulado do ano', fn: telaMetas },
+  { k: 'fontes',  rot: 'Fontes e dados',  sub: 'De onde vem cada número e o que falhou', fn: telaFontes }
 ];
 
 let TELA_ATIVA = 'semanal';
@@ -6368,7 +6652,7 @@ function opcoesDe(campo, fontes) {
 }
 
 const DIMS = [
-  { k: 'produtos', rot: 'Produto juridico', campo: 'produto' },
+  { k: 'produtos', rot: 'Produto jurídico', campo: 'produto' },
   { k: 'closers',  rot: 'Closer',           campo: 'closer' },
   { k: 'sdrs',     rot: 'SDR',              campo: 'sdr' },
   { k: 'origens',  rot: 'Origem',           campo: 'origem' }
@@ -6380,7 +6664,7 @@ function montarFiltros() {
   const kk = DADOS.kommo ? DADOS.kommo.reg : [];
 
   let h = '';
-  h += '<div class="filtro"><label class="filtro-rotulo" for="fPeriodo">Periodo</label>' +
+  h += '<div class="filtro"><label class="filtro-rotulo" for="fPeriodo">Período</label>' +
        '<select id="fPeriodo">' + PERIODOS.map(p =>
          '<option value="' + p.k + '"' + (F.periodo === p.k ? ' selected' : '') + '>' + esc(p.rot) + '</option>').join('') +
        '</select></div>';
@@ -6449,7 +6733,7 @@ function ligarFiltros() {
       return;
     }
     if (b.id === 'btnLimpar') {
-      F.periodo = 'u6'; F.busca = '';
+      F.periodo = 'mes'; F.busca = '';
       DIMS.forEach(d => F[d.k].clear());
       montarFiltros(); redesenhar();
     }
