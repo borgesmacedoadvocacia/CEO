@@ -5267,6 +5267,21 @@ const houveConversa = r => ETAPA_CONVERSA.test(chaveBusca(r.etapa));
 /* "-" aparece como campanha em centenas de leads: e ausencia de atribuicao,
    nao uma campanha chamada traco. */
 const temCampanha   = r => !!r.campanha && r.campanha.trim() !== '' && r.campanha.trim() !== '-';
+/* ===== DOIS MUNDOS DENTRO DO MESMO CRM =====
+   O Kommo tem tres funis no mes: "[API] CRM Comercial" e "[API] Follow Up",
+   que sao a esteira comercial, e "Instagram", que e interacao social -
+   direct, comentario, pedido de telefone. O funil do Instagram NAO tem
+   campanha por natureza, e nem deveria ter: ninguem comenta um post por
+   causa de um anuncio pago.
+
+   Misturar os dois fazia a cobertura de atribuicao dizer 45% quando a
+   atribuicao comercial de fato esta em 86%. E, do outro lado, escondia que
+   o painel ja tem a materia-prima do social seller que a tela de Marketing
+   declarava como sem fonte. */
+const ehFunilSocial = r => /instagram/i.test(r.funil || '');
+/* Etapas do funil social, na ordem em que a conversa avanca. */
+const IG_PEDIU_CONTATO = /telefone solicitado|ja esta no wpp/;
+const IG_FOI_PARA_WPP  = /ja esta no wpp/;
 const ehElegivel    = r => ETAPA_ELEGIVEL.test(chaveBusca(r.etapa));
 const ehQualificado = r => ETAPA_QUALIFICADO.test(chaveBusca(r.etapa));
 
@@ -5719,6 +5734,9 @@ function ctxArea() {
   /* Leads do CRM vindos de campanha, no mes: a base de tudo que o modulo do
      Meta Ads mede depois do clique. */
   const koAds = k => todosKo.filter(r => r.mes === k && temCampanha(r) && passaKo(r));
+  const koCom = k => todosKo.filter(r => r.mes === k && !ehFunilSocial(r) && passaKo(r));
+  const koSoc = k => todosKo.filter(r => r.mes === k && ehFunilSocial(r) && passaKo(r));
+  const koComAnt_ = k => koCom(k);
 
   const c = {
     mes: mes, ant: ant, emCurso: emCurso, dias: dias, diasMes: diasMes, fracao: fracao,
@@ -5730,6 +5748,8 @@ function ctxArea() {
     marc: agendadas(todosAt, mes), marcAnt: agendadas(todosAt, ant),
     md: mdMes(todosMd, mes), mdAnt: mdMes(todosMd, ant),
     koAds: koAds(mes), koAdsAnt: koAds(ant),
+    koCom: koCom(mes), koComAnt: koComAnt_(ant),
+    koSoc: koSoc(mes), koSocAnt: koSoc(ant),
     koMes: todosKo.filter(r => r.mes === mes && passaKo(r)),
     temKommo: !ERROS.kommo && todosKo.length > 0,
     todosCli: todosCli, todosAt: todosAt, todosMd: todosMd,
@@ -6057,12 +6077,12 @@ function kpisTrafego(c) {
         dica: 'Com cobertura baixa, campanha sem reunião pode ser só falta de anotação. O painel suspende os alertas por campanha nesse caso.' }),
     B({ k: 'cobCli', rot: 'Cobertura: cliente com origem', tipo: 'pct', valor: cobCli, meta: 95,
         fonte: 'Planilha de clientes: coluna ORIGEM preenchida' }),
-    B({ k: 'cobKommo', rot: 'Cobertura: lead com campanha no CRM', tipo: 'pct',
-        valor: c.temKommo ? taxa(c.koAds.length, c.koMes.length) : null,
+    B({ k: 'cobKommo', rot: 'Cobertura: campanha anotada no lead', tipo: 'pct',
+        valor: c.temKommo ? taxa(c.koAds.length, c.koCom.length) : null,
         falta: semKommo, meta: 90,
-        nota: c.temKommo ? n0(c.koAds.length) + ' de ' + n0(c.koMes.length) + ' leads do mês' : null,
-        fonte: 'Leads do Kommo no mês com o campo Campanha preenchido',
-        dica: 'Todo indicador deste módulo sai daqui. Lead de anúncio que chega sem campanha anotada some da conta — e o custo por elegível sobe sem motivo real.' }),
+        nota: c.temKommo ? n0(c.koAds.length) + ' de ' + n0(c.koCom.length) + ' leads do funil comercial' : null,
+        fonte: 'Leads do funil comercial com o campo Campanha preenchido',
+        dica: 'O divisor exclui o funil Instagram: direct e comentário não vêm de campanha por natureza, e contá-los aqui derrubava a cobertura de 86% para 45% sem que nada estivesse errado. Todo indicador deste módulo sai do lead com campanha anotada — o que chega sem ela some da conta, e o custo por elegível sobe sem motivo real.' }),
     B({ k: 'pixel', rot: 'Qualidade do pixel e da API', falta:
         'Precisa da nota de correspondência de eventos do Gerenciador de Eventos — nenhuma aba traz isso hoje.' }),
     B({ k: 'eventosCrm', rot: 'Eventos de CRM devolvidos à Meta', falta:
@@ -6108,6 +6128,22 @@ function kpisMarketing(c) {
   /* Tres estados, nao dois: a aba pode nao existir, existir com a linha em
      branco, ou estar preenchida. O painel diz qual deles e - "0" no lugar de
      "ainda nao preenchido" seria um numero inventado. */
+  /* ===== O SOCIAL SELLER JA ESTAVA NO CRM =====
+     O funil "Instagram" do Kommo guarda a interacao recebida: direct,
+     comentario, pedido de telefone e a passagem para o WhatsApp. Isso e
+     exatamente o que esta tela declarava como sem fonte. Nao e audiencia -
+     seguidor e visita de perfil continuam so dentro do Instagram -, mas e a
+     conversa, que e a parte que vira lead. */
+  const soc = c.koSoc || [];
+  const socAnt = c.koSocAnt || [];
+  const pediuContato = soc.filter(r => IG_PEDIU_CONTATO.test(chaveBusca(r.etapa))).length;
+  const pediuContatoAnt = socAnt.filter(r => IG_PEDIU_CONTATO.test(chaveBusca(r.etapa))).length;
+  const foiParaWpp = soc.filter(r => IG_FOI_PARA_WPP.test(chaveBusca(r.etapa))).length;
+  const porEtapaSoc = cha => soc.filter(r => chaveBusca(r.etapa) === cha).length;
+  const semSocial = !c.temKommo
+    ? 'Depende da planilha <b>Leads Kommo</b>, que não entrou nesta leitura.'
+    : (!soc.length ? 'Nenhuma intera\u00e7\u00e3o no funil <b>Instagram</b> do Kommo neste m\u00eas.' : null);
+
   const cheio = v => v != null && String(v).trim() !== '';
   const SEM_MKT = 'Nenhuma fonte de Instagram no painel. Crie a aba <code>KPIS Marketing</code> na planilha de Metas, no mesmo formato das abas KPIS, com este indicador como Resultado Chave — o painel passa a lê-lo sozinho. O script <code>apps-script/CriarAbaMarketing.gs</code> monta a aba pronta.';
   const kMkt = (k, rot, nome, o) => {
@@ -6137,8 +6173,12 @@ function kpisMarketing(c) {
         serie: c.serie.map(k => taxa(porNat(c.serieCli(k), 'indicacao').length, c.serieCli(k).length)),
         fonte: 'ORIGEM = Indicação na planilha de clientes',
         nota: n0(cliInd.length) + ' de ' + n0(c.cli.length) + ' clientes do mês' }),
-    kMkt('socialSeller', 'Conversas do social seller', 'conversas do social seller',
-      { dica: 'Só a partir de interação recebida: abordagem fria é captação vedada pelo Provimento 205.' }),
+    B({ k: 'socialSeller', rot: 'Conversas do social seller', valor: soc.length || null,
+        ant: socAnt.length || null, acumula: true, falta: semSocial,
+        fonte: 'Funil <b>Instagram</b> do Kommo',
+        nota: soc.length ? n0(porEtapaSoc('direct')) + ' direct &middot; ' +
+          n0(porEtapaSoc('comentarios')) + ' coment\u00e1rios &middot; ' + n0(pediuContato) + ' pediram contato' : null,
+        dica: 'Interação recebida no Instagram, contada pelo CRM: direct, comentário e pedido de telefone. Só a partir de interação recebida — abordagem fria é captação vedada pelo Provimento 205. Este funil não tem campanha por natureza, e por isso não entra nas contas do módulo Meta Ads.' }),
     kMkt('seguidores', 'Novos seguidores (líquido)', 'novos seguidores'),
     kMkt('conteudo', 'Conteúdo publicado (feed)', 'conteudo publicado')
   ];
@@ -6160,10 +6200,22 @@ function kpisMarketing(c) {
     kMkt('retencaoReels', 'Retenção dos Reels', 'retencao dos reels', { tipo: 'pct', acumula: false })
   ];
   const seller = [
-    kMkt('respondidas', 'Interações respondidas', 'interacoes respondidas', { tipo: 'pct', acumula: false }),
-    kMkt('tempoResp', 'Tempo de resposta nas redes', 'tempo de resposta', { tipo: 'dias', acumula: false }),
-    kMkt('convLead', 'Conversa → lead', 'conversa em lead', { tipo: 'pct', acumula: false }),
-    kMkt('encaminhados', 'Leads encaminhados à SDR', 'leads encaminhados')
+    B({ k: 'igDirect', rot: 'Direct recebido', valor: porEtapaSoc('direct') || null,
+        acumula: true, falta: semSocial, fonte: 'Funil Instagram, etapa DIRECT' }),
+    B({ k: 'igComentarios', rot: 'Comentários respondidos', valor: porEtapaSoc('comentarios') || null,
+        acumula: true, falta: semSocial, fonte: 'Funil Instagram, etapa COMENTÁRIOS' }),
+    B({ k: 'igContato', rot: 'Pediram contato', valor: pediuContato || null,
+        ant: pediuContatoAnt || null, acumula: true, falta: semSocial,
+        fonte: 'Funil Instagram: telefone solicitado ou já no WhatsApp',
+        dica: 'A conversa saiu do social e virou canal direto. É o degrau que separa interação de lead.' }),
+    B({ k: 'convLead', rot: 'Conversa → lead', tipo: 'pct',
+        valor: taxa(pediuContato, soc.length), falta: semSocial,
+        fonte: 'Pediram contato ÷ conversas do social seller',
+        nota: soc.length ? n0(pediuContato) + ' de ' + n0(soc.length) + ' interações' : null }),
+    B({ k: 'encaminhados', rot: 'Leads encaminhados à SDR', valor: foiParaWpp || null,
+        acumula: true, falta: semSocial, fonte: 'Funil Instagram, etapa JÁ ESTÁ NO WPP',
+        dica: 'Passaram do Instagram para o WhatsApp, que é onde a pré-venda começa.' }),
+    kMkt('tempoResp', 'Tempo de resposta nas redes', 'tempo de resposta', { tipo: 'dias', acumula: false })
   ];
   const site = [
     B({ k: 'cliSite', rot: 'Clientes vindos do site', valor: c.cli.filter(r => /site|calculadora/.test(chaveBusca(r.origem))).length,
