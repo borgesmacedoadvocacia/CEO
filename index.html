@@ -196,6 +196,9 @@ if (window.self !== window.top) {
     display: flex; align-items: flex-end; gap: 0.7rem; flex-wrap: wrap;
     padding: 0.8rem 0 0.85rem;
   }
+  /* Tela de configuracao nao recorta nada: a barra sai inteira, em vez de
+     ficar oferecendo filtro que nenhum numero da tela obedece. */
+  .filtros.sem-uso { display: none !important; }
   .filtro { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
   .filtro-rotulo {
     font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em;
@@ -1164,7 +1167,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '25/10/2026 11:53';
+const BUILD = '25/10/2026 18:04';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -3388,8 +3391,8 @@ function selAtend() {
   return d.reg.filter(r =>
     noPeriodo(r.dAtend || r.dAgenda) &&
     passaSet(F.produtos, r.produto) && passaSet(F.sdrs, r.sdr) &&
-    passaSet(F.closers, r.closer) &&
-    passaBusca([r.lead, r.id, r.etapa, r.closer, r.sdr, r.produto, r.telefone, r.resultado]));
+    passaSet(F.closers, r.closer) && passaSet(F.origens, r.origem) &&
+    passaBusca([r.lead, r.id, r.etapa, r.closer, r.sdr, r.produto, r.telefone, r.resultado, r.origem]));
 }
 function selClientes() {
   const d = DADOS.clientes;
@@ -3569,36 +3572,42 @@ function ritmoDoMes() {
 /* ==========================================================================
    TELA 2 - FUNIL E PRE-QUALIFICACAO
    ========================================================================== */
-/* ===== O QUE O FILTRO DO TOPO ALCANCA NO FUNIL DO PRODUTO =====
-   Esta tela responde ao Periodo ate onde existe aba de planilha, e nao tem
-   como responder a produto, closer, SDR, origem ou busca: a aba traz o total
-   do mes por etapa, sem nenhuma dessas quebras. Ficar calada era o pior dos
-   mundos - a pessoa mexia no filtro, o numero nao mudava, e a tela nao
-   explicava nada. Entao ela nomeia o que ignorou e diz onde aquilo vale. */
-function avisoFiltroFunil(umMesSo) {
-  const ign = [];
-  if (F.produtos.size) ign.push('Produto jur\u00eddico');
-  if (F.closers.size) ign.push('Closer');
-  if (F.sdrs.size) ign.push('SDR');
-  if (F.origens.size) ign.push('Origem');
-  if (F.busca) ign.push('Pesquisar');
-  if (umMesSo && !ign.length) return '';
-  const linhas = [];
-  if (!umMesSo) {
+/* Quais dimensoes da barra estao ligadas agora, pelo nome que elas tem na
+   propria barra - para a tela poder dizer o que ignorou sem adivinhar. */
+function dimsLigadas() {
+  const l = [];
+  if (F.produtos.size) l.push('Produto jur\u00eddico');
+  if (F.closers.size) l.push('Closer');
+  if (F.sdrs.size) l.push('SDR');
+  if (F.origens.size) l.push('Origem');
+  if (F.busca) l.push('Pesquisar');
+  return l;
+}
+
+/* ===== O QUE O FILTRO DO TOPO ALCANCA NESTA TELA =====
+   A barra e uma so para o painel inteiro, mas nem toda tela sai de registro
+   lead a lead. As que saem de contagem mensal feita a mao respondem ao
+   periodo ate onde existe aba de planilha, e nao tem como responder a
+   produto, closer, SDR, origem ou busca. Ficar calada era o pior dos mundos:
+   a pessoa mexia no filtro, o numero nao mudava, e nada explicava por que.
+   Cada tela passa a razao dela; o formato do aviso e o mesmo em todas. */
+function avisoAlcance(o) {
+  const ign = dimsLigadas();
+  const umMes = F.periodo === 'mes' || F.periodo === 'ant';
+  if (umMes && !ign.length) return '';
+  const l = [];
+  if (!umMes) {
     const rot = (PERIODOS.find(x => x.k === F.periodo) || {}).rot || F.periodo;
-    linhas.push('O per\u00edodo <b>' + esc(rot) + '</b> n\u00e3o cabe aqui: a contagem \u00e9 mensal e o painel ' +
-      'carrega duas abas da planilha, a do m\u00eas corrente e a do anterior. Esta tela est\u00e1 mostrando <b>' +
-      rotuloMes(MES_ATUAL) + '</b> &mdash; <b>M\u00eas anterior</b> troca de aba e muda tudo que vem abaixo.');
+    l.push('O per\u00edodo <b>' + esc(rot) + '</b> n\u00e3o cabe aqui: ' + o.porqueMes +
+      ' Esta tela est\u00e1 mostrando <b>' + o.mostrando + '</b>' +
+      (o.trocaMes ? ' &mdash; <b>M\u00eas anterior</b> troca de aba e muda tudo que vem abaixo.' : '.'));
   }
   if (ign.length) {
-    linhas.push('<b>' + ign.join(', ') + '</b> ' + (ign.length > 1 ? 'n\u00e3o valem' : 'n\u00e3o vale') +
-      ' nesta aba: a planilha traz o total do m\u00eas por etapa, sem quebra por pessoa, produto ou origem. ' +
-      'Os n\u00fameros abaixo seguem cheios.');
+    l.push('<b>' + ign.join(', ') + '</b> ' + (ign.length > 1 ? 'n\u00e3o valem' : 'n\u00e3o vale') +
+      ' nesta tela: ' + o.porqueDims + ' Os n\u00fameros abaixo seguem cheios.');
   }
-  return aviso('atencao', '<b>O filtro do topo alcan\u00e7a esta aba s\u00f3 em parte.</b><br>' +
-    linhas.join('<br>') +
-    '<br>Para o mesmo recorte lead a lead, com todos os filtros valendo, abra a aba ' +
-    '<a href="#" data-ir="prequal:kommo">Leads do CRM</a>.');
+  return aviso('atencao', '<b>O filtro do topo alcan\u00e7a esta tela s\u00f3 em parte.</b><br>' +
+    l.join('<br>') + (o.ondeVale ? '<br>' + o.ondeVale : ''));
 }
 
 function telaFunil(aba) {
@@ -3616,7 +3625,6 @@ function telaFunil(aba) {
      nao existe serie dessas abas no painel. Em vez de fingir que o recorte
      valeu, a tela mostra o mes corrente e diz que nao cobriu. */
   const mesSel = F.periodo === 'ant' ? mesMais(MES_ATUAL, -1) : MES_ATUAL;
-  const umMesSo = F.periodo === 'mes' || F.periodo === 'ant';
   const atual = F.periodo === 'ant' ? (p && p.anterior) : (p && p.atual);
 
   if (atual && atual.real) {
@@ -3665,7 +3673,13 @@ function telaFunil(aba) {
       'e a contagem que o time mantem a mao. A percentagem ao lado de cada etapa e a conversao sobre a etapa anterior. ' +
       'O topo e o <b>total de leads do CRM</b>: todo lead entra no Kommo, e Meta Ads e organico sao recortes ' +
       'de dentro desse total &mdash; por isso eles nao se somam ao total, eles o dividem.');
-    h += avisoFiltroFunil(umMesSo);
+    h += avisoAlcance({
+      porqueMes: 'a contagem \u00e9 mensal e o painel carrega duas abas da planilha, a do m\u00eas corrente e a do anterior.',
+      mostrando: rotuloMes(MES_ATUAL), trocaMes: true,
+      porqueDims: 'a planilha traz o total do m\u00eas por etapa, sem quebra por pessoa, produto ou origem.',
+      ondeVale: 'Para o mesmo recorte lead a lead, com todos os filtros valendo, abra a aba ' +
+        '<a href="#" data-ir="prequal:kommo">Leads do CRM</a>.'
+    });
     h += '<div class="grid g-2">';
     h += cartao('Funil realizado no mês', 'Volume por etapa e conversão etapa a etapa.', vizFunil(etapas));
 
@@ -3949,6 +3963,8 @@ function telaEsteira() {
   if (ERROS.atend) return aviso('critico', '<b>Fluxo de Atendimentos nao entrou:</b> ' + esc(ERROS.atend));
   const at = selAtend();
   const todos = DADOS.atend ? DADOS.atend.reg : [];
+  const semOrigem = F.origens.size
+    ? todos.filter(r => noPeriodo(r.dAtend || r.dAgenda) && !r.origem).length : 0;
   const abertos = at.filter(r => r.emAberto);
   const ganhos = at.filter(r => r.grupo === 'ganho');
   const perdidos = at.filter(r => r.grupo === 'perdido');
@@ -3957,6 +3973,14 @@ function telaEsteira() {
 
   let h = '';
   h += '<div class="secao-titulo primeiro">Esteira de negociação &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  if (semOrigem) {
+    h += aviso('atencao', '<b>' + n0(semOrigem) + (semOrigem > 1
+      ? ' atendimentos do per\u00edodo est\u00e3o fora desta tela por n\u00e3o terem origem anotada.</b>'
+      : ' atendimento do per\u00edodo est\u00e1 fora desta tela por n\u00e3o ter origem anotada.</b>') +
+      ' A coluna Origem da planilha de atendimentos s\u00f3 come\u00e7ou a ser preenchida ' +
+      'recentemente &mdash; quanto mais para tr\u00e1s vai o per\u00edodo, mais linha em branco o filtro de origem ' +
+      'deixa de fora. Tela vazia aqui costuma ser lacuna de preenchimento, n\u00e3o queda de resultado.');
+  }
   const Ke = [];
   Ke.push({ rotulo: 'Em aberto', valor: n0(abertos.length),
     nota: 'Negociações vivas (fora ganho, perda e sem resposta)' });
@@ -4988,6 +5012,16 @@ function telaFinanceiro() {
     'A DRE e por <b>regime de caixa</b> (o que entrou e saiu no mes) e a planilha de clientes e por ' +
     '<b>competencia</b> (contrato assinado no mes) &mdash; os dois numeros de receita nao batem de proposito. ' +
     'O painel mostra os dois e a diferenca, em vez de escolher um.');
+  (() => {
+    const ign = dimsLigadas();
+    if (!ign.length) return;
+    h += aviso('atencao', '<b>' + ign.join(', ') + '</b> ' + (ign.length > 1 ? 'n\u00e3o valem' : 'n\u00e3o vale') +
+      ' nesta tela. A DRE n\u00e3o tem coluna de closer, produto nem origem &mdash; ela registra o que entrou e ' +
+      'saiu do caixa do setor, inteiro. E <b>clientes, ticket m\u00e9dio, CAC e margem por cliente</b> seguem ' +
+      'cheios de prop\u00f3sito: um CAC com o custo do setor todo em cima e s\u00f3 os clientes de um closer embaixo ' +
+      'n\u00e3o seria o CAC dele, seria um n\u00famero sem significado. O <b>per\u00edodo</b>, esse vale &mdash; \u00e9 ele ' +
+      'que escolhe os meses da DRE.');
+  })();
 
   const Kf = [];
   Kf.push({ rotulo: 'Receita (caixa)', valor: brl0(receita), pequeno: true,
@@ -5279,21 +5313,37 @@ function telaMetas() {
   let h = '';
   if (ERROS.metas) return aviso('critico', '<b>Planilha de Metas nao entrou:</b> ' + esc(ERROS.metas));
   const m = DADOS.metas || {};
-  const nomeAtual = MESES_ACENTO[new Date().getMonth()];
-  const nomeAnt = MESES_ACENTO[(new Date().getMonth() + 11) % 12];
-  const rm = ritmoDoMes();
+  /* O periodo do topo escolhe o mes, ate onde existe aba carregada. Pedindo
+     o mes anterior, o mes "anterior ao anterior" nao esta no painel - e a
+     comparacao some sozinha, porque ela so aparece quando ha com que
+     comparar. Mes fechado le o ritmo contra o mes inteiro, nao contra hoje. */
+  const anterior = F.periodo === 'ant';
+  const iMes = new Date().getMonth();
+  const nomeAtual = MESES_ACENTO[(iMes + (anterior ? 11 : 0)) % 12];
+  const nomeAnt = MESES_ACENTO[(iMes + (anterior ? 10 : 11)) % 12];
+  const rm = anterior ? { diasComp: 0, diasMes: 0, pct: 100 } : ritmoDoMes();
 
   const atual = m.meses && m.meses[nomeAtual] && !m.meses[nomeAtual].erro ? m.meses[nomeAtual] : null;
   const ant = m.meses && m.meses[nomeAnt] && !m.meses[nomeAnt].erro ? m.meses[nomeAnt] : null;
 
   h += '<div class="secao-titulo primeiro">Metas do mês &middot; ' + esc(nomeAtual) + '</div>';
+  h += avisoAlcance({
+    porqueMes: 'a planilha tem uma aba <code>KPIS &lt;m\u00eas&gt;</code> por m\u00eas e o painel carrega duas, ' +
+      'a do m\u00eas corrente e a do anterior.',
+    mostrando: MESES_ACENTO[iMes], trocaMes: true,
+    porqueDims: 'o Resultado Chave \u00e9 um n\u00famero \u00fanico que o time anota a m\u00e3o, sem quebra por pessoa, ' +
+      'produto ou origem.',
+    ondeVale: 'Para o mesmo assunto recortado lead a lead, abra <a href="#" data-ir="kpisdash">KPIS e Dashboards</a>.'
+  });
   if (!atual) {
     h += aviso('atencao', 'Nao encontrei a aba <code>KPIS ' + esc(nomeAtual) + '</code> na planilha de Metas. ' +
       'Quando o time criar a aba do mes, ela aparece aqui sozinha.');
   } else {
     h += aviso('info', 'Medicao de <b>' + esc(atual.atualizado || 'data nao informada na planilha') + '</b> &middot; ' +
-      rm.diasComp + ' de ' + rm.diasMes + ' dias do mes (' + pct(rm.pct, 0) + '). ' +
-      'A <b>meta proporcional</b> e o quanto deveria estar entregue hoje; e contra ela que o ritmo e lido.');
+      (anterior ? '<b>mes fechado</b>. A <b>meta proporcional</b> da planilha e a do fim do mes, ' +
+                  'entao aqui o ritmo e lido contra o mes inteiro.'
+                : rm.diasComp + ' de ' + rm.diasMes + ' dias do mes (' + pct(rm.pct, 0) + '). ' +
+                  'A <b>meta proporcional</b> e o quanto deveria estar entregue hoje; e contra ela que o ritmo e lido.'));
 
     const fmtKr = k => k.tipo === 'moeda' ? brl0 : (k.tipo === 'pct' ? (v => pct(v, 0)) : n0);
     h += tabelaInterativa('metas-tab', [
@@ -6017,6 +6067,16 @@ function avisoFiltro(c) {
     'eles seguem cheios.');
 }
 
+function avisoPeriodoMensal(ondeVale) {
+  if (F.periodo === 'mes') return '';
+  const rot = (PERIODOS.find(x => x.k === F.periodo) || {}).rot || F.periodo;
+  return aviso('atencao', '<b>O per\u00edodo <i>' + esc(rot) + '</i> n\u00e3o chega nesta tela.</b> ' +
+    'Indicador se l\u00ea contra meta, e meta \u00e9 mensal &mdash; n\u00e3o existe meta de "\u00faltimos 6 meses". ' +
+    'O recorte daqui \u00e9 o <b>m\u00eas escolhido no seletor acima</b>, hoje <b>' + rotuloMes(F.mesKpi || MES_ATUAL) +
+    '</b>. Produto, closer, SDR, origem e busca, esses valem normalmente.' +
+    (ondeVale ? ' Para ler no per\u00edodo, abra ' + ondeVale + '.' : ''));
+}
+
 /* Barra da tela: o mes do recorte e os controles dele, numa linha so.
    O estado do mes e um unico (F.mesKpi) em todas as telas de indicador -
    dois "mes atual" diferentes na mesma cabeca nao dao certo. */
@@ -6092,6 +6152,15 @@ function ctxArea() {
   const passaCli = r => passaSet(F.produtos, r.produto) && passaSet(F.sdrs, r.sdr) &&
     passaSet(F.closers, r.closer) && passaSet(F.origens, r.origem) &&
     passaBusca([r.contato, r.cliente, r.produto, r.closer, r.sdr, r.origem, r.tipoPag]);
+  /* Origem de proposito fora daqui, embora o atendimento tenha a coluna e a
+     esteira ja filtre por ela: a coluna so comecou a ser preenchida ha
+     pouco, e esta vazia em 848 das 907 linhas do historico. Nas telas de
+     indicador tudo e serie de seis meses - filtrar por origem faria os meses
+     antigos despencarem para perto de zero, e isso seria lido como queda de
+     resultado quando e lacuna de preenchimento. Na esteira o risco nao
+     existe do mesmo jeito: ela e investigacao de periodo curto, e quando o
+     filtro esta ligado a tela diz quantos ficaram de fora por falta do
+     campo. Quando a coluna estiver preenchida para tras, isto aqui entra. */
   const passaAt = r => passaSet(F.produtos, r.produto) && passaSet(F.sdrs, r.sdr) &&
     passaSet(F.closers, r.closer) &&
     passaBusca([r.lead, r.id, r.etapa, r.closer, r.sdr, r.produto, r.telefone, r.resultado]);
@@ -7175,13 +7244,14 @@ function fechamentoIndicadores(parcial) {
   h += cartao('Atingimento dos principais', 'Única escala em que indicadores de unidades diferentes dividem o gráfico: percentual da meta de referência. A linha tracejada marca 100%.',
     vizAtingimento(K.fecha, { rotuloW: 236 }));
 
-  h += cartao('Reuniões realizadas x clientes fechados', 'Mesma escala (contagem), por isso dividem o gráfico. A distância entre as linhas é o que a reunião não converteu.',
+  h += cartao('Reuniões realizadas x clientes fechados',
+    'Seis meses até ' + rotuloMes(c.mes) + ', na mesma escala (contagem) &mdash; a distância entre as linhas é o que a reunião não converteu. Segue o mês e os filtros desta tela, como os cartões ao lado.',
     (() => {
-      const rr = evolucao((DADOS.atend && DADOS.atend.reg || []).filter(x => x.dAtend), x => x.dAtend);
-      const cl = evolucao((DADOS.clientes && DADOS.clientes.reg || []), x => x.dFecha);
-      return vizLinhas({ x: rr.map(x => x.k), fmt: n0, series: [
-        { nome: 'Reuniões', vals: rr.map(x => x.v), cor: 'var(--s1)' },
-        { nome: 'Clientes', vals: cl.map(x => x.v), cor: 'var(--s3)' }
+      const rr = c.serie.map(k => c.serieReun(k).length);
+      const cl = c.serie.map(k => c.serieCli(k).length);
+      return vizLinhas({ x: c.serie.map(rotuloMesCurto), fmt: n0, series: [
+        { nome: 'Reuniões', vals: rr, cor: 'var(--s1)' },
+        { nome: 'Clientes', vals: cl, cor: 'var(--s3)' }
       ] }) + legenda([{ nome: 'Reuniões', cor: 'var(--s1)' }, { nome: 'Clientes', cor: 'var(--s3)' }]);
     })());
 
@@ -7266,6 +7336,7 @@ function telaAreaMarketing() {
   const todos = K.principais.concat(K.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = barraTela(c, false);
+  h += avisoPeriodoMensal('<a href="#" data-ir="clientes">Fluxo de clientes</a>');
   h += resumoArea(todos);
 
   if (!c.temMkt) {
@@ -7429,6 +7500,8 @@ function moduloKpisDash() {
   const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = barraTela(c, true);
+  h += avisoPeriodoMensal('<a href="#" data-ir="fechamento:vendas">Vendas</a> ou ' +
+    '<a href="#" data-ir="clientes">Fluxo de clientes</a>');
   h += avisoFiltro(c);
   h += resumoArea(todos);
   if (c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das leituras que vivem sendo confundidas: ' +
@@ -7709,6 +7782,8 @@ function desenharTela(k) {
   const t = TELAS.find(x => x.k === k);
   const el = document.getElementById('tela-' + k);
   if (!t || !el) return;
+  const bf = document.getElementById('filtros');
+  if (bf) bf.classList.toggle('sem-uso', k === 'metasconfig' || k === 'fontes');
   TABELA_ATIVA = null;
   try {
     el.innerHTML = t.fn();
