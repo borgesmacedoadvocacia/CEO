@@ -237,12 +237,26 @@ dados*, não como zero silencioso. Releitura automática a cada 10 minutos.
 **Com o proxy publicado** (`apps-script/`, instruções em `apps-script/LEIA-ME.md`):
 
 - As planilhas ficam **privadas**. O web app roda com a conta dona delas.
+  Em 24/10/2026, cinco das oito já estão **Restritas** e o painel lê as doze
+  fontes pelo proxy. As três que seguem abertas por link — *Leads Kommo*,
+  *FLUXO DE CLIENTES* e *Metas e Resultados (antiga)* — alimentam painel
+  publicado que ainda lê direto; fechá-las antes de migrar esses painéis
+  derruba a tela deles. O estado planilha a planilha está em
+  [apps-script/LEIA-ME.md](apps-script/LEIA-ME.md).
 - A senha é conferida **no servidor**: o navegador deriva PBKDF2-SHA256
   (310 mil iterações) do login + senha e envia só o resultado. A senha nunca
   trafega e nunca é guardada.
 - Os IDs das planilhas ficam nas Propriedades do Script, **não no repositório**.
 - CPF/CNPJ é recortado no servidor.
 - 8 tentativas erradas travam por 10 minutos. Nenhuma função grava.
+
+**Quem importa de quem.** O Cérebro Comercial monta a espinha dorsal com
+`IMPORTRANGE` das outras planilhas, e `IMPORTRANGE` roda com a identidade do
+**dono do arquivo que importa** — não com a de quem abre a planilha. Fechar
+uma planilha espelhada sem que o dono do Cérebro tenha acesso **nomeado** a
+ela faz a célula virar `#REF!` em silêncio: o painel continua lendo o Cérebro
+normalmente, só que com menos linhas. Confira sempre a aba `LEIA-ME` do
+Cérebro, em *"STATUS DAS CONEXÕES"*, depois de mexer em compartilhamento.
 
 **Sem o proxy**, o painel lê as planilhas direto do navegador. Isso só funciona
 com planilha compartilhada por link — ou seja, **quem tiver o ID lê sem senha**.

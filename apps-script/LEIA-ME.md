@@ -77,38 +77,62 @@ Abra o painel, vá em **Fontes e dados** → **Leitura pelo proxy** → cole o U
 e clique em **Usar o proxy**. O painel recarrega por ele e a tela passa a
 mostrar `proxy` na coluna de transporte.
 
-## 6. Fechar as planilhas
+## 6. Fechar as planilhas — feito em 5 das 8
 
-Só depois que o passo 5 estiver funcionando, em **cada** planilha da tabela
-acima: **Compartilhar** → *Acesso geral* → **Restrito**.
+Em **cada** planilha: **Compartilhar** → *Acesso geral* → **Restrito**. A partir
+daí o único caminho para o dado é o proxy, e o único jeito de passar pelo proxy
+é a senha.
 
-A partir daí o único caminho para o dado é o proxy, e o único jeito de passar
-pelo proxy é a senha. Confira no painel: tudo deve continuar carregando.
+A **escrita** por link já tinha sido fechada antes, nas duas que estavam como
+*editor para qualquer pessoa com o link*.
 
-### Onde cada planilha está hoje (24/10/2026)
+### Onde cada planilha está (24/10/2026, 23h)
 
-A **escrita** por link já foi fechada nas duas que estavam abertas — *Fluxo de
-Atendimentos* e *Campanhas Meta Ads* estavam como **editor** para qualquer
-pessoa com o link. Ninguém mais edita por link.
-
-Falta a **leitura**. As oito seguem como *qualquer pessoa com o link pode ver*,
-e é isso que o passo 6 resolve:
-
-| Planilha | Hoje | Depois do passo 6 |
+| Planilha | Acesso geral | Por quê |
 |---|---|---|
-| Fluxo de Atendimentos | pode ver | Restrito |
-| FLUXO DE CLIENTES [2026] | pode ver | Restrito |
-| Campanhas Meta Ads | pode ver | Restrito |
-| Metas e Resultados [NOVA] | pode ver | Restrito |
-| Metas e Resultados (antiga) | pode ver | Restrito |
-| Leads Kommo [DASHBOARDS] | pode ver | Restrito |
-| FLUXO FINANCEIRO 2026 | pode ver | Restrito |
-| TODOS OS LEADS [CÉREBRO] | pode ver | Restrito |
+| TODOS OS LEADS [CÉREBRO] | **Restrito** | nenhum outro painel a lê |
+| Fluxo de Atendimentos | **Restrito** | só citada num README |
+| Campanhas Meta Ads | **Restrito** | a única referência é um Apps Script, que lê por conta nomeada |
+| Metas e Resultados [NOVA] | **Restrito** | nenhuma referência |
+| FLUXO FINANCEIRO 2026 | **Restrito** | nenhuma referência |
+| Leads Kommo [DASHBOARDS] | aberta por link | `dashboard-kommo` lê por link |
+| FLUXO DE CLIENTES [2026] | aberta por link | `dashboard-meta-ads`, `fluxodeclientes` e `dashboard` leem por link |
+| Metas e Resultados (antiga) | aberta por link | `KPISdoComercial` e o `painel-tv` do site leem por link |
 
-> **Comece pelo Cérebro Comercial.** É a planilha com a base inteira de leads —
-> nome, telefone e honorários de 14.463 linhas — e é a única que o painel já
-> se recusa a ler por link. Fechá-la não tira nada da tela, porque a tela
-> ainda não a usa: ela só passa a existir no painel quando o proxy entrar.
+Conferido planilha a planilha: o `gviz` anônimo devolve **HTTP 401** nas cinco
+fechadas e **200** nas três abertas, e o painel segue lendo **12 de 12 fontes
+pelo proxy**.
+
+As três últimas não são esquecimento. Fechá-las derruba painel publicado que
+a equipe usa — a varredura dos 29 repositórios públicos da conta está na
+tabela. Cada um precisa migrar para o proxy (ou para um proxy próprio) antes.
+
+### A armadilha: de quem é a planilha que importa a outra
+
+Fechar o *Fluxo de Atendimentos* quebrou o **Cérebro Comercial**, e vale
+entender por quê antes de fechar as outras três.
+
+O Cérebro é espelho: ele monta a espinha dorsal com `IMPORTRANGE` das quatro
+planilhas comerciais. `IMPORTRANGE` roda com a identidade do **dono do arquivo
+que importa**, e o dono do Cérebro é a `claude.bmadvocacia@gmail.com` — que
+alcançava o *Fluxo de Atendimentos* **só pelo link público**. Fechado o link,
+a célula virou `#REF!`, a aba Reuniões zerou e a espinha dorsal caiu de 14.476
+para 13.572 registros. A própria aba `LEIA-ME` do Cérebro acusa isso, em
+*"2) STATUS DAS CONEXÕES"*.
+
+Conserto, um clique: no *Fluxo de Atendimentos*, **Compartilhar** → adicionar
+`claude.bmadvocacia@gmail.com` como **Leitor**. A planilha segue restrita — o
+que volta é o acesso **nomeado**, que é a forma certa de dar esse acesso.
+
+Conserto definitivo: **transferir a propriedade do Cérebro para a
+`gabriel@borgesmacedoadvocacia.com.br`**, que é dona das outras sete. Aí o
+`IMPORTRANGE` passa a rodar como quem já tem acesso a tudo, nenhuma permissão
+extra é necessária agora nem no futuro, e a base mais sensível do escritório
+deixa de depender de uma conta Gmail avulsa.
+
+> Antes de fechar *FLUXO DE CLIENTES*, o mesmo cuidado: o Cérebro também a
+> espelha (Clientes 2026 e 2025). A *Leads Kommo* não corre esse risco — ali a
+> `claude.bmadvocacia` já é editora nomeada.
 
 ---
 
