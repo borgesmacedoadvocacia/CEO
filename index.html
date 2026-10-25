@@ -870,6 +870,14 @@ if (window.self !== window.top) {
 
   /* Celula de campanha: nome e, embaixo, de que tipo de campanha se trata. */
   .cel-sub { display: block; font-size: 0.645rem; color: #6b7a93; line-height: 1.4; margin-top: 0.12rem; font-weight: 400; }
+  /* "Nao da para saber" tem de parecer diferente de "zero". Fica apagado e
+     em letra menor, com o porque no title, para nao competir com o numero
+     de quem tem atribuicao de verdade. */
+  .cel-na {
+    font-size: 0.66rem; font-weight: 500; color: #5a6880;
+    font-style: italic; cursor: help; border-bottom: 1px dotted #39465f;
+  }
+  .rod-versao { color: #566379; font-size: 0.66rem; }
 
   /* --- barra da tela ---
      O cabecalho fixo ja diz em que tela se esta; repetir o nome num titulo
@@ -1154,6 +1162,9 @@ async function abrirCofre(usuario, senha) {
 }
 
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
+/* Carimbado pelo build. Serve para separar "o painel esta errado" de
+   "o navegador ainda esta com a versao de antes em cache". */
+const BUILD = '24/10/2026 22:40';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -4128,7 +4139,10 @@ function telaVendas(modo) {
    O id do quadro se repete nas duas abas, e isso e proposital - elas nunca
    estao na tela ao mesmo tempo, e assim a ordenacao escolhida numa vale na
    outra. */
-function blocoCampanhas(campanhas, campVis, diasDoMes) {
+const SEM_ATRIB = '<span class="cel-na" title="O CRM n\u00e3o escreve o nome desta campanha no lead, ' +
+  'ent\u00e3o n\u00e3o d\u00e1 para contar os eleg\u00edveis dela. N\u00e3o \u00e9 zero: \u00e9 desconhecido.">s/ atrib.</span>';
+
+function blocoCampanhas(campanhas, campVis, diasDoMes, notaAtrib) {
   let h = '';
   h += barraMostrar([
     { rot: 'Todas as campanhas', n: campanhas.length, ativa: !F.soAtivas, attr: 'data-ativas="false"' },
@@ -4154,11 +4168,15 @@ function blocoCampanhas(campanhas, campVis, diasDoMes) {
     'aqui s\u00f3 h\u00e1 linha para campanha que <b>gastou no per\u00edodo escolhido</b>. Cliente que veio de uma ' +
     'campanha pausada, renomeada ou de outro m\u00eas continua contado no cart\u00e3o de Clientes do m\u00f3dulo, ' +
     'que olha a ORIGEM do fechamento e n\u00e3o o investimento do per\u00edodo. S\u00e3o duas perguntas diferentes.' +
+    '<br><b>Eleg\u00edveis e Qualificados saem do CRM, n\u00e3o do Meta</b>, e dependem de o lead ter o nome ' +
+    'da campanha anotado. Onde ningu\u00e9m anotou, a c\u00e9lula diz <i>s/ atrib.</i> &mdash; que \u00e9 diferente de zero.' +
     '<br><b>O Kommo n\u00e3o guarda a data de entrada em cada etapa</b>, s\u00f3 a etapa atual: ' +
     'os eleg\u00edveis s\u00e3o contados pela etapa de hoje e situados no tempo pela data de cria\u00e7\u00e3o do lead.' +
     '<br><b>Campanhas de mesmo nome entram na mesma linha</b>, e a linha avisa quando isso acontece. ' +
     'Tem de ser assim porque o CRM anota o <i>nome</i> da campanha, n\u00e3o o ID: separar por ID quebraria ' +
     'a liga\u00e7\u00e3o com reuni\u00e3o e cliente.');
+
+  h += notaAtrib || '';
 
   h += tabelaInterativa('trafego-tab', [
     { k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap',
@@ -4175,10 +4193,10 @@ function blocoCampanhas(campanhas, campVis, diasDoMes) {
     { k: 'leads', rot: 'Leads', tipo: 'num' },
     { k: 'cpl', rot: 'CPL', tipo: 'moeda' },
     { k: 'elegiveis', rot: 'Eleg\u00edveis', tipo: 'num', cls: 'forte',
-      html: r => !r.elegiveis ? '&mdash;' : n0(r.elegiveis) },
+      html: r => !r.crmAnota ? SEM_ATRIB : n0(r.elegiveis) },
     { k: 'custoEleg', rot: 'Custo/eleg.', tipo: 'moeda' },
     { k: 'qualificados', rot: 'Qualificados', tipo: 'num', cls: 'forte',
-      html: r => !r.qualificados ? '&mdash;' : n0(r.qualificados) },
+      html: r => !r.crmAnota ? SEM_ATRIB : n0(r.qualificados) },
     { k: 'reunioes', rot: 'Reuni\u00f5es', tipo: 'num', cls: 'forte',
       html: r => !r.reunioes ? '&mdash;' : n0(r.reunioes) },
     { k: 'convReuniao', rot: 'Conv. reun.', tipo: 'pct', casas: 1 },
@@ -4339,12 +4357,17 @@ function telaTrafego(aba) {
      etapa de hoje, com o lead situado no tempo pela data de criacao. Esta e
      a diferenca para o painel da central, e ela esta escrita no glossario. */
   const elegPorCamp = {}, qualPorCamp = {};
-  (DADOS.kommo ? selKommo() : []).forEach(r => {
-    if (!temCampanha(r)) return;
+  const koRec = DADOS.kommo ? selKommo() : [];
+  const koComNome = koRec.filter(temCampanha);
+  koComNome.forEach(r => {
     const k = chaveBusca(r.campanha);
     if (ehElegivel(r)) elegPorCamp[k] = (elegPorCamp[k] || 0) + 1;
     if (ehQualificado(r)) qualPorCamp[k] = (qualPorCamp[k] || 0) + 1;
   });
+  /* Nomes de campanha que o CRM realmente escreve no lead. Sem o nome aqui,
+     a campanha nao tem como ter elegivel: nao e zero, e desconhecido. */
+  const nomesCRM = new Set(koComNome.map(r => chaveBusca(r.campanha)));
+  const semCampanha = koRec.length - koComNome.length;
   const diasDoMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
 
   /* Reunioes e clientes indexados pelo nome da campanha / origem. */
@@ -4380,6 +4403,7 @@ function telaTrafego(aba) {
       clientes: cl, convCliente: taxa(cl, l), convReunCli: taxa(cl, rn),
       honorarios: hon, cac: cl ? g.v / cl : null, roi: g.v ? hon / g.v : null,
       custoReuniao: rn ? g.v / rn : null,
+      crmAnota: nomesCRM.has(k),
       status: c.status || '', ativa: ativas.length > 0, homonimas: homonimas.length,
       objetivo: c.objetivo || '', origemOrc: c.origemOrc || '',
       orcDia: soma(ativas, x => x.orcDia), orcMes: soma(ativas, x => x.orcDia) * diasDoMes,
@@ -4387,6 +4411,45 @@ function telaTrafego(aba) {
     };
   });
   const campVis = F.soAtivas ? campanhas.filter(c => c.ativa) : campanhas;
+
+  /* ===== ROTULOS ORFAOS =====
+     Lead que o CRM atribui a uma campanha que nao gastou no periodo. Nao e
+     erro de leitura: e o funil do WhatsApp gravando sempre o mesmo rotulo,
+     que pode ser de campanha pausada ha meses. Esses leads existem e sao
+     bons - mas nao somam em linha nenhuma da tabela, porque a tabela so tem
+     linha para quem gastou. Dizer isso e o minimo; esconder seria pior. */
+  const comGasto = new Set(campanhas.map(c => chaveBusca(c.campanha)));
+  const orfaos = {};
+  koComNome.forEach(r => {
+    const k = chaveBusca(r.campanha);
+    if (comGasto.has(k)) return;
+    const o = orfaos[r.campanha] = orfaos[r.campanha] || { n: 0, eleg: 0, qual: 0 };
+    o.n++;
+    if (ehElegivel(r)) o.eleg++;
+    if (ehQualificado(r)) o.qual++;
+  });
+  const semNomeNoCRM = campanhas.filter(c => !nomesCRM.has(chaveBusca(c.campanha))).length;
+  const notaAtrib = (!campanhas.length || (!semNomeNoCRM && !semCampanha && !Object.keys(orfaos).length))
+    ? ''
+    : aviso('atencao',
+      '<b>Eleg\u00edveis e qualificados s\u00f3 aparecem na campanha cujo nome o CRM escreve no lead.</b> ' +
+      'Hoje <b>' + n0(semNomeNoCRM) + ' das ' + n0(campanhas.length) + '</b> campanhas com gasto no per\u00edodo ' +
+      'nunca aparecem pelo nome no CRM' +
+      (semCampanha ? ', e <b>' + n0(semCampanha) + ' dos ' + n0(koRec.length) + ' leads</b> (' +
+        pctOuTraco(taxa(semCampanha, koRec.length), 0) + ') entram sem campanha nenhuma' : '') +
+      '. Nessas linhas a coluna diz <i>s/ atrib.</i> em vez de zero: o painel n\u00e3o sabe, e um zero ali ' +
+      'seria leitura errada &mdash; campanha sem eleg\u00edvel anotado n\u00e3o \u00e9 campanha ruim.' +
+      (Object.keys(orfaos).length
+        ? '<br>O CRM tamb\u00e9m carimba r\u00f3tulo de campanha que <b>n\u00e3o gastou no per\u00edodo</b>: ' +
+          Object.entries(orfaos).sort((x, y) => y[1].n - x[1].n).slice(0, 3)
+            .map(([nome, o]) => '<b>' + esc(nome) + '</b> (' + n0(o.n) + ' leads, ' + n0(o.eleg) +
+              ' eleg\u00edveis, ' + n0(o.qual) + ' qualificados)').join(' &middot; ') +
+          '. S\u00e3o leads de verdade, presos a um nome que n\u00e3o est\u00e1 no ar &mdash; por isso n\u00e3o somam ' +
+          'em linha nenhuma, e o total da tabela fica abaixo do total do m\u00f3dulo.'
+        : '') +
+      '<br><b>Para destravar:</b> o lead que entra pelo WhatsApp precisa receber o nome real da campanha ' +
+      '&mdash; o Meta manda isso no clique do an\u00fancio, do mesmo jeito que o formul\u00e1rio j\u00e1 recebe. ' +
+      'Enquanto o funil gravar um r\u00f3tulo fixo, nenhuma conta de qualidade por campanha de WhatsApp fecha.');
 
   /* ===== COBERTURA DA ATRIBUICAO =====
      Antes de comparar campanhas, e preciso saber se da para comparar. Se a
@@ -4421,7 +4484,7 @@ function telaTrafego(aba) {
   /* A tabela vem primeiro: e ela que a aba existe para mostrar, e e dela
      que saem os graficos abaixo. Os cartoes sao recortes dos dez primeiros
      de uma coluna ou outra - leitura de apoio, nao a resposta. */
-  h += blocoCampanhas(campanhas, campVis, diasDoMes);
+  h += blocoCampanhas(campanhas, campVis, diasDoMes, notaAtrib);
 
   h += '<div class="secao-titulo">Leituras de apoio</div>';
   h += '<div class="grid g-2">';
@@ -4472,7 +4535,7 @@ function telaTrafego(aba) {
       'o "em qual campanha?" que todo indicador acima levanta. Ela segue o <b>filtro de per\u00edodo</b> ' +
       'da barra de cima (' + esc(rotuloPeriodo()) + '), e nao o mes dos indicadores &mdash; os dois ' +
       'recortes convivem na tela de proposito, e cada bloco diz qual usa.');
-    h += blocoCampanhas(campanhas, campVis, diasDoMes);
+    h += blocoCampanhas(campanhas, campVis, diasDoMes, notaAtrib);
     return h;
   }
 
@@ -7958,10 +8021,12 @@ async function iniciar(recarregar) {
     const quantas = FONTES.length - Object.keys(ERROS).length;
     document.getElementById('rodapeAtualizado').innerHTML =
       'Leitura de ' + ULTIMA_LEITURA.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
-      '<br>' + quantas + ' de ' + FONTES.length + ' fontes lidas' +
+      '<br>' + quantas + ' de ' + FONTES.length + ' fontes lidas ' +
+      (TRANSPORTE === 'proxy' ? 'pelo proxy' : 'por link direto') +
       ' &middot; ' + (Object.keys(ERROS).length
         ? '<a href="#" data-ir="fontes" style="color:var(--atencao)">ver falhas</a>'
-        : '<a href="#" data-ir="fontes">fontes e dados</a>');
+        : '<a href="#" data-ir="fontes">fontes e dados</a>') +
+      '<br><span class="rod-versao">vers\u00e3o de ' + esc(BUILD) + '</span>';
   } catch (e) {
     alvo.innerHTML = aviso('critico', '<b>Nao consegui ler as planilhas:</b> ' + esc(e.message));
     alvo.classList.remove('oculto');
