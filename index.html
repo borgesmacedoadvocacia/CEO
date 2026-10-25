@@ -1164,7 +1164,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '24/10/2026 22:40';
+const BUILD = '25/10/2026 11:53';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -3569,13 +3569,56 @@ function ritmoDoMes() {
 /* ==========================================================================
    TELA 2 - FUNIL E PRE-QUALIFICACAO
    ========================================================================== */
+/* ===== O QUE O FILTRO DO TOPO ALCANCA NO FUNIL DO PRODUTO =====
+   Esta tela responde ao Periodo ate onde existe aba de planilha, e nao tem
+   como responder a produto, closer, SDR, origem ou busca: a aba traz o total
+   do mes por etapa, sem nenhuma dessas quebras. Ficar calada era o pior dos
+   mundos - a pessoa mexia no filtro, o numero nao mudava, e a tela nao
+   explicava nada. Entao ela nomeia o que ignorou e diz onde aquilo vale. */
+function avisoFiltroFunil(umMesSo) {
+  const ign = [];
+  if (F.produtos.size) ign.push('Produto jur\u00eddico');
+  if (F.closers.size) ign.push('Closer');
+  if (F.sdrs.size) ign.push('SDR');
+  if (F.origens.size) ign.push('Origem');
+  if (F.busca) ign.push('Pesquisar');
+  if (umMesSo && !ign.length) return '';
+  const linhas = [];
+  if (!umMesSo) {
+    const rot = (PERIODOS.find(x => x.k === F.periodo) || {}).rot || F.periodo;
+    linhas.push('O per\u00edodo <b>' + esc(rot) + '</b> n\u00e3o cabe aqui: a contagem \u00e9 mensal e o painel ' +
+      'carrega duas abas da planilha, a do m\u00eas corrente e a do anterior. Esta tela est\u00e1 mostrando <b>' +
+      rotuloMes(MES_ATUAL) + '</b> &mdash; <b>M\u00eas anterior</b> troca de aba e muda tudo que vem abaixo.');
+  }
+  if (ign.length) {
+    linhas.push('<b>' + ign.join(', ') + '</b> ' + (ign.length > 1 ? 'n\u00e3o valem' : 'n\u00e3o vale') +
+      ' nesta aba: a planilha traz o total do m\u00eas por etapa, sem quebra por pessoa, produto ou origem. ' +
+      'Os n\u00fameros abaixo seguem cheios.');
+  }
+  return aviso('atencao', '<b>O filtro do topo alcan\u00e7a esta aba s\u00f3 em parte.</b><br>' +
+    linhas.join('<br>') +
+    '<br>Para o mesmo recorte lead a lead, com todos os filtros valendo, abra a aba ' +
+    '<a href="#" data-ir="prequal:kommo">Leads do CRM</a>.');
+}
+
 function telaFunil(aba) {
   aba = aba || 'produto';
   let h = '';
   const p = DADOS.metas && DADOS.metas.produtos;
-  const atual = p && p.atual;
 
   if (aba === 'produto') {
+  /* ===== O PERIODO DO TOPO MANDA AQUI TAMBEM =====
+     Existe uma aba de Produtos Juridicos por mes, e o painel carrega duas: a
+     do mes corrente e a do anterior. "Mes atual" e "Mes anterior" sao, logo,
+     recortes de verdade - e eram justamente os que a tela nao fazia, ficava
+     no mes corrente por mais que a pessoa trocasse o periodo.
+     Periodo mais largo (3, 6, 12 meses, ano, historico) nao tem onde cair:
+     nao existe serie dessas abas no painel. Em vez de fingir que o recorte
+     valeu, a tela mostra o mes corrente e diz que nao cobriu. */
+  const mesSel = F.periodo === 'ant' ? mesMais(MES_ATUAL, -1) : MES_ATUAL;
+  const umMesSo = F.periodo === 'mes' || F.periodo === 'ant';
+  const atual = F.periodo === 'ant' ? (p && p.anterior) : (p && p.atual);
+
   if (atual && atual.real) {
     const ordem = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)', 'responderam a triagem', 'elegiveis',
       'responderam a qualificacao', 'qualificados (aguardando documentacao)', 'diagnosticos', 'viaveis',
@@ -3616,12 +3659,13 @@ function telaFunil(aba) {
       etapas.push({ k: (e && e.rot) || k, v: v });
     });
 
-    h += '<div class="secao-titulo primeiro">Funil do produto &middot; ' +
-      (atual.medicao ? 'medicao de ' + esc(atual.medicao) : rotuloMes(MES_ATUAL)) + '</div>';
+    h += '<div class="secao-titulo primeiro">Funil do produto &middot; ' + rotuloMes(mesSel) +
+      (atual.medicao ? ' &middot; medicao de ' + esc(atual.medicao) : '') + '</div>';
     h += aviso('info', 'Este funil vem da aba <b>Produtos Juridicos</b> da planilha de Metas &mdash; ' +
       'e a contagem que o time mantem a mao. A percentagem ao lado de cada etapa e a conversao sobre a etapa anterior. ' +
       'O topo e o <b>total de leads do CRM</b>: todo lead entra no Kommo, e Meta Ads e organico sao recortes ' +
       'de dentro desse total &mdash; por isso eles nao se somam ao total, eles o dividem.');
+    h += avisoFiltroFunil(umMesSo);
     h += '<div class="grid g-2">';
     h += cartao('Funil realizado no mês', 'Volume por etapa e conversão etapa a etapa.', vizFunil(etapas));
 
@@ -3710,11 +3754,12 @@ function telaFunil(aba) {
     }
 
     /* ----- Origem dos leads: campanha a campanha ----- */
-    /* Escopo do MES, nao do filtro de periodo: o organico e o total do CRM
-       vem da aba de Produtos Juridicos, que e mensal. Somar 6 meses de
-       campanha contra 1 mes de organico daria uma participacao mentirosa. */
-    h += '<div class="secao-titulo">Origem dos leads &middot; ' + rotuloMes(atual.medicao ? MES_ATUAL : MES_ATUAL) + '</div>';
-    const midiaMes = (DADOS.metaDia ? DADOS.metaDia.reg : []).filter(r => r.mes === MES_ATUAL);
+    /* Escopo do MES ESCOLHIDO, nao da faixa inteira do filtro: o organico e
+       o total do CRM vem da aba de Produtos Juridicos, que e mensal. Somar 6
+       meses de campanha contra 1 mes de organico daria uma participacao
+       mentirosa - entao a midia aqui segue o mesmo mes do funil de cima. */
+    h += '<div class="secao-titulo">Origem dos leads &middot; ' + rotuloMes(mesSel) + '</div>';
+    const midiaMes = (DADOS.metaDia ? DADOS.metaDia.reg : []).filter(r => r.mes === mesSel);
     const porCampanha = porN(agrupar(midiaMes.filter(r => r.leadsTotal > 0),
       r => r.campanha, r => r.leadsTotal)).map(g => ({ k: g.k, v: g.v, tipo: 'Campanha paga' }));
     const leadsPagos = soma(porCampanha, g => g.v);
@@ -3822,6 +3867,10 @@ function telaFunil(aba) {
         h += '</div>';
       }
     }
+  } else if (F.periodo === 'ant') {
+    h += aviso('atencao', '<b>A planilha de Metas nao tem a aba de Produtos Juridicos de ' +
+      rotuloMes(mesSel) + '.</b> O funil do produto so existe a partir do mes em que a aba foi criada. ' +
+      'Volte o filtro para <b>Mes atual</b> para ver ' + rotuloMes(MES_ATUAL) + '.');
   } else if (p && p.atualErro) {
     h += aviso('atencao', 'Nao consegui ler a aba de funil da planilha de Metas: ' + esc(p.atualErro));
   }
