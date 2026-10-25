@@ -8,7 +8,7 @@
 <meta name="referrer" content="no-referrer" />
 <!-- A pagina so fala com o endpoint das planilhas. Sem CDN, sem rastreador,
      sem endereco para onde dado possa escapar. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://docs.google.com; base-uri 'none'; form-action 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://docs.google.com https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'" />
 <script>
 /* Este painel nunca roda dentro de outra pagina: embutido num iframe de
    terceiro, ele se recusa a renderizar (anti-clickjacking). */
@@ -736,9 +736,9 @@ if (window.self !== window.top) {
     box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -16px rgba(0,0,0,0.9);
   }
   .met-linha {
-    display: grid; align-items: center; gap: 0.5rem 1.1rem;
-    grid-template-columns: minmax(0, 1.9fr) minmax(86px, auto) minmax(84px, 0.9fr) minmax(96px, auto);
-    padding: 0.66rem 1.1rem; border-top: 1px solid #16213a;
+    display: grid; align-items: center; gap: 0.45rem 0.8rem;
+    grid-template-columns: minmax(0, 1fr) minmax(80px, auto) minmax(84px, 1.35fr) minmax(96px, auto);
+    padding: 0.6rem 1.1rem; border-top: 1px solid #16213a;
   }
   .met-linha:first-child { border-top: none; }
   .met-linha:hover { background: rgba(38,54,90,0.26); }
@@ -1198,8 +1198,11 @@ async function derivarToken(usuario, senha) {
   return btoa(s);
 }
 
+/* Implantacao v1 do web app, publicada em 24/10/2026. Nao e segredo: sem a
+   senha o endpoint responde "credencial invalida" e nada mais. */
+const PROXY_PADRAO = 'https://script.google.com/macros/s/AKfycbytVOChmKQ0X_WUn0a4cl8MN3sNWv7XDIaso7D479x_8IM5I5PyLQIgukF-cqteXFbdeA/exec';
 function proxySalvo() {
-  try { return localStorage.getItem(K_PROXY) || null; } catch (e) { return null; }
+  try { return localStorage.getItem(K_PROXY) || PROXY_PADRAO; } catch (e) { return PROXY_PADRAO; }
 }
 function salvarProxy(url) {
   try {
@@ -7956,7 +7959,9 @@ async function iniciar(recarregar) {
     document.getElementById('rodapeAtualizado').innerHTML =
       'Leitura de ' + ULTIMA_LEITURA.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
       '<br>' + quantas + ' de ' + FONTES.length + ' fontes lidas' +
-      (Object.keys(ERROS).length ? ' &middot; <a href="#" data-ir="fontes" style="color:var(--atencao)">ver falhas</a>' : '');
+      ' &middot; ' + (Object.keys(ERROS).length
+        ? '<a href="#" data-ir="fontes" style="color:var(--atencao)">ver falhas</a>'
+        : '<a href="#" data-ir="fontes">fontes e dados</a>');
   } catch (e) {
     alvo.innerHTML = aviso('critico', '<b>Nao consegui ler as planilhas:</b> ' + esc(e.message));
     alvo.classList.remove('oculto');
