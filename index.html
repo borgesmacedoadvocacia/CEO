@@ -1176,7 +1176,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '29/10/2026 11:04';
+const BUILD = '29/10/2026 14:16';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -1263,6 +1263,8 @@ const MESES_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out'
 const brl  = v => fmtBRL.format(Number(v) || 0);
 const brl0 = v => fmtBRL0.format(Number(v) || 0);
 const n0   = v => fmtNum.format(Math.round(Number(v) || 0));
+/* Numero com a palavra no singular ou no plural - "1 mes", "9 meses". */
+const plural = (n, um, varios) => n0(n) + ' ' + (Math.round(Number(n) || 0) === 1 ? um : varios);
 const n1   = v => fmtNum1.format(Number(v) || 0);
 const pct  = (v, casas) => (Number(v) || 0).toLocaleString('pt-BR', {
   minimumFractionDigits: casas == null ? 0 : casas,
@@ -2048,6 +2050,26 @@ const MES_ABA  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 const MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 
+/* As abas KPIS que o painel procura: o ano inteiro ate o mes corrente - e,
+   em janeiro, tambem o dezembro do ano anterior.
+   Os dois primeiros meses mantem os nomes de fonte ANTIGOS, kpisAtual e
+   kpisAnterior: assim o painel continua lendo o mes e o anterior mesmo
+   ligado a um proxy que ainda nao conhece as chaves novas. Os outros meses
+   vao por nome - kpisSetembro, kpisAgosto - e, num proxy antigo, voltam como
+   "fonte desconhecida", o que apenas deixa aquele mes sem KR. */
+function mesesKpis() {
+  const mi = new Date().getMonth();
+  const is = [];
+  for (let i = 0; i <= mi; i++) is.push(i);
+  if (mi === 0) is.push(11);
+  return is.map(i => ({
+    nome: MES_ABA[i],
+    fonte: i === mi ? 'kpisAtual'
+         : i === (mi + 11) % 12 ? 'kpisAnterior'
+         : 'kpis' + semAcento(MES_ABA[i])
+  }));
+}
+
 async function tentarAbas(sheet, nomes, leitor, headers, fonte) {
   let ultimo = null;
   for (const aba of nomes) {
@@ -2062,13 +2084,16 @@ async function carregarMetas() {
   const ano = new Date().getFullYear();
   const out = { meses: {}, okrs: [], produtos: {} };
 
-  /* Nas abas KPIS o cabecalho esta na linha 5 (linhas 1-4 sao titulo). */
-  for (const i of [mi, (mi + 11) % 12]) {
-    const nome = MES_ABA[i];
-    const r = await tentarAbas(CONFIG.SHEETS.metas, ['KPIS ' + nome, 'KPIS ' + semAcento(nome)],
-      l => lerKpis(l, nome), 5, i === mi ? 'kpisAtual' : 'kpisAnterior');
-    out.meses[nome] = r.ok || { erro: r.erro };
-  }
+  /* Nas abas KPIS o cabecalho esta na linha 5 (linhas 1-4 sao titulo).
+     Todas de uma vez: pelo proxy a leitura ja chegou em memoria e isto nao
+     custa viagem; por gviz sao dez pedidos que cabem em paralelo, contra dez
+     esperas em fila. Mes sem aba cai no catch de tentarAbas e fica com
+     { erro } - nao e falha da fonte, e mes que a planilha nao tem. */
+  await Promise.all(mesesKpis().map(async mm => {
+    const r = await tentarAbas(CONFIG.SHEETS.metas, ['KPIS ' + mm.nome, 'KPIS ' + semAcento(mm.nome)],
+      l => lerKpis(l, mm.nome), 5, mm.fonte);
+    out.meses[mm.nome] = r.ok || { erro: r.erro };
+  }));
 
   /* Aba de marketing: OPCIONAL. Audiencia, conteudo e social seller nao tem
      fonte em nenhuma das planilhas de hoje - esses numeros vivem dentro do
@@ -2529,7 +2554,12 @@ let ULTIMA_LEITURA = null;
 const FONTES_PROXY = ['atend', 'clientes', 'metaDia', 'metaCamp', 'metaReun',
   'metaAnuncios', 'metaJanelas',
   'kpisAtual', 'kpisAnterior', 'kpisMkt', 'prodAtual', 'prodAnterior', 'okrs',
-  'hist', 'fin', 'kommo', 'cerebro'];
+  'hist', 'fin', 'kommo', 'cerebro']
+  /* Mais um pedido por mes do ano, fora os dois que ja vao acima. Enquanto o
+     proxy publicado nao conhecer essas chaves, ele responde erro nelas e o
+     painel segue com os dois meses de sempre. */
+  .concat(mesesKpis().map(m => m.fonte)
+    .filter(k => k !== 'kpisAtual' && k !== 'kpisAnterior'));
 
 async function carregarTudo() {
   Object.keys(ERROS).forEach(k => delete ERROS[k]);
@@ -3554,12 +3584,42 @@ function ticketMedio(lista) {
 const semTicket = lista => (lista || []).filter(r => (r.honIni || 0) <= 0).length;
 const media = (l, f) => { const v = l.map(f).filter(x => x != null && isFinite(x) && x !== 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
 
+/* ===== O KR DE CADA INDICADOR, NA ABA KPIS =====
+   O texto com que cada chave de META e procurada entre os Resultados Chaves.
+   Uma tabela so, usada pela tela do funil de vendas e pela media do ano:
+   enquanto eram duas listas, bastava renomear um KR para as duas discordarem
+   em silencio. Indicador que nao esta aqui nao tem KR - a planilha nao conta
+   lead organico, abordagem de Instagram, ticket, CAC nem ROI. */
+const KR_DO_INDICADOR = {
+  leadsAbord:     'novos leads',
+  leadsElegiveis: 'leads elegiveis',
+  leadsQual:      'leads qualificados',
+  diagRealizados: 'novos calculos',
+  diagPositivos:  'diagnosticos',
+  reunioes:       'reunioes realizadas',
+  clientes:       'clientes',
+  faturamento:    'honorarios iniciais',
+  noShow:         'no show',
+  convLeadReun:   'conversao em reuniao',
+  convReunCli:    'conversao em vendas'
+};
+
+/* ===== ACHAR UM KR PELO NOME =====
+   Hifen, parenteses e acento entram e saem dos rotulos da planilha sem
+   aviso - "No-Show" ja foi "No Show", e "Diagnosticos (Calculos)" carrega o
+   parenteses. Por isso a busca compara so letras, numeros e espaco simples,
+   dos dois lados. Uma funcao so: enquanto eram tres, a mesma procura achava
+   o KR num lugar e nao achava no outro. */
+const chaveKr = t => chaveBusca(t).replace(/[^a-z0-9]+/g, ' ').trim();
+const achaKr = (m, texto) => {
+  if (!m || m.erro || !m.krs) return null;
+  const kk = chaveKr(texto);
+  return m.krs.find(x => chaveKr(x.kr).indexOf(kk) >= 0) || null;
+};
+
 /* KR do mes na planilha de metas, por nome. */
 function kr(nomeMes, texto) {
-  const m = DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nomeMes];
-  if (!m || !m.krs) return null;
-  const k = chaveBusca(texto);
-  return m.krs.find(x => chaveBusca(x.kr).includes(k)) || null;
+  return achaKr(DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nomeMes], texto);
 }
 function metasMesAtual() {
   const m = DADOS.metas && DADOS.metas.meses;
@@ -6233,12 +6293,6 @@ function ctxArea() {
      A pontuacao do rotulo varia ("No-Show", "No Show", "Conversao em Reuniao
      [Automatico]"), entao a comparacao ignora pontuacao - senao um hifen na
      planilha faz o indicador aparecer como "sem fonte". */
-  const chaveKr = t => chaveBusca(t).replace(/[^a-z0-9]+/g, ' ').trim();
-  const achaKr = (m, texto) => {
-    if (!m || m.erro || !m.krs) return null;
-    const kk = chaveKr(texto);
-    return m.krs.find(x => chaveKr(x.kr).indexOf(kk) >= 0) || null;
-  };
   c.kr = texto => achaKr(DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[c.nomeMes], texto);
   c.krAnt = texto => {
     const nome = MESES_ACENTO[+ant.slice(5, 7) - 1];
@@ -7456,12 +7510,15 @@ function telaFunilVendas() {
   const ig = c.temKommo ? (c.koSoc || []).length : null;
   const honReg = soma(c.cli, r => r.honIni) || null;
 
-  const krLeads = c.kr('novos leads'), krEleg = c.kr('leads elegiveis'),
-        krQual = c.kr('leads qualificados'), krDiag = c.kr('diagnosticos'),
-        krReun = c.kr('reunioes realizadas'), krCli = c.kr('clientes'),
-        krHon = c.kr('honorarios iniciais'), krNoShow = c.kr('no show'),
-        krConvReun = c.kr('conversao em reuniao'), krConvVenda = c.kr('conversao em vendas'),
-        krCalc = c.kr('novos calculos');
+  /* Os nomes vem de KR_DO_INDICADOR, a mesma tabela que a media do ano usa -
+     renomear um KR na planilha agora e um ajuste num lugar. */
+  const K_ = KR_DO_INDICADOR;
+  const krLeads = c.kr(K_.leadsAbord), krEleg = c.kr(K_.leadsElegiveis),
+        krQual = c.kr(K_.leadsQual), krDiag = c.kr(K_.diagPositivos),
+        krReun = c.kr(K_.reunioes), krCli = c.kr(K_.clientes),
+        krHon = c.kr(K_.faturamento), krNoShow = c.kr(K_.noShow),
+        krConvReun = c.kr(K_.convLeadReun), krConvVenda = c.kr(K_.convReunCli),
+        krCalc = c.kr(K_.diagRealizados);
 
   const semKr = 'Sem KR &mdash; meta de Ajustes &gt; Metas';
   const crmNota = fn => c.temKommo
@@ -7713,32 +7770,38 @@ function telaFunilVendas() {
      A meta diz para onde o escritorio quer ir; a media do ano diz de onde
      ele esta saindo. Um mes a 70% da meta pode ser o melhor mes do ano - ou
      o pior -, e so a meta nao conta isso.
-     O quadro INTEIRO sai do registro, inclusive o resultado do mes: a media
-     so existe no registro (a planilha de Metas nasceu em setembro e o painel
-     carrega duas abas KPIS), e comparar resultado de uma base com media de
-     outra nao diria nada. Por isso o numero da primeira coluna pode diferir
-     do quadro de cima, que sai do KR - e a tela diz isso. */
+     CADA LINHA sai de uma base so, escolhida por mediaDoAno: o KR da aba
+     KPIS ou o registro, a que tiver mais meses fechados. O resultado do mes
+     acompanha a base da media - comparar resultado de uma com media de outra
+     nao diria nada. E por isso que a primeira coluna pode diferir do quadro
+     de cima, que sai sempre do KR, e a tela diz isso. */
   const comp = linhas.filter(l => l.chave).map(l => {
     const ma = mediaDoAno(l.chave, c.mes);
-    const real = realizadoNoMes(l.chave, c.mes);
+    const base = ma ? ma.base : 'registro';
+    const real = base === 'kr' ? krNoMes(l.chave, c.mes) : realizadoNoMes(l.chave, c.mes);
     const media = ma ? ma.media : null;
     const propMedia = media == null ? null : (l.acumula === false ? media : media * c.fracao);
-    return { rot: l.rot, tipo: l.tipo, inverso: l.inverso, real: real,
+    return { rot: l.rot, tipo: l.tipo, inverso: l.inverso, real: real, base: base,
       metaProp: l.metaProp, meta: l.meta, media: media, propMedia: propMedia,
       meses: ma ? ma.n : 0, vsMedia: taxa(real, propMedia) };
   }).filter(l => l.real != null || l.media != null);
 
   if (comp.length) {
     const poucos = comp.filter(l => l.media != null && l.meses < 3).length;
+    const nKr = comp.filter(l => l.base === 'kr').length;
+    const abasKr = krMesesDoAno(c.mes);
     h += '<div class="secao-titulo">Cada KPI contra a m\u00e9dia do ano</div>';
-    h += aviso('info', 'Este quadro sai inteiro do <b>registro</b> &mdash; CRM, clientes, atendimentos e insights do ' +
-      'Meta &mdash;, inclusive a primeira coluna. \u00c9 o \u00fanico lugar com hist\u00f3rico: a planilha de Metas nasceu em ' +
-      'setembro e o painel carrega duas abas KPIS. Por isso o <b>resultado do m\u00eas</b> aqui pode diferir do quadro ' +
-      'de cima, que sai do KR &mdash; comparar resultado de uma base com m\u00e9dia de outra n\u00e3o diria nada. ' +
-      'A <b>m\u00e9dia do ano</b> cobre os meses j\u00e1 fechados de ' + esc(c.mes.slice(0, 4)) + '; o m\u00eas em curso fica ' +
-      'de fora, porque est\u00e1 pela metade.' +
-      (poucos ? ' <b>' + n0(poucos) + ' indicador(es) t\u00eam menos de tr\u00eas meses fechados</b> &mdash; a coluna mostra ' +
-        'quantos entraram, e m\u00e9dia de dois meses n\u00e3o se l\u00ea como m\u00e9dia de nove.' : ''));
+    h += aviso('info', 'Cada linha sai de <b>uma base s\u00f3</b>, e a coluna <b>M\u00e9dia do ano</b> diz qual: o ' +
+      '<b>KR</b> da aba KPIS da planilha de Metas, ou o <b>registro</b> &mdash; CRM, clientes, atendimentos e ' +
+      'insights do Meta. Vale a que tem mais meses fechados; no empate, o KR. ' +
+      'De ' + esc(c.mes.slice(0, 4)) + ' o painel achou aba KPIS em <b>' + plural(abasKr, 'm\u00eas fechado', 'meses fechados') +
+      '</b>, e o registro cobre o ano inteiro &mdash; neste quadro, <b>' + n0(nKr) + ' do KR</b> e <b>' +
+      n0(comp.length - nKr) + ' do registro</b>. O <b>resultado do m\u00eas</b> acompanha a base da m\u00e9dia, e pode por isso diferir do quadro de ' +
+      'cima, que sai sempre do KR: resultado de uma base contra m\u00e9dia de outra n\u00e3o mediria nada. ' +
+      'O m\u00eas em curso fica fora da m\u00e9dia, porque est\u00e1 pela metade.' +
+      (poucos ? ' <b>' + (poucos === 1 ? 'Um indicador tem' : n0(poucos) + ' indicadores t\u00eam') +
+        ' menos de tr\u00eas meses fechados</b> &mdash; a coluna mostra quantos entraram, e m\u00e9dia de dois meses ' +
+        'n\u00e3o se l\u00ea como m\u00e9dia de nove.' : ''));
     h += cartao('Resultado do m\u00eas, meta e m\u00e9dia do ano',
       'A coluna <b>vs m\u00e9dia</b> compara o realizado com o que a m\u00e9dia do ano teria entregue at\u00e9 hoje: acima de 100% o m\u00eas est\u00e1 melhor que o pr\u00f3prio normal da casa.',
       tabelaInterativa('funilv-media', [
@@ -7755,7 +7818,8 @@ function telaFunilVendas() {
             return selo(nivelMeta(t), pct(r.vsMedia, 0)); } },
         { k: 'media', rot: 'M\u00e9dia do ano', tipo: 'num',
           html: r => r.media == null ? '&mdash;'
-            : fmtPorTipo(r.tipo)(r.media) + '<span class="cel-sub">' + n0(r.meses) + ' m\u00eas(es) fechado(s)</span>' },
+            : fmtPorTipo(r.tipo)(r.media) + '<span class="cel-sub">' + plural(r.meses, 'm\u00eas', 'meses') +
+              ' &middot; ' + (r.base === 'kr' ? 'KR' : 'registro') + '</span>' },
         { k: 'meta', rot: 'Meta do m\u00eas', tipo: 'num',
           html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) }
       ], comp, { titulo: 'KPI contra a m\u00e9dia do ano', limite: 25, ativa: false }));
@@ -7946,10 +8010,7 @@ function realizadoNoMes(chave, mes) {
   const fat = soma(cli, r => r.honIni);
   const nomeMes = MESES_ACENTO[+mes.slice(5, 7) - 1];
   const krDe = txt => {
-    const m = DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nomeMes];
-    if (!m || m.erro || !m.krs) return null;
-    const k = chaveBusca(txt).replace(/[^a-z0-9]+/g, ' ').trim();
-    const x = m.krs.find(y => chaveBusca(y.kr).replace(/[^a-z0-9]+/g, ' ').trim().indexOf(k) >= 0);
+    const x = kr(nomeMes, txt);
     return x ? x.resultado : null;
   };
   switch (chave) {
@@ -7978,23 +8039,62 @@ function realizadoNoMes(chave, mes) {
   }
 }
 
+/* O indicador lido no KR da aba KPIS daquele mes, quando a aba existe. E a
+   contagem que o time anota a mao - nao e a mesma do CRM, e nao deve ser. */
+function krNoMes(chave, mes) {
+  const txt = KR_DO_INDICADOR[chave];
+  if (!txt) return null;
+  const k = kr(MESES_ACENTO[+mes.slice(5, 7) - 1], txt);
+  const v = k ? k.resultado : null;
+  return v != null && isFinite(v) ? v : null;
+}
+
+/* Quantos meses FECHADOS do ano tem aba KPIS carregada. A tela diz isso: sem
+   esse numero, "a media vem do registro" parece escolha, e e limite. */
+function krMesesDoAno(ate) {
+  const fim = ate || MES_ATUAL;
+  const m = (DADOS.metas && DADOS.metas.meses) || {};
+  let n = 0;
+  for (let i = 1; i <= 12; i++) {
+    const k = fim.slice(0, 4) + '-' + (i < 10 ? '0' : '') + i;
+    if (k >= fim) break;
+    const x = m[MESES_ACENTO[i - 1]];
+    if (x && !x.erro && x.krs && x.krs.length) n++;
+  }
+  return n;
+}
+
 /* ===== MEDIA DO ANO =====
    Todos os meses FECHADOS do ano, ate o mes que esta na tela. O mes em curso
    fica de fora: esta pela metade e puxaria a media para baixo. Devolve
    tambem QUANTOS meses entraram - uma media de dois meses nao se le como uma
-   de nove, e a tela precisa poder dizer isso. */
+   de nove, e a tela precisa poder dizer isso.
+
+   DE QUE BASE: o KR e o registro contam a mesma coisa de dois jeitos, e a
+   media sai da que tiver MAIS meses fechados; no empate fica o KR, que e a
+   contagem assumida pelo time. Em 2026 o registro ganha em quase tudo - as
+   abas KPIS comecaram em setembro -, e isso vira sozinho conforme os meses
+   forem ficando prontos, sem mexer em codigo.
+   Quem le a media tem de ler o resultado da MESMA base, e por isso a base
+   volta junto: resultado de uma contra media de outra nao mede nada. */
 function mediaDoAno(chave, ate) {
   const fim = ate || MES_ATUAL;
   const ano = fim.slice(0, 4);
-  const vals = [];
-  for (let m = 1; m <= 12; m++) {
-    const k = ano + '-' + (m < 10 ? '0' : '') + m;
-    if (k >= fim) break;
-    const v = realizadoNoMes(chave, k);
-    if (v != null && isFinite(v)) vals.push(v);
-  }
-  if (!vals.length) return null;
-  return { media: vals.reduce((a, b) => a + b, 0) / vals.length, n: vals.length };
+  const colher = fn => {
+    const v = [];
+    for (let m = 1; m <= 12; m++) {
+      const k = ano + '-' + (m < 10 ? '0' : '') + m;
+      if (k >= fim) break;
+      const x = fn(chave, k);
+      if (x != null && isFinite(x)) v.push(x);
+    }
+    return v;
+  };
+  const md = v => v.reduce((a, b) => a + b, 0) / v.length;
+  const vk = colher(krNoMes), vr = colher(realizadoNoMes);
+  if (vk.length && vk.length >= vr.length) return { media: md(vk), n: vk.length, base: 'kr' };
+  if (vr.length) return { media: md(vr), n: vr.length, base: 'registro' };
+  return null;
 }
 
 /* Media dos ultimos meses FECHADOS em que houve movimento. */
