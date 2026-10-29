@@ -257,6 +257,14 @@ if (window.self !== window.top) {
   .g-kpi { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
   .g-2 { grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); }
   @media (min-width: 1180px) { .g-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* Funil ao lado do grafico: a barra do funil e rotulo + numero e cabe em
+     pouco; o grafico de conversao precisa de largura para as oito barras
+     nao virarem risco. Abaixo de 1180 eles empilham, como todo o resto. */
+  .g-funil { grid-template-columns: 1fr; }
+  @media (min-width: 1180px) { .g-funil { grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr); } }
+  /* As quatro origens do lead numa linha so: elas se leem em conjunto, e
+     quebrar 3+1 fazia a quarta parecer de outro grupo. */
+  @media (min-width: 1080px) { .g-fonte { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   /* A de tres segue a mesma ideia: ou tres, ou dois - nunca um sozinho. */
   @media (min-width: 1500px) { .g-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .g-3 { grid-template-columns: repeat(auto-fit, minmax(348px, 1fr)); }
@@ -1168,7 +1176,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '29/10/2026 10:43';
+const BUILD = '29/10/2026 10:58';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -5180,10 +5188,13 @@ const METAS_PADRAO = {
   leadsAds:    { rot: 'Leads (Meta Ads)',       meta: 2000,  tipo: 'num',   acumula: true },
   leadsOrg:    { rot: 'Leads Orgânicos',        meta: 200,   tipo: 'num',   acumula: true },
   leadsAbord:  { rot: 'Leads Abordados',        meta: 900,   tipo: 'num',   acumula: true },
+  leadsElegiveis: { rot: 'Leads Elegíveis',      meta: 600,   tipo: 'num',   acumula: true },
   leadsQual:   { rot: 'Leads Qualificados',     meta: 400,   tipo: 'num',   acumula: true },
   diagRealizados: { rot: 'Diagnósticos Realizados', meta: 150, tipo: 'num', acumula: true },
+  diagPositivos:  { rot: 'Diagnósticos Positivos',  meta: 120, tipo: 'num', acumula: true },
   reunioes:    { rot: 'Reuniões Realizadas',    meta: 100,   tipo: 'num',   acumula: true },
   clientes:    { rot: 'Clientes Fechados',      meta: 32,    tipo: 'num',   acumula: true },
+  noShow:      { rot: 'No-Show',                meta: 5,     tipo: 'num',   acumula: false, inverso: true },
   faturamento: { rot: 'Faturamento',            meta: 80000, tipo: 'moeda', acumula: true },
   ticket:      { rot: 'Ticket Médio',           meta: 2600,  tipo: 'moeda', acumula: false },
   investimento:{ rot: 'Investimento (Ads)',     meta: 16000, tipo: 'moeda', acumula: true },
@@ -7452,7 +7463,7 @@ function telaFunilVendas() {
         krConvReun = c.kr('conversao em reuniao'), krConvVenda = c.kr('conversao em vendas'),
         krCalc = c.kr('novos calculos');
 
-  const semKr = 'Sem KR na aba KPIS ' + c.nomeMes + ' &mdash; a meta vem de Ajustes &gt; Metas.';
+  const semKr = 'Sem KR &mdash; meta de Ajustes &gt; Metas';
   const crmNota = fn => c.temKommo
     ? n0(koCom.filter(fn).length) + ' no CRM, pela etapa de hoje de cada lead' : null;
 
@@ -7465,7 +7476,7 @@ function telaFunilVendas() {
     rot: rot,
     real: k ? k.resultado : null, meta: k ? k.metaMes : null, metaProp: k ? k.metaProp : null,
     inverso: !!(k && k.inverso), tipo: (k && k.tipo) || 'num',
-    fonte: k ? 'KR &ldquo;' + esc(k.kr) + '&rdquo; &middot; aba KPIS ' + c.nomeMes : semKr
+    fonte: k ? 'KR &ldquo;' + esc(k.kr) + '&rdquo;' : semKr
   }, o || {}));
 
   const diagCrm = c.temKommo ? koCom.filter(ehDiagnostico).length : null;
@@ -7473,62 +7484,74 @@ function telaFunilVendas() {
      ainda nao tiver o KR. Quando os dois existem e discordam, a linha diz,
      porque quem le a tela precisa saber qual numero esta valendo. */
   const notaCalc = krCalc
-    ? (diagCrm != null ? n0(diagCrm) + ' leads do CRM est\u00e3o em an\u00e1lise de viabilidade ou adiante. ' : '') +
-      (krCalc.metaMes !== metas.diagRealizados
-        ? 'A meta cadastrada no painel \u00e9 ' + n0(metas.diagRealizados) + ', mas quem vale aqui \u00e9 a da planilha, ' +
-          n0(krCalc.metaMes) + ' &mdash; se o certo for ' + n0(metas.diagRealizados) + ', acerte na aba KPIS ' +
-          esc(c.nomeMes) + '.' : '')
-    : 'Sem KR de diagn\u00f3stico realizado na aba KPIS ' + esc(c.nomeMes) + ': a meta vem de Ajustes &gt; Metas.';
+    ? (diagCrm != null ? n0(diagCrm) + ' leads do CRM est\u00e3o em an\u00e1lise de viabilidade ou adiante.' : '')
+    : 'Sem KR de diagn\u00f3stico realizado na aba KPIS ' + esc(c.nomeMes) + '.';
   const convElegCli = (krCli && krEleg) ? taxa(krCli.resultado, krEleg.resultado) : null;
   const ticket = ticketMedio(c.cli);
 
   const linhas = [
     /* ----- Antes do CRM: o que a plataforma contou ----- */
-    L({ rot: 'Leads Totais (Meta Ads + Orgânicos)', real: leadsTot, meta: metas.leadsTotais,
+    L({ rot: 'Leads Totais (Meta Ads + Orgânicos)', real: leadsTot, chave: 'leadsTotais',
         fonte: 'Insights do Meta + CRM sem campanha',
         nota: 'Soma de duas bases: o Meta conta lead por plataforma e o CRM conta lead criado.' }),
-    L({ rot: 'Novas Abordagens IG', real: ig, meta: metas.abordagensIg,
+    L({ rot: 'Novas Abordagens IG', real: ig, chave: 'abordagensIg',
         fonte: 'CRM, funil Instagram',
         nota: 'Direct, comentário e pedido de telefone. Corre por fora do funil comercial, não soma no total.' }),
-    L({ rot: 'Leads Meta Ads', real: leadsAds, meta: metas.leadsAds,
+    L({ rot: 'Leads Meta Ads', real: leadsAds, chave: 'leadsAds',
         fonte: 'Insights do Meta Ads, no mês' }),
-    L({ rot: 'Leads Orgânicos', real: leadsOrg, meta: metas.leadsOrg,
+    L({ rot: 'Leads Orgânicos', real: leadsOrg, chave: 'leadsOrg',
         fonte: 'CRM, leads sem campanha anotada',
         nota: c.vProd(c.prod, 'leads (organico)') != null
           ? 'A planilha de produto anota ' + n0(c.vProd(c.prod, 'leads (organico)')) + ' no mesmo mês' : null }),
 
     /* ----- O funil, degrau a degrau, na contagem que tem meta ----- */
-    deKr('Leads com Entrada no Kommo', krLeads, { etapa: true,
+    deKr('Leads com Entrada no Kommo', krLeads, { etapa: true, chave: 'leadsAbord',
       nota: c.temKommo ? n0(koCom.length) + ' leads comerciais criados no CRM no mesmo mês' : null }),
-    deKr('Leads Elegíveis', krEleg, { etapa: true, nota: crmNota(ehElegivel) }),
-    deKr('Leads Qualificados', krQual, { etapa: true, nota: crmNota(ehQualificado) }),
-    deKr('Diagnósticos Realizados', krCalc, {
-      meta: krCalc ? krCalc.metaMes : metas.diagRealizados,
-      metaProp: krCalc ? krCalc.metaProp : null, nota: notaCalc }),
-    deKr('Diagnósticos Positivos', krDiag, { etapa: true, nota: crmNota(ehViavel) }),
-    deKr('Reuniões', krReun, { etapa: true,
+    deKr('Leads Elegíveis', krEleg, { etapa: true, chave: 'leadsElegiveis', nota: crmNota(ehElegivel) }),
+    deKr('Leads Qualificados', krQual, { etapa: true, chave: 'leadsQual', nota: crmNota(ehQualificado) }),
+    deKr('Diagnósticos Realizados', krCalc, { chave: 'diagRealizados', nota: notaCalc }),
+    deKr('Diagnósticos Positivos', krDiag, { etapa: true, chave: 'diagPositivos', nota: crmNota(ehViavel) }),
+    deKr('Reuniões', krReun, { etapa: true, chave: 'reunioes',
       nota: n0(c.reun.length) + ' na planilha de Fluxo de Atendimentos' }),
-    deKr('Clientes', krCli, { etapa: true,
+    deKr('Clientes', krCli, { etapa: true, chave: 'clientes',
       nota: n0(c.cli.length) + ' na planilha de Clientes' }),
 
     /* ----- As taxas e o que elas renderam ----- */
-    deKr('Conversão Lead em Reunião', krConvReun, { tipo: 'pct', acumula: false }),
-    deKr('Conversão Reunião em Cliente', krConvVenda, { tipo: 'pct', acumula: false }),
-    L({ rot: 'Conversão Lead Elegível em Cliente', real: convElegCli, meta: metas.convElegCli,
+    deKr('Conversão Lead em Reunião', krConvReun, { tipo: 'pct', acumula: false, chave: 'convLeadReun' }),
+    deKr('Conversão Reunião em Cliente', krConvVenda, { tipo: 'pct', acumula: false, chave: 'convReunCli' }),
+    L({ rot: 'Conversão Lead Elegível em Cliente', real: convElegCli, chave: 'convElegCli',
         tipo: 'pct', acumula: false, fonte: 'KR Clientes &divide; KR Leads Elegíveis',
         nota: (krCli && krEleg) ? n0(krCli.resultado) + ' clientes de ' + n0(krEleg.resultado) + ' elegíveis' : null }),
-    deKr('No-Show', krNoShow, { acumula: false,
+    deKr('No-Show', krNoShow, { acumula: false, chave: 'noShow',
       nota: 'A planilha de atendimentos não registra no-show: a coluna <i>Desfecho da reunião</i> está vazia ' +
         'em todos os ' + n0(c.at.length) + ' atendimentos do mês. Enquanto ela não for preenchida, o KR é a única fonte.' }),
-    deKr('Faturamento', krHon, { tipo: 'moeda',
+    deKr('Faturamento', krHon, { tipo: 'moeda', chave: 'faturamento',
       nota: honReg ? brl0(honReg) + ' somando os honorários iniciais da planilha de Clientes' : null }),
-    L({ rot: 'Ticket Médio', real: ticket, meta: metas.ticket, tipo: 'moeda', acumula: false,
+    L({ rot: 'Ticket Médio', real: ticket, chave: 'ticket', tipo: 'moeda', acumula: false,
         fonte: 'Planilha de Clientes, só quem teve honorário inicial',
         nota: 'Média do mês, não acumula: a meta vale inteira desde o dia 1.' })
   ];
 
+  /* A meta combinada mora no painel, em Ajustes > Metas; o KR continua
+     entregando o REALIZADO. Comparar um realizado com um alvo de outra
+     origem e legitimo - alvo e combinado, nao medido. Quando a planilha traz
+     outra meta no mesmo KR, vale a do painel e a LINHA DIZ qual e a outra,
+     para ninguem comparar os dois numeros sem saber que sao dois. Acertada a
+     planilha, o aviso some sozinho. */
   linhas.forEach(l => {
+    const mp = l.chave ? metas[l.chave] : null;
+    if (mp != null) {
+      if (l.meta != null && Math.abs(l.meta - mp) > 0.001) l.metaPlanilha = l.meta;
+      l.meta = mp;
+      l.metaProp = l.acumula === false ? mp : mp * c.fracao;
+    }
     if (l.metaProp == null) l.metaProp = prop(l.meta, l.acumula);
+    if (l.metaPlanilha != null) {
+      const f = fmtPorTipo(l.tipo);
+      l.nota = (l.nota ? l.nota + ' ' : '') +
+        '<b>A meta aqui \u00e9 ' + f(l.meta) + ', do painel.</b> A aba KPIS ' + esc(c.nomeMes) +
+        ' traz ' + f(l.metaPlanilha) + ' neste KR; o realizado continua vindo de l\u00e1.';
+    }
     l.vsProp = taxa(l.real, l.metaProp);
     l.vsMes = taxa(l.real, l.meta);
   });
@@ -7541,7 +7564,9 @@ function telaFunilVendas() {
     '<b>CRM</b>, que é completa e conta todo lead criado: as duas convivem de propósito, e a diferença entre elas é ' +
     'o que ainda não foi anotado.<br>Os quatro primeiros indicadores vêm de <b>antes do CRM</b> &mdash; o que o Meta e ' +
     'o Instagram contaram. O degrau entre eles e a entrada no Kommo é lead que clicou no anúncio e nunca virou ' +
-    'registro, e é por isso que ele aparece aqui em vez de sumir numa soma.');
+    'registro, e é por isso que ele aparece aqui em vez de sumir numa soma.' +
+    '<br><b>As metas são do painel</b>, em <a href="#" data-ir="metasconfig">Ajustes &gt; Metas</a>, e valem sobre ' +
+    'o realizado que vem do KR. Onde a planilha trouxer meta diferente, a linha avisa e mostra as duas.');
 
   /* ----- De onde vem o lead ----- */
   const cartaoFonte = l => {
@@ -7552,10 +7577,11 @@ function telaFunilVendas() {
       nota: l.meta ? 'Meta do mês: ' + fmtPorTipo(l.tipo)(l.meta) : null });
   };
   h += '<div class="secao-titulo primeiro">De onde vem o lead &middot; ' + esc(c.rotMes) + '</div>';
-  h += '<div class="grid g-kpi">' + linhas.slice(0, 4).map(cartaoFonte).join('') + '</div>';
+  h += '<div class="grid g-kpi g-fonte">' + linhas.slice(0, 4).map(cartaoFonte).join('') + '</div>';
 
   /* ----- O funil ----- */
-  const etapas = linhas.filter(l => l.etapa && l.real != null).map(l => ({ k: l.rot, v: l.real }));
+  const etapasL = linhas.filter(l => l.etapa && l.real != null);
+  const etapas = etapasL.map(l => ({ k: l.rot, v: l.real }));
   h += '<div class="secao-titulo">Funil de vendas &middot; ' + esc(c.rotMes) +
     (c.emCurso ? ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(mês em andamento &mdash; dia ' +
       n0(c.dias) + ' de ' + n0(c.diasMes) + ')</span>' : '') + '</div>';
@@ -7567,9 +7593,36 @@ function telaFunilVendas() {
   }
 
   const fmtL = l => l.real == null ? '&mdash;' : fmtPorTipo(l.tipo)(l.real);
-  h += '<div class="grid g-2">';
-  h += cartao('Funil realizado no mês', 'Volume por etapa e conversão etapa a etapa.', vizFunil(etapas));
-  h += cartao('Realizado x projetado',
+
+  /* ===== CONVERSAO POR ETAPA: A META CONTRA O QUE ACONTECEU =====
+     Cada etapa sobre a anterior, nos dois mundos. A barra "pela meta" e a
+     conversao que o proprio plano assume (meta da etapa dividida pela meta
+     da anterior); a "real" e a que o mes entregou. Onde a azul fica abaixo
+     da laranja, o plano e otimista naquele degrau - e e ali que a meta do
+     mes vai escorrer, por mais que o topo entregue. */
+  const CURTO_ET = { 'Leads com Entrada no Kommo': 'Entrada CRM', 'Leads Elegíveis': 'Elegíveis',
+    'Leads Qualificados': 'Qualificados', 'Diagnósticos Positivos': 'Diag. positivos' };
+  const conv = [];
+  for (let i = 1; i < etapasL.length; i++) {
+    const ant = etapasL[i - 1], at = etapasL[i];
+    const pj = taxa(at.meta, ant.meta), rl = taxa(at.real, ant.real);
+    if (pj == null && rl == null) continue;
+    conv.push({ rot: CURTO_ET[at.rot] || at.rot, proj: pj, real: rl });
+  }
+
+  h += '<div class="grid g-funil">';
+  h += cartao('Funil realizado no mês', 'Volume por etapa, do topo ao contrato.', vizFunil(etapas));
+  h += cartao('Conversão por etapa', 'Cada etapa sobre a anterior. Duas barras na mesma etapa: a conversão que a meta assume e a que aconteceu.',
+    conv.length
+      ? vizGrupos({ altura: 268, x: conv.map(x => x.rot), fmt: v => pct(v, 0), fmtEixo: v => n0(v) + '%',
+          series: [{ nome: 'Pela meta', vals: conv.map(x => x.proj), cor: 'var(--s4)' },
+                   { nome: 'Real', vals: conv.map(x => x.real), cor: 'var(--s1)' }] }) +
+        legenda([{ nome: 'Pela meta', cor: 'var(--s4)' }, { nome: 'Real', cor: 'var(--s1)' }])
+      : '<div class="vazio">Sem meta em etapas suficientes para comparar a conversão.</div>');
+  h += '</div>';
+
+  h += '<div class="secao-titulo">Realizado x projetado</div>';
+  h += cartao('Os 17 indicadores do funil',
     'Comparação com a projeção proporcional (o ritmo esperado para hoje) e com a meta cheia do mês.',
     tabelaInterativa('funilv-proj', [
       { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap' },
@@ -7586,9 +7639,10 @@ function telaFunilVendas() {
         html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) },
       { k: 'vsMes', rot: 'vs meta', tipo: 'num', ord: false,
         html: r => r.vsMes == null ? '&mdash;' : pct(r.vsMes, 0) },
-      { k: 'fonte', rot: 'De onde vem', tipo: 'txt', cls: 'wrap' }
+      { k: 'fonte', rot: 'De onde vem', tipo: 'txt', cls: 'wrap',
+        html: r => r.fonte + (r.metaPlanilha != null
+          ? ' <span class="cel-na" title="A meta deste indicador foi definida no painel e difere da que est\u00e1 na planilha.">meta do painel</span>' : '') }
     ], linhas, { titulo: 'Funil de vendas realizado x projetado', limite: 25, ativa: false }));
-  h += '</div>';
 
   /* ===== POR QUE O DIAGNOSTICO REALIZADO NAO E UM DEGRAU =====
      Ele passa dos qualificados do mes, e isso esta certo: o calculo nao e
@@ -7657,7 +7711,7 @@ function telaFunilVendas() {
 
   /* ----- Taxas e resultado ----- */
   h += '<div class="secao-titulo">Taxas e resultado</div>';
-  h += '<div class="grid g-kpi">' + linhas.slice(11).map(cartaoFonte).join('') + '</div>';
+  h += '<div class="grid g-3">' + linhas.slice(11).map(cartaoFonte).join('') + '</div>';
   return h;
 }
 /* ==========================================================================
@@ -7839,6 +7893,9 @@ function realizadoNoMes(chave, mes) {
     case 'abordagensIg': return (DADOS.kommo && DADOS.kommo.reg || [])
                                 .filter(r => r.mes === mes && ehFunilSocial(r)).length || null;
     case 'diagRealizados': return ko.filter(ehDiagnostico).length || null;
+    case 'leadsElegiveis': return ko.filter(ehElegivel).length || null;
+    case 'diagPositivos':  return ko.filter(ehViavel).length || null;
+    case 'noShow':         return krDe('no show');
     case 'convElegCli':  return taxa(cli.length, ko.filter(ehElegivel).length);
     case 'leadsAbord':   return krDe('novos leads');
     case 'leadsQual':    return krDe('leads qualificados');
