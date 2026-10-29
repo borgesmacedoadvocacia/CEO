@@ -1168,7 +1168,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '29/10/2026 10:27';
+const BUILD = '29/10/2026 10:43';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -7469,6 +7469,16 @@ function telaFunilVendas() {
   }, o || {}));
 
   const diagCrm = c.temKommo ? koCom.filter(ehDiagnostico).length : null;
+  /* O KR traz a meta combinada; Ajustes > Metas so entra se a aba do mes
+     ainda nao tiver o KR. Quando os dois existem e discordam, a linha diz,
+     porque quem le a tela precisa saber qual numero esta valendo. */
+  const notaCalc = krCalc
+    ? (diagCrm != null ? n0(diagCrm) + ' leads do CRM est\u00e3o em an\u00e1lise de viabilidade ou adiante. ' : '') +
+      (krCalc.metaMes !== metas.diagRealizados
+        ? 'A meta cadastrada no painel \u00e9 ' + n0(metas.diagRealizados) + ', mas quem vale aqui \u00e9 a da planilha, ' +
+          n0(krCalc.metaMes) + ' &mdash; se o certo for ' + n0(metas.diagRealizados) + ', acerte na aba KPIS ' +
+          esc(c.nomeMes) + '.' : '')
+    : 'Sem KR de diagn\u00f3stico realizado na aba KPIS ' + esc(c.nomeMes) + ': a meta vem de Ajustes &gt; Metas.';
   const convElegCli = (krCli && krEleg) ? taxa(krCli.resultado, krEleg.resultado) : null;
   const ticket = ticketMedio(c.cli);
 
@@ -7492,11 +7502,9 @@ function telaFunilVendas() {
       nota: c.temKommo ? n0(koCom.length) + ' leads comerciais criados no CRM no mesmo mês' : null }),
     deKr('Leads Elegíveis', krEleg, { etapa: true, nota: crmNota(ehElegivel) }),
     deKr('Leads Qualificados', krQual, { etapa: true, nota: crmNota(ehQualificado) }),
-    L({ rot: 'Diagnósticos Realizados', real: diagCrm, meta: metas.diagRealizados,
-        fonte: 'CRM, análise de viabilidade em diante',
-        nota: krCalc ? 'Não há KR com este nome. O KR &ldquo;' + esc(krCalc.kr) + '&rdquo; anota ' +
-          n0(krCalc.resultado) + ' no mês, com meta ' + n0(krCalc.metaMes) + ' &mdash; se for o mesmo indicador, vale apontar esta linha para ele.'
-          : 'Não há KR com este nome na aba KPIS ' + c.nomeMes + '.' }),
+    deKr('Diagnósticos Realizados', krCalc, {
+      meta: krCalc ? krCalc.metaMes : metas.diagRealizados,
+      metaProp: krCalc ? krCalc.metaProp : null, nota: notaCalc }),
     deKr('Diagnósticos Positivos', krDiag, { etapa: true, nota: crmNota(ehViavel) }),
     deKr('Reuniões', krReun, { etapa: true,
       nota: n0(c.reun.length) + ' na planilha de Fluxo de Atendimentos' }),
@@ -7582,23 +7590,20 @@ function telaFunilVendas() {
     ], linhas, { titulo: 'Funil de vendas realizado x projetado', limite: 25, ativa: false }));
   h += '</div>';
 
-  /* ===== DIAGNOSTICO REALIZADO MENOR QUE DIAGNOSTICO POSITIVO =====
-     Nao e erro de conta: sao duas bases. "Positivos" e o KR que o time
-     anota; "Realizados" nao tem KR com esse nome, entao sai do CRM, pela
-     etapa de hoje de cada lead. Como o CRM e mais restrito, o numero vem
-     menor - e lado a lado isso parece contradicao. Em vez de esconder uma
-     das duas, a tela mostra as duas e diz o que falta para elas fecharem:
-     um KR de diagnostico realizado na aba KPIS. */
-  if (diagCrm != null && krDiag && diagCrm < krDiag.resultado) {
-    h += aviso('atencao', '<b>Diagn\u00f3sticos realizados (' + n0(diagCrm) + ') aparece abaixo de diagn\u00f3sticos ' +
-      'positivos (' + n0(krDiag.resultado) + '), e isso \u00e9 diferen\u00e7a de base, n\u00e3o erro de conta.</b> ' +
-      'O positivo \u00e9 o KR <i>' + esc(krDiag.kr) + '</i>, anotado \u00e0 m\u00e3o; o realizado n\u00e3o tem KR com esse nome, ' +
-      'ent\u00e3o sai do CRM, pela etapa de hoje de cada lead &mdash; e o CRM conta menos porque s\u00f3 enxerga quem ' +
-      'chegou a <i>An\u00e1lise de Viabilidade</i>.' +
-      (krCalc ? ' Na aba KPIS existe o KR <i>' + esc(krCalc.kr) + '</i>, com ' + n0(krCalc.resultado) +
-        ' no m\u00eas e meta ' + n0(krCalc.metaMes) + ': se for ele o diagn\u00f3stico realizado, \u00e9 s\u00f3 dizer que eu aponto ' +
-        'esta linha para l\u00e1 e as duas passam a sair da mesma base.' : '') +
-      ' Enquanto isso, leia as duas pelo que cada uma \u00e9: a coluna <b>De onde vem</b> diz qual \u00e9 qual.');
+  /* ===== POR QUE O DIAGNOSTICO REALIZADO NAO E UM DEGRAU =====
+     Ele passa dos qualificados do mes, e isso esta certo: o calculo nao e
+     feito so para lead que qualificou dentro do mes - entra fila do mes
+     anterior e recalculo. Como barra do funil ele faria o funil engordar no
+     meio, que e a leitura errada. Fica na tabela, onde tem meta e
+     comparacao, e a tela diz por que nao esta nas barras. */
+  if (krCalc && krQual && krCalc.resultado > krQual.resultado) {
+    h += aviso('info', '<b>Diagn\u00f3sticos realizados (' + n0(krCalc.resultado) + ') passa dos qualificados do m\u00eas (' +
+      n0(krQual.resultado) + ')</b>, e por isso ele n\u00e3o \u00e9 uma barra do funil. O c\u00e1lculo n\u00e3o \u00e9 feito apenas para ' +
+      'quem qualificou dentro do m\u00eas: entra fila que veio do m\u00eas anterior e rec\u00e1lculo de caso j\u00e1 analisado. ' +
+      'Ele mede <b>produ\u00e7\u00e3o de c\u00e1lculo</b>, n\u00e3o passagem de etapa &mdash; virar barra faria o funil engordar no meio. ' +
+      'Na tabela ele est\u00e1 inteiro, com meta e compara\u00e7\u00e3o.' +
+      (krDiag ? ' O degrau do funil continua sendo o <i>' + esc(krDiag.kr) + '</i>, com ' + n0(krDiag.resultado) +
+        ' no m\u00eas: desses c\u00e1lculos, os que fecharam com direito a revisar.' : ''));
   }
 
   /* ----- Avanco etapa a etapa -----
