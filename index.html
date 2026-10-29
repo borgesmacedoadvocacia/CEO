@@ -1176,7 +1176,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '29/10/2026 10:58';
+const BUILD = '29/10/2026 11:04';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -7709,6 +7709,58 @@ function telaFunilVendas() {
     }
   }
 
+  /* ===== CADA KPI CONTRA A MEDIA DO ANO =====
+     A meta diz para onde o escritorio quer ir; a media do ano diz de onde
+     ele esta saindo. Um mes a 70% da meta pode ser o melhor mes do ano - ou
+     o pior -, e so a meta nao conta isso.
+     O quadro INTEIRO sai do registro, inclusive o resultado do mes: a media
+     so existe no registro (a planilha de Metas nasceu em setembro e o painel
+     carrega duas abas KPIS), e comparar resultado de uma base com media de
+     outra nao diria nada. Por isso o numero da primeira coluna pode diferir
+     do quadro de cima, que sai do KR - e a tela diz isso. */
+  const comp = linhas.filter(l => l.chave).map(l => {
+    const ma = mediaDoAno(l.chave, c.mes);
+    const real = realizadoNoMes(l.chave, c.mes);
+    const media = ma ? ma.media : null;
+    const propMedia = media == null ? null : (l.acumula === false ? media : media * c.fracao);
+    return { rot: l.rot, tipo: l.tipo, inverso: l.inverso, real: real,
+      metaProp: l.metaProp, meta: l.meta, media: media, propMedia: propMedia,
+      meses: ma ? ma.n : 0, vsMedia: taxa(real, propMedia) };
+  }).filter(l => l.real != null || l.media != null);
+
+  if (comp.length) {
+    const poucos = comp.filter(l => l.media != null && l.meses < 3).length;
+    h += '<div class="secao-titulo">Cada KPI contra a m\u00e9dia do ano</div>';
+    h += aviso('info', 'Este quadro sai inteiro do <b>registro</b> &mdash; CRM, clientes, atendimentos e insights do ' +
+      'Meta &mdash;, inclusive a primeira coluna. \u00c9 o \u00fanico lugar com hist\u00f3rico: a planilha de Metas nasceu em ' +
+      'setembro e o painel carrega duas abas KPIS. Por isso o <b>resultado do m\u00eas</b> aqui pode diferir do quadro ' +
+      'de cima, que sai do KR &mdash; comparar resultado de uma base com m\u00e9dia de outra n\u00e3o diria nada. ' +
+      'A <b>m\u00e9dia do ano</b> cobre os meses j\u00e1 fechados de ' + esc(c.mes.slice(0, 4)) + '; o m\u00eas em curso fica ' +
+      'de fora, porque est\u00e1 pela metade.' +
+      (poucos ? ' <b>' + n0(poucos) + ' indicador(es) t\u00eam menos de tr\u00eas meses fechados</b> &mdash; a coluna mostra ' +
+        'quantos entraram, e m\u00e9dia de dois meses n\u00e3o se l\u00ea como m\u00e9dia de nove.' : ''));
+    h += cartao('Resultado do m\u00eas, meta e m\u00e9dia do ano',
+      'A coluna <b>vs m\u00e9dia</b> compara o realizado com o que a m\u00e9dia do ano teria entregue at\u00e9 hoje: acima de 100% o m\u00eas est\u00e1 melhor que o pr\u00f3prio normal da casa.',
+      tabelaInterativa('funilv-media', [
+        { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap' },
+        { k: 'real', rot: 'Resultado do m\u00eas', tipo: 'num',
+          html: r => r.real == null ? '&mdash;' : '<b style="color:var(--texto)">' + fmtPorTipo(r.tipo)(r.real) + '</b>' },
+        { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num',
+          html: r => r.metaProp == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.metaProp) },
+        { k: 'propMedia', rot: 'Proporcional da m\u00e9dia', tipo: 'num',
+          html: r => r.propMedia == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.propMedia) },
+        { k: 'vsMedia', rot: 'vs m\u00e9dia', tipo: 'num', ord: false,
+          html: r => { if (r.vsMedia == null) return '&mdash;';
+            const t = r.inverso ? 200 - r.vsMedia : r.vsMedia;
+            return selo(nivelMeta(t), pct(r.vsMedia, 0)); } },
+        { k: 'media', rot: 'M\u00e9dia do ano', tipo: 'num',
+          html: r => r.media == null ? '&mdash;'
+            : fmtPorTipo(r.tipo)(r.media) + '<span class="cel-sub">' + n0(r.meses) + ' m\u00eas(es) fechado(s)</span>' },
+        { k: 'meta', rot: 'Meta do m\u00eas', tipo: 'num',
+          html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) }
+      ], comp, { titulo: 'KPI contra a m\u00e9dia do ano', limite: 25, ativa: false }));
+  }
+
   /* ----- Taxas e resultado ----- */
   h += '<div class="secao-titulo">Taxas e resultado</div>';
   h += '<div class="grid g-3">' + linhas.slice(11).map(cartaoFonte).join('') + '</div>';
@@ -7868,14 +7920,28 @@ const MESES_REFERENCIA = 6;
 
 /* Realizado de um indicador num mes fechado. As contas sao as mesmas dos
    cartoes - se divergirem, a referencia mente. */
+/* Recortes de um mes, guardados ate as planilhas serem relidas. */
+const FATIAS = { geracao: -1, por: {} };
+function fatiasDoMes(mes) {
+  if (FATIAS.geracao !== GERACAO) { FATIAS.geracao = GERACAO; FATIAS.por = {}; }
+  if (!FATIAS.por[mes]) {
+    const todosKo = (DADOS.kommo && DADOS.kommo.reg) || [];
+    const ko = todosKo.filter(r => r.mes === mes && !ehFunilSocial(r));
+    FATIAS.por[mes] = {
+      cli: (DADOS.clientes && DADOS.clientes.reg || []).filter(r => r.mes === mes),
+      md: (DADOS.metaDia && DADOS.metaDia.reg || []).filter(r => r.mes === mes),
+      reun: (DADOS.atend && DADOS.atend.reg || []).filter(r => r.dAtend && chaveMes(r.dAtend) === mes),
+      ko: ko, koOrg: ko.filter(r => !temCampanha(r)),
+      ig: todosKo.filter(r => r.mes === mes && ehFunilSocial(r))
+    };
+  }
+  return FATIAS.por[mes];
+}
+
 function realizadoNoMes(chave, mes) {
-  const cli = (DADOS.clientes && DADOS.clientes.reg || []).filter(r => r.mes === mes);
-  const md  = (DADOS.metaDia && DADOS.metaDia.reg || []).filter(r => r.mes === mes);
-  const reun = (DADOS.atend && DADOS.atend.reg || []).filter(r => r.dAtend && chaveMes(r.dAtend) === mes);
+  const F_ = fatiasDoMes(mes);
+  const cli = F_.cli, md = F_.md, reun = F_.reun, ko = F_.ko, koOrg = F_.koOrg;
   const leads = soma(md, r => r.leadsTotal);
-  /* Leads comerciais do CRM no mes - fora o funil Instagram, que e social. */
-  const ko = (DADOS.kommo && DADOS.kommo.reg || []).filter(r => r.mes === mes && !ehFunilSocial(r));
-  const koOrg = ko.filter(r => !temCampanha(r));
   const invest = soma(md, r => r.gasto);
   const fat = soma(cli, r => r.honIni);
   const nomeMes = MESES_ACENTO[+mes.slice(5, 7) - 1];
@@ -7889,16 +7955,15 @@ function realizadoNoMes(chave, mes) {
   switch (chave) {
     case 'leadsAds':     return leads || null;
     case 'leadsOrg':     return koOrg.length || null;
-    case 'leadsTotais':  return ((leads || 0) + koOrg.length) || null;
-    case 'abordagensIg': return (DADOS.kommo && DADOS.kommo.reg || [])
-                                .filter(r => r.mes === mes && ehFunilSocial(r)).length || null;
+    case 'leadsTotais':  return leads ? leads + koOrg.length : null;
+    case 'abordagensIg': return F_.ig.length || null;
     case 'diagRealizados': return ko.filter(ehDiagnostico).length || null;
     case 'leadsElegiveis': return ko.filter(ehElegivel).length || null;
     case 'diagPositivos':  return ko.filter(ehViavel).length || null;
     case 'noShow':         return krDe('no show');
     case 'convElegCli':  return taxa(cli.length, ko.filter(ehElegivel).length);
-    case 'leadsAbord':   return krDe('novos leads');
-    case 'leadsQual':    return krDe('leads qualificados');
+    case 'leadsAbord':   return ko.length || null;
+    case 'leadsQual':    return ko.filter(ehQualificado).length || null;
     case 'reunioes':     return reun.length || null;
     case 'clientes':     return cli.length || null;
     case 'faturamento':  return fat || null;
@@ -7906,11 +7971,30 @@ function realizadoNoMes(chave, mes) {
     case 'investimento': return invest || null;
     case 'cac':          return cli.length ? invest / cli.length : null;
     case 'convReunCli':  return taxa(cli.length, reun.length);
-    case 'convLeadReun': return taxa(reun.length, leads);
+    case 'convLeadReun': return taxa(reun.length, ko.length);
     case 'convLeadCli':  return taxa(cli.length, leads);
     case 'roi':          return invest ? fat / invest : null;
     default:             return null;
   }
+}
+
+/* ===== MEDIA DO ANO =====
+   Todos os meses FECHADOS do ano, ate o mes que esta na tela. O mes em curso
+   fica de fora: esta pela metade e puxaria a media para baixo. Devolve
+   tambem QUANTOS meses entraram - uma media de dois meses nao se le como uma
+   de nove, e a tela precisa poder dizer isso. */
+function mediaDoAno(chave, ate) {
+  const fim = ate || MES_ATUAL;
+  const ano = fim.slice(0, 4);
+  const vals = [];
+  for (let m = 1; m <= 12; m++) {
+    const k = ano + '-' + (m < 10 ? '0' : '') + m;
+    if (k >= fim) break;
+    const v = realizadoNoMes(chave, k);
+    if (v != null && isFinite(v)) vals.push(v);
+  }
+  if (!vals.length) return null;
+  return { media: vals.reduce((a, b) => a + b, 0) / vals.length, n: vals.length };
 }
 
 /* Media dos ultimos meses FECHADOS em que houve movimento. */
