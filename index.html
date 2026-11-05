@@ -1021,6 +1021,63 @@ if (window.self !== window.top) {
     .celula-barra { min-width: 0; justify-content: flex-end; }
     .celula-barra .cb-trilha { max-width: 90px; }
   }
+
+  /* ===== TABELA COMPACTA =====
+     Poucas colunas numa tela larga viram colunas de 200px, e ai o numero fica
+     longe do proprio rotulo e do numero vizinho - que e exatamente a
+     comparacao que se quer fazer. Aqui a caixa para de crescer na largura de
+     leitura, a coluna de numero tem largura de numero e o cabecalho pode
+     quebrar em duas linhas em vez de esticar a coluna. */
+  .tbl-compacta .tabela-caixa { max-width: 1080px; }
+  .tbl-compacta table.dados thead th { white-space: normal; line-height: 1.3; vertical-align: bottom; }
+  .tbl-compacta table.dados th.num, .tbl-compacta table.dados td.num { width: 118px; }
+  .tbl-compacta table.dados td.wrap { min-width: 168px; max-width: 300px; }
+  @media (max-width: 1100px) { .tbl-compacta .tabela-caixa { max-width: none; } }
+
+  /* ===== TERMOMETRO DOS CLIENTES =====
+     A tela se chama termometro, entao ela mostra um: a leitura grande ao lado
+     do desenho, e a distribuicao das respostas logo abaixo. O resto da tela
+     se apoia em duas formas so - a faixa (uma linha, cores da escala) e a
+     linha de dimensao -, para a pagina ter ritmo em vez de virar grade de
+     ladrilhos iguais. */
+  .termo-hero { display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 1.5rem; align-items: center; }
+  .termo-leitura { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .termo-num {
+    font-size: 3.2rem; font-weight: 700; letter-spacing: -0.045em; line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .termo-de { font-size: 0.8rem; color: var(--texto-muted); font-weight: 600; }
+  .termo-frase { font-size: 0.82rem; color: var(--texto-2); line-height: 1.55; margin: 0.6rem 0 1rem; max-width: 52ch; }
+
+  /* Faixa: uma barra, cada pedaco uma opcao da escala. */
+  .faixa { display: flex; height: 26px; border-radius: 7px; overflow: hidden; }
+  .faixa > div {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.68rem; font-weight: 700; color: rgba(10, 14, 22, 0.78);
+    font-variant-numeric: tabular-nums; min-width: 0;
+  }
+  .faixa-rot { display: flex; flex-wrap: wrap; gap: 0.2rem 0.95rem; margin-top: 0.6rem; }
+  .faixa-rot span { font-size: 0.68rem; color: var(--texto-2); display: inline-flex; align-items: center; gap: 0.34rem; }
+  .faixa-rot i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; flex: none; }
+  .faixa-rot b { color: var(--texto); font-variant-numeric: tabular-nums; }
+
+  /* Uma pergunta por linha, da pior nota para a melhor. */
+  .dim { padding: 0.72rem 0; border-top: 1px solid var(--borda); }
+  .dim:first-child { border-top: 0; padding-top: 0.1rem; }
+  .dim-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 0.7rem; }
+  .dim-nome { font-size: 0.82rem; font-weight: 600; }
+  .dim-nota { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
+  .dim-sub { font-size: 0.66rem; color: var(--texto-muted); font-weight: 400; margin-left: 0.3rem; }
+
+  /* Fala do cliente: a barra da esquerda tem a cor da nota de quem falou. */
+  .fala { border-left: 3px solid var(--borda); padding: 0.1rem 0 0.1rem 0.8rem; margin-bottom: 1rem; }
+  .fala p { margin: 0; font-size: 0.82rem; line-height: 1.55; color: var(--texto); }
+  .fala cite { display: block; font-style: normal; font-size: 0.67rem; color: var(--texto-muted); margin-top: 0.32rem; }
+
+  @media (max-width: 760px) {
+    .termo-hero { grid-template-columns: 1fr; gap: 1rem; }
+    .termo-num { font-size: 2.6rem; }
+  }
 </style>
 </head>
 <body>
@@ -1181,7 +1238,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '05/11/2026 11:26';
+const BUILD = '05/11/2026 14:05';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -5561,6 +5618,19 @@ function metasAtivas() {
 const fmtPorTipo = t => t === 'moeda' ? brl0 : t === 'pct' ? (v => pct(v, v < 10 ? 2 : 1))
   : t === 'mult' ? (v => n1(v) + 'x') : n0;
 
+/* Diferenca entre o resultado e a meta proporcional, em numero. Verde quando
+   a diferenca aponta para o lado certo - e no No-Show, que e inverso, o lado
+   certo e para baixo. Em indicador que ja e percentual isto e ponto
+   percentual, e a legenda do quadro diz isso. */
+function difProporcional(r) {
+  if (r.real == null || r.metaProp == null) return '&mdash;';
+  const d = r.real - r.metaProp;
+  if (!d) return '<span style="color:var(--texto-muted)">0</span>';
+  const bom = r.inverso ? d < 0 : d > 0;
+  return '<b style="color:' + (bom ? 'var(--ok)' : 'var(--critico)') + '">' +
+    (d > 0 ? '+' : '\u2212') + fmtPorTipo(r.tipo)(Math.abs(d)) + '</b>';
+}
+
 /* ==========================================================================
    TELA 6 - EQUIPE
    ========================================================================== */
@@ -8051,55 +8121,36 @@ function telaFunilVendas() {
 
   const fmtL = l => l.real == null ? '&mdash;' : fmtPorTipo(l.tipo)(l.real);
 
-  /* ===== CONVERSAO POR ETAPA: A META CONTRA O QUE ACONTECEU =====
-     Cada etapa sobre a anterior, nos dois mundos. A barra "pela meta" e a
-     conversao que o proprio plano assume (meta da etapa dividida pela meta
-     da anterior); a "real" e a que o mes entregou. Onde a azul fica abaixo
-     da laranja, o plano e otimista naquele degrau - e e ali que a meta do
-     mes vai escorrer, por mais que o topo entregue. */
-  const CURTO_ET = { 'Leads com Entrada no Kommo': 'Entrada CRM', 'Leads Elegíveis': 'Elegíveis',
-    'Leads Qualificados': 'Qualificados', 'Diagnósticos Positivos': 'Diag. positivos' };
-  const conv = [];
-  for (let i = 1; i < etapasL.length; i++) {
-    const ant = etapasL[i - 1], at = etapasL[i];
-    const pj = taxa(at.meta, ant.meta), rl = taxa(at.real, ant.real);
-    if (pj == null && rl == null) continue;
-    conv.push({ rot: CURTO_ET[at.rot] || at.rot, proj: pj, real: rl });
-  }
-
-  h += '<div class="grid g-funil">';
   h += cartao('Funil realizado no mês', 'Volume por etapa, do topo ao contrato.', vizFunil(etapas));
-  h += cartao('Conversão por etapa', 'Cada etapa sobre a anterior. Duas barras na mesma etapa: a conversão que a meta assume e a que aconteceu.',
-    conv.length
-      ? vizGrupos({ altura: 268, x: conv.map(x => x.rot), fmt: v => pct(v, 0), fmtEixo: v => n0(v) + '%',
-          series: [{ nome: 'Pela meta', vals: conv.map(x => x.proj), cor: 'var(--s4)' },
-                   { nome: 'Real', vals: conv.map(x => x.real), cor: 'var(--s1)' }] }) +
-        legenda([{ nome: 'Pela meta', cor: 'var(--s4)' }, { nome: 'Real', cor: 'var(--s1)' }])
-      : '<div class="vazio">Sem meta em etapas suficientes para comparar a conversão.</div>');
-  h += '</div>';
 
   h += '<div class="secao-titulo">Realizado x projetado</div>';
-  h += cartao('Os 17 indicadores do funil',
-    'Comparação com a projeção proporcional (o ritmo esperado para hoje) e com a meta cheia do mês.',
-    tabelaInterativa('funilv-proj', [
-      { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap' },
-      { k: 'real', rot: 'Real', tipo: 'num',
-        html: r => '<b style="color:var(--texto)">' + fmtL(r) + '</b>' },
-      { k: 'metaProp', rot: 'Proj. proporcional', tipo: 'num',
-        html: r => r.metaProp == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.metaProp) },
-      { k: 'vsProp', rot: 'vs proporcional', tipo: 'num', ord: false,
-        html: r => { if (r.vsProp == null) return '&mdash;';
-          /* No-Show e o unico em que menos e melhor: o atingimento espelha. */
-          const t = r.inverso ? 200 - r.vsProp : r.vsProp;
-          return selo(nivelMeta(t), pct(r.vsProp, 0)); } },
-      { k: 'meta', rot: 'Meta do mês', tipo: 'num',
+  h += cartao('Os ' + n0(linhas.length) + ' indicadores do funil',
+    'A meta cheia do mês, o ritmo esperado para hoje (meta proporcional) e o que já entrou. '
+    + 'As duas últimas colunas são a mesma diferença — resultado menos meta proporcional — primeiro em '
+    + 'percentual, depois em número. Em indicador que já é percentual, a diferença está em pontos percentuais.',
+    '<div class="tbl-compacta">' + tabelaInterativa('funilv-proj', [
+      /* Ordenacao desligada de proposito: a ordem da tabela e a do funil, do
+         topo ao contrato. Reordenar por qualquer coluna desmonta a leitura
+         de esteira, que e a razao desta tela existir. */
+      { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap', ord: false,
+        html: r => esc(r.rot) + '<span class="cel-sub">' + r.fonte +
+          (r.metaPlanilha != null ? ' &middot; meta do painel' : '') + '</span>' },
+      { k: 'meta', rot: 'Meta mensal', tipo: 'num', ord: false,
         html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) },
-      { k: 'vsMes', rot: 'vs meta', tipo: 'num', ord: false,
-        html: r => r.vsMes == null ? '&mdash;' : pct(r.vsMes, 0) },
-      { k: 'fonte', rot: 'De onde vem', tipo: 'txt', cls: 'wrap',
-        html: r => r.fonte + (r.metaPlanilha != null
-          ? ' <span class="cel-na" title="A meta deste indicador foi definida no painel e difere da que est\u00e1 na planilha.">meta do painel</span>' : '') }
-    ], linhas, { titulo: 'Funil de vendas realizado x projetado', limite: 25, ativa: false }));
+      { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num', ord: false,
+        html: r => r.metaProp == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.metaProp) },
+      { k: 'real', rot: 'Resultado atual', tipo: 'num', ord: false,
+        html: r => '<b style="color:var(--texto)">' + fmtL(r) + '</b>' },
+      { k: 'vsProp', rot: '% da diferença', tipo: 'num', ord: false,
+        html: r => { if (r.vsProp == null) return '&mdash;';
+          const d = r.vsProp - 100;
+          /* No-Show e o unico em que menos e melhor: o nivel espelha. */
+          return selo(nivelMeta(r.inverso ? 100 - d : 100 + d),
+            (d > 0 ? '+' : '') + pct(d, 0)); } },
+      { k: 'difNum', rot: 'Diferença', tipo: 'num', ord: false,
+        v: r => (r.real == null || r.metaProp == null) ? null : r.real - r.metaProp,
+        html: r => difProporcional(r) }
+    ], linhas, { titulo: 'Funil de vendas realizado x projetado', limite: 25, ativa: false }) + '</div>');
 
   /* ===== POR QUE O DIAGNOSTICO REALIZADO NAO E UM DEGRAU =====
      Ele passa dos qualificados do mes, e isso esta certo: o calculo nao e
@@ -8191,7 +8242,7 @@ function telaFunilVendas() {
     const nKr = comp.filter(l => l.base === 'kr').length;
     const abasKr = krMesesDoAno(c.mes);
     h += '<div class="secao-titulo">Cada KPI contra a m\u00e9dia do ano</div>';
-    h += aviso('info', 'Cada linha sai de <b>uma base s\u00f3</b>, e a coluna <b>M\u00e9dia do ano</b> diz qual: o ' +
+    h += aviso('info', 'Cada linha sai de <b>uma base s\u00f3</b>, e a coluna <b>M\u00e9dia mensal</b> diz qual: o ' +
       '<b>KR</b> da aba KPIS da planilha de Metas, ou o <b>registro</b> &mdash; CRM, clientes, atendimentos e ' +
       'insights do Meta. Vale a que tem mais meses fechados; no empate, o KR. ' +
       'De ' + esc(c.mes.slice(0, 4)) + ' o painel achou aba KPIS em <b>' + plural(abasKr, 'm\u00eas fechado', 'meses fechados') +
@@ -8203,26 +8254,29 @@ function telaFunilVendas() {
         ' menos de tr\u00eas meses fechados</b> &mdash; a coluna mostra quantos entraram, e m\u00e9dia de dois meses ' +
         'n\u00e3o se l\u00ea como m\u00e9dia de nove.' : ''));
     h += cartao('Resultado do m\u00eas, meta e m\u00e9dia do ano',
-      'A coluna <b>vs m\u00e9dia</b> compara o realizado com o que a m\u00e9dia do ano teria entregue at\u00e9 hoje: acima de 100% o m\u00eas est\u00e1 melhor que o pr\u00f3prio normal da casa.',
-      tabelaInterativa('funilv-media', [
-        { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap' },
-        { k: 'real', rot: 'Resultado do m\u00eas', tipo: 'num',
-          html: r => r.real == null ? '&mdash;' : '<b style="color:var(--texto)">' + fmtPorTipo(r.tipo)(r.real) + '</b>' },
-        { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num',
-          html: r => r.metaProp == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.metaProp) },
-        { k: 'propMedia', rot: 'Proporcional da m\u00e9dia', tipo: 'num',
-          html: r => r.propMedia == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.propMedia) },
-        { k: 'vsMedia', rot: 'vs m\u00e9dia', tipo: 'num', ord: false,
-          html: r => { if (r.vsMedia == null) return '&mdash;';
-            const t = r.inverso ? 200 - r.vsMedia : r.vsMedia;
-            return selo(nivelMeta(t), pct(r.vsMedia, 0)); } },
-        { k: 'media', rot: 'M\u00e9dia do ano', tipo: 'num',
+      'Meta e m\u00e9dia lado a lado, cheias e proporcionais ao dia de hoje. A \u00faltima coluna \u00e9 o '
+      + 'resultado menos a meta proporcional: verde quando est\u00e1 na frente do ritmo. Em indicador que j\u00e1 '
+      + '\u00e9 percentual, a diferen\u00e7a est\u00e1 em pontos percentuais.',
+      '<div class="tbl-compacta">' + tabelaInterativa('funilv-media', [
+        /* Mesma ordem do quadro de cima, e sem ordenacao pelo mesmo motivo:
+           meta, media e resultado contam a historia na ordem em que se le. */
+        { k: 'rot', rot: 'KPI', tipo: 'txt', cls: 'forte wrap', ord: false },
+        { k: 'meta', rot: 'Meta mensal', tipo: 'num', ord: false,
+          html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) },
+        { k: 'media', rot: 'Média mensal', tipo: 'num', ord: false,
           html: r => r.media == null ? '&mdash;'
-            : fmtPorTipo(r.tipo)(r.media) + '<span class="cel-sub">' + plural(r.meses, 'm\u00eas', 'meses') +
+            : fmtPorTipo(r.tipo)(r.media) + '<span class="cel-sub">' + plural(r.meses, 'mês', 'meses') +
               ' &middot; ' + (r.base === 'kr' ? 'KR' : 'registro') + '</span>' },
-        { k: 'meta', rot: 'Meta do m\u00eas', tipo: 'num',
-          html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) }
-      ], comp, { titulo: 'KPI contra a m\u00e9dia do ano', limite: 25, ativa: false }));
+        { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num', ord: false,
+          html: r => r.metaProp == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.metaProp) },
+        { k: 'propMedia', rot: 'Média proporcional', tipo: 'num', ord: false,
+          html: r => r.propMedia == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.propMedia) },
+        { k: 'real', rot: 'Resultado atual', tipo: 'num', ord: false,
+          html: r => r.real == null ? '&mdash;' : '<b style="color:var(--texto)">' + fmtPorTipo(r.tipo)(r.real) + '</b>' },
+        { k: 'difProp', rot: 'Diferença', tipo: 'num', ord: false,
+          v: r => (r.real == null || r.metaProp == null) ? null : r.real - r.metaProp,
+          html: r => difProporcional(r) }
+      ], comp, { titulo: 'KPI contra a média do ano', limite: 25, ativa: false }) + '</div>');
   }
 
   /* ----- Taxas e resultado ----- */
@@ -8316,6 +8370,38 @@ function alertasOperacao() {
 /* A tela. O recorte de periodo do topo vale aqui pela data da resposta;
    resposta sem carimbo fica de fora do recorte e e contada nos pontos de
    atencao, em vez de sumir calada. */
+/* ==========================================================================
+   O TERMOMETRO, DESENHADO
+   --------------------------------------------------------------------------
+   A tela se chama Termometro e, ate aqui, nao mostrava nenhum: a nota era um
+   ladrilho entre outros cinco iguais, e a pagina inteira era grade. O
+   mercurio usa a cor do NIVEL - a mesma do selo -, porque no painel inteiro
+   uma cor quer dizer uma coisa so.
+   ========================================================================== */
+function corTermometro(t) {
+  return t == null ? 'var(--texto-muted)'
+    : t >= 75 ? 'var(--ok)' : t >= 50 ? 'var(--atencao)' : 'var(--critico)';
+}
+
+function vizTermometro(t) {
+  const cor = corTermometro(t);
+  const base = 240, alt = 220;
+  const y = t == null ? base : base - alt * Math.max(0, Math.min(100, t)) / 100;
+  let s = '<svg class="viz" viewBox="0 0 122 298" style="max-height:248px" role="img" aria-label="Termometro">';
+  s += '<rect x="42" y="20" width="28" height="220" rx="14" fill="var(--bg3)" stroke="var(--borda)"/>';
+  if (t != null) {
+    s += '<rect x="42" y="' + y.toFixed(1) + '" width="28" height="' + (base - y + 26).toFixed(1) +
+         '" rx="14" fill="' + cor + '"/>';
+  }
+  s += '<circle cx="56" cy="256" r="26" fill="' + cor + '"/>';
+  [0, 25, 50, 75, 100].forEach(function (v) {
+    const ty = base - alt * v / 100;
+    s += '<line x1="74" y1="' + ty + '" x2="82" y2="' + ty + '" stroke="var(--borda)" stroke-width="1.5"/>';
+    s += '<text x="87" y="' + (ty + 3.6) + '" style="font-size:10.5px;fill:var(--texto-muted)">' + v + '</text>';
+  });
+  return s + '</svg>';
+}
+
 function telaTermometro() {
   if (ERROS.pesquisa) {
     return aviso('atencao', '<b>O Termômetro ainda não sabe qual é a planilha da pesquisa.</b> ' +
@@ -8345,15 +8431,51 @@ function telaTermometro() {
   const indicam = base.filter(r => r.indicaria === 'Sim').length;
   const naoIndicam = base.filter(r => r.indicaria === 'Não').length;
   const comIndic = base.filter(r => r.indicaria).length;
-  const voltam = base.filter(r => r.voltaria === 'Sim').length;
-  const comVolta = base.filter(r => r.voltaria).length;
   const saldo = comIndic ? Math.round((indicam - naoIndicam) / comIndic * 100) : null;
   const taxa2 = (a, b) => b ? pct(a / b * 100, 1) : '&mdash;';
 
+  /* Uma barra, uma linha: a cor diz o nivel e a largura diz quantos. O numero
+     so entra no pedaco que couber - numero cortado pela metade e pior do que
+     numero nenhum, porque parece outro numero. */
+  const faixa = (partes, total, altura) => !total ? '<div class="vazio">sem respostas</div>'
+    : '<div class="faixa"' + (altura ? ' style="height:' + altura + '"' : '') + '>' +
+      partes.map(p => {
+        const pc = p.n / total * 100;
+        return '<div data-tip="' + esc(p.rot + ': ' + n0(p.n) + ' de ' + n0(total)) +
+          '" style="width:' + pc.toFixed(1) + '%;background:' + p.cor + '">' +
+          (pc >= 9 ? n0(p.n) : '') + '</div>';
+      }).join('') + '</div>';
+  const rotulos = partes => '<div class="faixa-rot">' + partes.map(p =>
+    '<span><i style="background:' + p.cor + '"></i>' + esc(p.rot) + ' <b>' + n0(p.n) + '</b></span>').join('') + '</div>';
+  const partesEscala = notas => PESQ_ESCALA.map(e =>
+    ({ rot: e.rotulo, cor: e.cor, n: notas.filter(v => v === e.nota).length })).filter(p => p.n);
+
+  const CORES_LEAL = { 'Sim': '#22c55e', 'Talvez': '#f59e0b', 'Não': '#ef4444' };
+  const partesLeal = chave => {
+    const vals = base.map(r => r[chave]).filter(v => v);
+    return { total: vals.length, partes: PESQ_LEALDADE.map(k =>
+      ({ rot: k, cor: CORES_LEAL[k], n: vals.filter(v => v === k).length })).filter(p => p.n) };
+  };
+
   let h = '';
-  h += aviso('info', 'Base: a planilha de respostas do formulário <b>Pesquisa de Satisfação | BM Advocacia</b>, ' +
-    'lida ao vivo. Cada pergunta de satisfação tem cinco opções, e elas viram uma nota de <b>0 a 100</b> &mdash; ' +
-    'muito insatisfeito = 0, neutro = 50, muito satisfeito = 100.');
+
+  /* ----- A leitura, antes de qualquer explicacao ----- */
+  const frase = !gerais.length ? 'Ninguém respondeu a pergunta de satisfação geral neste recorte.'
+    : n0(satisfeitos) + ' de ' + n0(gerais.length) + (gerais.length === 1 ? ' resposta se diz satisfeita' : ' respostas se dizem satisfeitas') +
+      ' ou muito satisfeitas' + (insatisfeitos ? ', e ' + n0(insatisfeitos) + (insatisfeitos === 1 ? ' insatisfeita' : ' insatisfeitas') : ', nenhuma insatisfeita') + '.' +
+      (comIndic ? ' ' + n0(indicam) + ' de ' + n0(comIndic) + ' indicariam a BM.' : '');
+
+  h += '<div class="secao-titulo primeiro">Como o cliente nos vê &middot; ' + esc(rotuloPeriodo()) + '</div>';
+  h += cartao('Satisfação geral',
+    'A pergunta “considerando tudo, qual é o seu nível de satisfação”. As cinco opções viram uma nota de 0 a 100, em que neutro é exatamente 50.',
+    '<div class="termo-hero"><div>' + vizTermometro(tGeral) + '</div><div>' +
+      '<div class="termo-leitura"><span class="termo-num" style="color:' + corTermometro(tGeral) + '">' +
+        (tGeral == null ? '&mdash;' : Math.round(tGeral)) + '</span><span class="termo-de">de 100</span>' +
+        (tGeral == null ? '' : ' ' + selo(nivelTermometro(tGeral), 'nota média ' + n1(mGeral) + ' de 5')) + '</div>' +
+      '<div class="termo-frase">' + frase + '</div>' +
+      faixa(partesEscala(gerais), gerais.length) + rotulos(partesEscala(gerais)) +
+    '</div></div>');
+
   h += avisoAlcance({
     porqueMes: 'a resposta tem data, então o recorte de período do topo vale aqui.',
     mostrando: rotuloPeriodo(),
@@ -8364,107 +8486,114 @@ function telaTermometro() {
       '<b>todas as ' + n0(todas.length) + ' respostas</b> para não ficar vazia.');
   }
 
-  h += '<div class="secao-titulo primeiro">Resumo</div>';
   h += '<div class="grid g-kpi">';
   h += kpi({ rotulo: 'Respostas', valor: n0(base.length),
     nota: n0(base.filter(r => r.identificado).length) + ' identificadas &middot; ' +
       n0(base.filter(r => !r.identificado).length) + ' anônimas' });
-  h += kpi({ rotulo: 'Termômetro geral',
-    valor: tGeral == null ? null : Math.round(tGeral) + '<span style="font-size:1rem">/100</span>',
-    selo: tGeral == null ? null : selo(nivelTermometro(tGeral), Math.round(tGeral) + ' de 100'),
-    nota: mGeral == null ? 'ainda sem nota' : 'nota média ' + n1(mGeral) + ' de 5' });
   h += kpi({ rotulo: 'Satisfeitos', valor: n0(satisfeitos),
-    nota: taxa2(satisfeitos, gerais.length) + ' &middot; satisfeito ou muito satisfeito' });
+    nota: taxa2(satisfeitos, gerais.length) + ' das respostas com nota' });
   h += kpi({ rotulo: 'Insatisfeitos', valor: n0(insatisfeitos),
     selo: insatisfeitos ? selo('critico', taxa2(insatisfeitos, gerais.length)) : selo('ok', 'nenhum'),
     nota: 'é por aqui que se começa' });
-  h += kpi({ rotulo: 'Indicariam a BM', valor: n0(indicam),
-    nota: saldo == null ? 'sem respostas' : taxa2(indicam, comIndic) + ' &middot; saldo de <b>' +
-      (saldo > 0 ? '+' : '') + saldo + '</b> (sim &minus; não)' });
-  h += kpi({ rotulo: 'Voltariam a contratar', valor: n0(voltam),
-    nota: taxa2(voltam, comVolta) + ' &middot; ' + n0(base.filter(r => r.voltaria === 'Talvez').length) +
-      ' talvez &middot; ' + n0(base.filter(r => r.voltaria === 'Não').length) + ' não' });
+  h += kpi({ rotulo: 'Saldo de indicação', valor: saldo == null ? null : (saldo > 0 ? '+' : '') + saldo,
+    nota: saldo == null ? 'sem respostas' : n0(indicam) + ' indicariam &middot; ' + n0(naoIndicam) + ' não' });
   h += '</div>';
 
-  h += '<div class="secao-titulo">Termômetro por dimensão</div>';
-  h += cartao('Cada pergunta da pesquisa', 'A nota de 0 a 100 e como as respostas se distribuíram.',
-    PESQ_DIMENSOES.map(d => {
-      const notas = base.map(r => r[d.chave]).filter(v => v !== null);
-      const m = mediaDe(notas), t = termometro(m);
-      const barra = !notas.length ? '<div class="vazio">sem respostas</div>'
-        : '<div style="display:flex;height:14px;border-radius:5px;overflow:hidden;margin-top:.4rem">' +
-          PESQ_ESCALA.map(e => ({ e: e, n: notas.filter(v => v === e.nota).length }))
-            .filter(f => f.n).map(f => '<div data-tip="' + esc(f.e.rotulo) + ': ' + n0(f.n) + '" style="width:' +
-              (f.n / notas.length * 100).toFixed(1) + '%;background:' + f.e.cor + '"></div>').join('') + '</div>';
-      return '<div style="margin-bottom:1rem">' +
-        '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.6rem">' +
-          '<span><b>' + esc(d.curto) + '</b></span>' +
-          '<span style="font-size:.78rem;color:var(--texto-2)">' +
-            (t == null ? 'sem respostas' : '<b style="font-size:1rem">' + Math.round(t) + '</b>/100 &middot; nota ' +
-              n1(m) + ' &middot; ' + n0(notas.length) + ' resp.') + '</span></div>' + barra + '</div>';
-    }).join('') + legenda(PESQ_ESCALA.map(e => ({ nome: e.rotulo, cor: e.cor }))));
+  /* ----- Pergunta a pergunta, da pior para a melhor ----- */
+  const dims = PESQ_DIMENSOES.filter(d => d.chave !== 'geral').map(d => {
+    const notas = base.map(r => r[d.chave]).filter(v => v !== null);
+    const m = mediaDe(notas);
+    return { curto: d.curto, notas: notas, m: m, t: termometro(m) };
+  }).sort((a, b) => (a.t == null ? 1e9 : a.t) - (b.t == null ? 1e9 : b.t));
 
+  h += '<div class="secao-titulo">Onde a nota cai</div>';
+  h += cartao('As outras quatro perguntas, da pior para a melhor',
+    'A satisfação geral está lá em cima; aqui estão as quatro dimensões que a compõem. A ordem é a da nota, para a primeira linha ser sempre a que precisa de trabalho.',
+    dims.map(x => '<div class="dim"><div class="dim-topo">' +
+      '<span class="dim-nome">' + esc(x.curto) + '</span>' +
+      '<span class="dim-nota" style="color:' + corTermometro(x.t) + '">' +
+        (x.t == null ? '&mdash;' : Math.round(x.t)) +
+        '<span class="dim-sub">' + (x.t == null ? 'sem respostas'
+          : 'de 100 &middot; nota ' + n1(x.m) + ' &middot; ' + n0(x.notas.length) + ' resp.') + '</span></span>' +
+      '</div>' + (x.notas.length ? faixa(partesEscala(x.notas), x.notas.length, '9px') : '') + '</div>').join('') +
+    legenda(PESQ_ESCALA.map(e => ({ nome: e.rotulo, cor: e.cor }))));
+
+  const li = partesLeal('indicaria'), lv = partesLeal('voltaria');
+  h += '<div class="grid g-2">';
+  h += cartao('Indicariam a BM', 'A pergunta de recomendação, resposta a resposta.',
+    faixa(li.partes, li.total, '22px') + rotulos(li.partes));
+  h += cartao('Voltariam a contratar', 'A pergunta de recontratação, resposta a resposta.',
+    faixa(lv.partes, lv.total, '22px') + rotulos(lv.partes));
+  h += '</div>';
+
+  /* ----- Quem precisa de atencao ----- */
   const criticos = base.filter(r => (r.pior != null && r.pior <= 2) || r.indicaria === 'Não')
     .sort((a, b) => (a.pior || 9) - (b.pior || 9));
   h += '<div class="secao-titulo">Quem precisa de atenção</div>';
   if (!criticos.length) {
     h += aviso('info', 'Nenhuma resposta com nota baixa ou &ldquo;não indicaria&rdquo; neste recorte.');
   } else {
-    h += tabelaExplicada('Respostas com nota baixa',
-      '<b>Pior nota</b> = a menor das cinco perguntas de satisfação, com a dimensão onde ela caiu &middot; ' +
-      '<b>Geral</b> = a nota da pergunta de satisfação geral.',
-      'Entra aqui quem deu <b>insatisfeito ou muito insatisfeito</b> em qualquer pergunta, ou respondeu ' +
-      '<b>não indicaria</b>. Quem não se identificou aparece como <i>Anônimo</i>: a pesquisa não obriga o nome.');
-    h += tabelaInterativa('termo-atencao', [
-      { k: 'd', rot: 'Quando', tipo: 'txt', html: r => r.d ? fmtData(r.d) : '&mdash;' },
-      { k: 'quem', rot: 'Quem', tipo: 'txt', cls: 'forte wrap' },
-      { k: 'geral', rot: 'Geral', tipo: 'num', html: r => r.geral == null ? '&mdash;' : n0(r.geral) + ' de 5' },
-      { k: 'pior', rot: 'Pior nota', tipo: 'num',
-        html: r => r.pior == null ? '&mdash;' : selo(r.pior <= 2 ? 'critico' : 'atencao', n0(r.pior) + ' de 5') +
-          (r.piorDimensao ? '<span class="cel-sub">' + esc(r.piorDimensao) + '</span>' : '') },
-      { k: 'indicaria', rot: 'Indicaria', tipo: 'txt', html: r => !r.indicaria ? '&mdash;' : esc(r.indicaria) },
-      { k: 'melhorar', rot: 'O que pediu para melhorar', tipo: 'txt', cls: 'wrap',
-        html: r => r.melhorar ? esc(r.melhorar) : '&mdash;' }
-    ], criticos, { ord: 'pior', dir: 1, titulo: 'Respostas com nota baixa', limite: 25 });
+    h += cartao('Respostas com nota baixa',
+      'Entra aqui quem deu <b>insatisfeito</b> ou <b>muito insatisfeito</b> em qualquer pergunta, ou respondeu ' +
+      '<b>não indicaria</b>. A pior nota vem com a dimensão em que ela caiu. Quem não se identificou aparece ' +
+      'como <i>Anônimo</i>: a pesquisa não obriga o nome.',
+      '<div class="tbl-compacta">' + tabelaInterativa('termo-atencao', [
+        { k: 'd', rot: 'Quando', tipo: 'txt', ord: false, html: r => r.d ? fmtData(r.d) : '&mdash;' },
+        { k: 'quem', rot: 'Quem', tipo: 'txt', cls: 'forte wrap', ord: false },
+        { k: 'geral', rot: 'Geral', tipo: 'num', ord: false,
+          html: r => r.geral == null ? '&mdash;' : n0(r.geral) + ' de 5' },
+        { k: 'pior', rot: 'Pior nota', tipo: 'num', ord: false,
+          html: r => r.pior == null ? '&mdash;' : selo(r.pior <= 2 ? 'critico' : 'atencao', n0(r.pior) + ' de 5') +
+            (r.piorDimensao ? '<span class="cel-sub">' + esc(r.piorDimensao) + '</span>' : '') },
+        { k: 'indicaria', rot: 'Indicaria', tipo: 'txt', ord: false,
+          html: r => !r.indicaria ? '&mdash;' : esc(r.indicaria) },
+        { k: 'melhorar', rot: 'O que pediu para melhorar', tipo: 'txt', cls: 'wrap', ord: false,
+          html: r => r.melhorar ? esc(r.melhorar) : '&mdash;' }
+      ], criticos, { titulo: 'Respostas com nota baixa', limite: 25, ativa: false }) + '</div>');
   }
 
+  /* ----- O que escreveram, com a cor da nota de quem escreveu ----- */
   const comPos = base.filter(r => r.positivos), comMel = base.filter(r => r.melhorar);
   h += '<div class="secao-titulo">O que os clientes escreveram</div>';
   if (!comPos.length && !comMel.length) h += aviso('info', 'Ninguém escreveu nos campos abertos neste recorte.');
   else {
-    const lista = l => l.slice(0, 12).map(r =>
-      '<div style="margin-bottom:.7rem"><b style="font-size:.78rem">' + esc(r.quem) + '</b>' +
-      '<div style="font-size:.8rem;color:var(--texto-2)">' + esc(r.texto) + '</div></div>').join('') ||
-      '<div class="vazio">&mdash;</div>';
+    const falas = (lista, campo) => lista.slice(0, 10).map(r => {
+      const e = PESQ_ESCALA.find(x => x.nota === r.geral);
+      return '<div class="fala" style="border-left-color:' + (e ? e.cor : 'var(--borda)') + '">' +
+        '<p>' + esc(r[campo]) + '</p><cite>' + esc(r.quem) +
+        (r.d ? ' &middot; ' + fmtData(r.d) : '') +
+        (r.geral == null ? '' : ' &middot; ' + esc(e ? e.rotulo : n0(r.geral) + ' de 5')) + '</cite></div>';
+    }).join('') || '<div class="vazio">&mdash;</div>';
     h += '<div class="grid g-2">';
     h += cartao('Pontos positivos', n0(comPos.length) + ' de ' + n0(base.length) + ' escreveram',
-      lista(comPos.map(r => ({ quem: r.quem, texto: r.positivos }))));
+      falas(comPos, 'positivos'));
     h += cartao('Precisamos melhorar', n0(comMel.length) + ' de ' + n0(base.length) + ' escreveram',
-      lista(comMel.map(r => ({ quem: r.quem, texto: r.melhorar }))));
+      falas(comMel, 'melhorar'));
     h += '</div>';
   }
 
+  /* ----- Evolucao: tendencia se le em linha, nao em barra ----- */
   const meses = Array.from(new Set(todas.filter(r => r.mes).map(r => r.mes))).sort();
   if (meses.length > 1) {
-    h += '<div class="secao-titulo">Evolução</div>';
     const porMes = meses.map(m => {
       const doMes = todas.filter(r => r.mes === m);
       return { m: m, n: doMes.length, t: termometro(mediaDe(doMes.map(r => r.geral).filter(v => v !== null))) };
     });
+    h += '<div class="secao-titulo">Evolução</div>';
     h += cartao('Termômetro geral, mês a mês',
-      'A nota da pergunta de satisfação geral, de 0 a 100, pelo mês da resposta.',
-      vizGrupos({ x: porMes.map(p => rotuloMesCurto(p.m)), fmt: v => Math.round(v) + '/100',
-        series: [{ nome: 'Termômetro geral', cor: 'var(--s2)', vals: porMes.map(p => p.t || 0) }] }) +
+      'A nota da satisfação geral pelo mês da resposta. Este gráfico ignora o recorte de período: a série inteira é a leitura.',
+      vizLinhas({ x: porMes.map(p => rotuloMesCurto(p.m)), fmt: v => Math.round(v) + '/100',
+        series: [{ nome: 'Termômetro geral', cor: 'var(--s2)', vals: porMes.map(p => p.t == null ? null : p.t) }] }) +
       legenda([{ nome: 'Termômetro geral (0 a 100)', cor: 'var(--s2)' }]));
   }
 
+  /* ----- Pontos de atencao da propria leitura ----- */
   if (DADOS.pesquisa && !DADOS.pesquisa.viaProxy) {
     h += aviso('atencao', 'Esta tela está lendo a planilha da pesquisa <b>por link direto</b>, não pelo proxy. ' +
-      'É o mesmo caminho que o painel <b>/termometro</b> já usa, e o ID dela já é público lá &mdash; então nada ' +
-      'novo ficou exposto. Para fechar também este: criar a propriedade <code>SHEET_pesquisa</code> no proxy com ' +
-      'o ID da planilha e republicá-lo. Feito isso o painel troca de caminho sozinho.');
+      'A planilha é privada desde 05/11/2026, então por este caminho a leitura tende a falhar: o certo é o proxy, ' +
+      'com a fonte <code>pesquisa</code> registrada. Se a tela carregou assim, alguém reabriu o compartilhamento ' +
+      'por link &mdash; e aí o conteúdo dela está exposto a quem tiver o endereço.');
   }
-
   const falt = (DADOS.pesquisa && DADOS.pesquisa.faltando) || [];
   const semData = (DADOS.pesquisa && DADOS.pesquisa.semData) || 0;
   let obs = '';
@@ -8817,9 +8946,13 @@ const TELAS = [
   { k: 'marketing', rot: 'Marketing',          sub: 'Audiência, conteúdo, marca e demanda sem verba', fn: moduloMarketing },
   { grupo: 'Comercial' },
   { k: 'kpisdash',  rot: 'KPIS e Dashboards',  sub: 'O comercial inteiro: indicadores, comparativos e diagnóstico', fn: moduloKpisDash },
-  { k: 'prequal',   rot: 'Funil de Pré-Qualificação', sub: 'Do lead que chega até a reunião marcada', fn: moduloPrequal },
+  /* Pre-qualificacao e Negociacao saem do MENU, nao do painel: o Funil de
+     Vendas Completo ja conta a esteira inteira. Continuam montadas porque
+     outras telas linkam para elas (data-ir="prequal:kommo"), e link quebrado
+     e pior do que item de menu a mais. */
+  { k: 'prequal',   rot: 'Funil de Pré-Qualificação', sub: 'Do lead que chega até a reunião marcada', fn: moduloPrequal, oculta: true },
   { k: 'funilvendas', rot: 'Funil de Vendas Completo', sub: 'Do anúncio ao contrato assinado, com a meta de cada degrau', fn: telaFunilVendas },
-  { k: 'fechamento', rot: 'Negociação e Fechamento',  sub: 'Esteira, vendas, financeiro e metas', fn: moduloFechamento },
+  { k: 'fechamento', rot: 'Negociação e Fechamento',  sub: 'Esteira, vendas, financeiro e metas', fn: moduloFechamento, oculta: true },
   { k: 'clientes',  rot: 'Fluxo de clientes',  sub: 'Quem assina, por onde chega e quem fecha', fn: moduloClientes },
   { k: 'termometro', rot: 'Termômetro dos clientes', sub: 'A pesquisa de satisfação: nota de 0 a 100, por dimensão e por cliente', fn: telaTermometro },
   { grupo: 'Ajustes' },
