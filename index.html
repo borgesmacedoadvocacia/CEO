@@ -1181,12 +1181,13 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '05/11/2026 10:08';
+const BUILD = '05/11/2026 10:53';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
 const K_TOKEN = 'bm_ceo_tok';
 const K_PROXY = 'bm_ceo_proxy';
+const K_PESQ  = 'bm_ceo_pesq';
 
 /* ==========================================================================
    TRANSPORTE
@@ -2608,9 +2609,41 @@ function acharColunaPesq(norm, pistas) {
   return -1;
 }
 
+/* ===== DE ONDE SAI A PLANILHA DA PESQUISA =====
+   Nesta ordem: o proxy, que e o caminho definitivo (basta ele conhecer a
+   fonte "pesquisa"); depois o cofre do painel; e por ultimo o que a pessoa
+   colar uma vez, guardado no proprio navegador - do mesmo jeito que o
+   endereco do proxy ja e guardado.
+   ID de planilha NAO entra no repositorio. E a regra da casa e ela tem
+   razao de ser: o painel e publico, e um ID no codigo entrega o endereco
+   do dado junto com a pagina, para sempre e para qualquer um. */
+function pesquisaSalva() {
+  try { return localStorage.getItem(K_PESQ) || ''; } catch (e) { return ''; }
+}
+function salvarPesquisa(v) {
+  /* Aceita o link inteiro da planilha ou so o ID. */
+  const m = String(v || '').match(/[-\w]{25,}/);
+  try {
+    if (m) localStorage.setItem(K_PESQ, m[0]); else localStorage.removeItem(K_PESQ);
+  } catch (e) {}
+  return m ? m[0] : '';
+}
+
 async function carregarPesquisa() {
-  const linhas = await lerAba(CONFIG.SHEETS.pesquisa, 'Respostas',
-    { fonte: 'pesquisa', esperado: ['Carimbo de data/hora'] });
+  const esperado = ['Carimbo de data/hora'];
+  let linhas = null, viaProxy = false;
+  if (PROXY_DADOS) {
+    try {
+      linhas = await lerAba(null, 'Respostas', { fonte: 'pesquisa', esperado: esperado });
+      viaProxy = true;
+    } catch (e) { linhas = null; }
+  }
+  if (!linhas) {
+    const id = (CONFIG.SHEETS && CONFIG.SHEETS.pesquisa) || pesquisaSalva();
+    if (!id) throw new Error('o painel ainda nao sabe qual e a planilha da pesquisa');
+    /* Sem o.fonte a leitura nao passa pelo proxy: vai direto ao gviz. */
+    linhas = await lerAba(id, 'Respostas', { esperado: esperado });
+  }
   const t = tabela(linhas);
   const norm = t.cab.map(soTextoPesq);
   const idx = {}, faltando = [];
@@ -2644,7 +2677,8 @@ async function carregarPesquisa() {
     return r;
   }).filter(r => r.d || PESQ_DIMENSOES.some(d => r[d.chave] !== null));
 
-  return { reg: reg, faltando: faltando, semData: reg.filter(r => !r.d).length };
+  return { reg: reg, faltando: faltando, viaProxy: viaProxy,
+           semData: reg.filter(r => !r.d).length };
 }
 
 const FONTES = [
@@ -8280,9 +8314,17 @@ function alertasOperacao() {
    atencao, em vez de sumir calada. */
 function telaTermometro() {
   if (ERROS.pesquisa) {
-    return aviso('critico', '<b>A pesquisa de satisfação não entrou:</b> ' + esc(ERROS.pesquisa) +
-      '<br>A planilha <b>Pesquisa de Satisfação | BM Advocacia</b> precisa estar registrada como fonte ' +
-      '<code>pesquisa</code> no proxy e no cofre do painel. Enquanto não estiver, esta tela fica sem base.');
+    return aviso('atencao', '<b>O Termômetro ainda não sabe qual é a planilha da pesquisa.</b> ' +
+      esc(ERROS.pesquisa) + '<br><br>São dois caminhos, e o primeiro é o definitivo: registrar a fonte ' +
+      '<code>pesquisa</code> no proxy &mdash; propriedade de script <code>SHEET_pesquisa</code> com o ID da ' +
+      'planilha de respostas, e republicar por <i>Gerenciar implantações &rarr; Nova versão</i>. Feito isso, ' +
+      'quem abrir o painel vê a tela, e o ID não sai do servidor.' +
+      '<br>O segundo resolve <b>agora</b>, só neste navegador: cole o link da planilha de respostas aqui ' +
+      'embaixo. Ele fica guardado aqui, como o endereço do proxy já fica, e some se você limpar os dados do site.') +
+      '<div class="mostrar barra-periodo"><span class="mostrar-rot">Planilha</span>' +
+      '<label class="bp-campo" style="flex:1;min-width:240px"><input type="text" id="pesqId" style="width:100%" ' +
+      'placeholder="cole aqui o link da planilha de respostas…" value="' + esc(pesquisaSalva()) + '"></label>' +
+      '<button class="btn-acao primario" type="button" id="pesqSalvar">Usar esta planilha</button></div>';
   }
   const todas = (DADOS.pesquisa && DADOS.pesquisa.reg) || [];
   if (!todas.length) return aviso('atencao', 'Nenhuma resposta de pesquisa encontrada.');
@@ -8410,6 +8452,13 @@ function telaTermometro() {
       vizGrupos({ x: porMes.map(p => rotuloMesCurto(p.m)), fmt: v => Math.round(v) + '/100',
         series: [{ nome: 'Termômetro geral', cor: 'var(--s2)', vals: porMes.map(p => p.t || 0) }] }) +
       legenda([{ nome: 'Termômetro geral (0 a 100)', cor: 'var(--s2)' }]));
+  }
+
+  if (DADOS.pesquisa && !DADOS.pesquisa.viaProxy) {
+    h += aviso('atencao', 'Esta tela está lendo a planilha da pesquisa <b>por link direto</b>, não pelo proxy. ' +
+      'É o mesmo caminho que o painel <b>/termometro</b> já usa, e o ID dela já é público lá &mdash; então nada ' +
+      'novo ficou exposto. Para fechar também este: criar a propriedade <code>SHEET_pesquisa</code> no proxy com ' +
+      'o ID da planilha e republicá-lo. Feito isso o painel troca de caminho sozinho.');
   }
 
   const falt = (DADOS.pesquisa && DADOS.pesquisa.faltando) || [];
@@ -9015,6 +9064,15 @@ document.addEventListener('click', ev => {
 
   /* Barra de periodo e conta da tela de Campanhas. O periodo e o GLOBAL:
      mexer aqui tem de refazer o seletor de cima, senao os dois discordam. */
+  /* Planilha da pesquisa, colada na propria tela do Termometro. */
+  if (ev.target.closest('#pesqSalvar')) {
+    const campo = document.getElementById('pesqId');
+    const id = salvarPesquisa(campo ? campo.value : '');
+    if (!id) { alert('Não reconheci uma planilha nesse texto. Cole o link inteiro da planilha de respostas.'); return; }
+    iniciar(true);
+    return;
+  }
+
   const per = ev.target.closest('[data-per]');
   if (per) { F.periodo = per.dataset.per; F.pIni = null; F.pFim = null;
              montarFiltros(); redesenhar(); return; }
