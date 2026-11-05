@@ -1181,7 +1181,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '05/11/2026 10:53';
+const BUILD = '05/11/2026 11:26';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -2621,10 +2621,14 @@ function pesquisaSalva() {
   try { return localStorage.getItem(K_PESQ) || ''; } catch (e) { return ''; }
 }
 function salvarPesquisa(v) {
-  /* Aceita o link inteiro da planilha ou so o ID. */
-  const m = String(v || '').match(/[-\w]{25,}/);
+  /* Aceita o link inteiro da planilha ou so o ID. Texto que nao e nenhum
+     dos dois NAO apaga o que ja estava guardado: so o campo vazio esquece.
+     Um erro de digitacao nao pode derrubar o que ja funcionava. */
+  const txt = String(v || '').trim();
+  const m = txt.match(/[-\w]{25,}/);
   try {
-    if (m) localStorage.setItem(K_PESQ, m[0]); else localStorage.removeItem(K_PESQ);
+    if (m) localStorage.setItem(K_PESQ, m[0]);
+    else if (!txt) localStorage.removeItem(K_PESQ);
   } catch (e) {}
   return m ? m[0] : '';
 }
