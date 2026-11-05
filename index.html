@@ -1237,7 +1237,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '05/11/2026 17:05';
+const BUILD = '05/11/2026 17:40';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -7644,7 +7644,7 @@ function kdPanorama(c) {
    ========================================================================== */
 function kdComparativos(c) {
   const K = kpisArea('comercial');
-  let h = '<div class="secao-titulo primeiro">Da entrada do lead à reunião</div>';
+  let h = '<div class="secao-titulo">Da entrada do lead à reunião</div>';
   h += '<div class="grid g-2">';
   h += cartao('Leads do Meta Ads, mês a mês', 'Campanha paga pelos insights do Meta; o orgânico vem da planilha de Metas e só existe no mês corrente e no anterior.',
     (() => {
@@ -7749,7 +7749,7 @@ function kdDiagnostico(c) {
   const preVenda = (K.grupos.find(g => g.t.indexOf('Pré-venda') === 0) || { l: [] });
   const grupos = K.grupos.filter(g => g.t.indexOf('Pré-venda') !== 0);
 
-  let h = '<div style="font-size:0.78rem;color:var(--texto-muted);line-height:1.6;margin:0 0 1.1rem;max-width:74ch">' +
+  let h = '<div style="font-size:0.78rem;color:var(--texto-muted);line-height:1.6;margin:1.3rem 0 1.1rem;max-width:74ch">' +
     'Nada aqui precisa ser lido todo dia. Isto existe para o dia em que um principal acende no ' +
     '<b>Panorama</b> e a pergunta passa a ser <i>por quê</i> — são ' +
     n0(K.grupos.reduce((a, g) => a + g.l.length, 0)) + ' indicadores de apoio, no mês de ' + esc(c.rotMes) +
@@ -8113,7 +8113,7 @@ function kdFunil(c) {
     '<br><b>As metas são do painel</b>, em <a href="#" data-ir="metasconfig">Ajustes &gt; Metas</a>, e valem sobre ' +
     'o realizado que vem do KR. Onde a planilha trouxer meta diferente, a linha avisa e mostra as duas.');
 
-  h += '<div class="secao-titulo primeiro">De onde vem o lead &middot; ' + esc(c.rotMes) + '</div>';
+  h += '<div class="secao-titulo">De onde vem o lead &middot; ' + esc(c.rotMes) + '</div>';
   h += '<div class="grid g-kpi g-fonte">' + linhas.slice(0, 4).map(cartaoFunil).join('') + '</div>';
 
   /* ----- A PRE-QUALIFICACAO, DENTRO DO FUNIL COMPLETO -----
