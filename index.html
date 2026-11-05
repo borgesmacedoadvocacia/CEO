@@ -1172,7 +1172,6 @@ if (window.self !== window.top) {
       <section class="tela oculto" id="tela-marketing"></section>
       <section class="tela oculto" id="tela-kpisdash"></section>
       <section class="tela oculto" id="tela-prequal"></section>
-      <section class="tela oculto" id="tela-funilvendas"></section>
       <section class="tela oculto" id="tela-fechamento"></section>
       <section class="tela oculto" id="tela-clientes"></section>
       <section class="tela oculto" id="tela-termometro"></section>
@@ -1238,7 +1237,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '05/11/2026 14:20';
+const BUILD = '05/11/2026 17:05';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -5761,7 +5760,7 @@ function telaMetas() {
     mostrando: MESES_ACENTO[iMes], trocaMes: true,
     porqueDims: 'o Resultado Chave \u00e9 um n\u00famero \u00fanico que o time anota a m\u00e3o, sem quebra por pessoa, ' +
       'produto ou origem.',
-    ondeVale: 'Para o mesmo assunto recortado lead a lead, abra <a href="#" data-ir="kpisdash">KPIS e Dashboards</a>.'
+    ondeVale: 'Para o mesmo assunto recortado lead a lead, abra <a href="#" data-ir="kpisdash:indicadores">KPIs e Funil de Vendas</a>.'
   });
   if (!atual) {
     h += aviso('atencao', 'Nao encontrei a aba <code>KPIS ' + esc(nomeAtual) + '</code> na planilha de Metas. ' +
@@ -7579,24 +7578,28 @@ function kpisComercial(c) {
    TELA - COMERCIAL
    ========================================================================== */
 /* ==========================================================================
-   INDICADORES DE PRE-QUALIFICACAO
+   ABA PANORAMA  -  como estamos hoje, e o que pede acao
    --------------------------------------------------------------------------
-   A metade de cima do funil: do lead que chega ate a reuniao marcada.
+   As duas metades do funil na mesma dobra: os principais da pre-qualificacao,
+   os principais do fechamento, e o atingimento dos dois lado a lado - a unica
+   escala em que indicadores de unidades diferentes podem dividir grafico.
+   Ver as duas metades juntas diz de que LADO do funil o mes esta sendo
+   decidido, e era justamente isso que se perdia quando cada metade tinha a
+   sua tela.
+   Os alertas fecham a aba: pedem acao, nao leitura, e no alto empurravam
+   para baixo o que a tela existe para mostrar.
    ========================================================================== */
-function prequalIndicadores(parcial) {
-  const c = ctxAreaMemo();
+function kdPanorama(c) {
   const K = kpisArea('comercial');
-  const preVenda = (K.grupos.find(g => g.t.indexOf('Pré-venda') === 0) || { l: [] });
-  const todos = K.prequal.concat(preVenda.l);
+  const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
 
-  let h = '';
-  if (parcial) h += '<div class="secao-titulo primeiro">Pré-qualificação &middot; principais</div>';
-  if (!parcial) h += barraTela(c, true) + resumoArea(todos);
-  if (!parcial && c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das quatro leituras: o <b>realizado</b>, ' +
-    'o quanto ele representa da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia e a ' +
-    '<b>projeção</b> do mês pelo ritmo de hoje. No dia ' + n0(c.dias) + ' o certo é ter ' +
-    pct(c.fracao * 100, 0) + ' da meta &mdash; é onde a marca da barra de ritmo está.');
+  let h = resumoArea(todos);
+  if (c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das leituras que vivem sendo confundidas: ' +
+    'o <b>realizado</b>, quanto ele representa da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia, ' +
+    '<b>quanto falta e por dia</b>, e a <b>projeção</b> do mês pelo ritmo de hoje. No dia ' + n0(c.dias) +
+    ' o certo é ter ' + pct(c.fracao * 100, 0) + ' da meta — é onde a marca da barra de ritmo está.');
 
+  h += '<div class="secao-titulo">Pré-qualificação &middot; principais</div>';
   /* Os dois numeros de lead nao sao o mesmo lead, e sem dizer isso o cartao
      de Meta Ads parece maior que o total - o que faria duvidar da tela toda. */
   const leadsPlataforma = soma(c.md, r => r.leadsTotal);
@@ -7610,11 +7613,39 @@ function prequalIndicadores(parcial) {
   }
   h += blocoPrincipais(K.prequal);
 
-  h += '<div class="secao-titulo">Comparativos</div>';
-  h += '<div class="grid g-2">';
-  h += cartao('Atingimento dos principais', 'Única escala em que indicadores de unidades diferentes dividem o gráfico: percentual da meta de referência. A linha tracejada marca 100%.',
-    vizAtingimento(K.prequal, { rotuloW: 236 }));
+  h += '<div class="secao-titulo">Atendimento e fechamento &middot; principais</div>';
+  h += blocoPrincipais(K.fecha);
 
+  h += '<div class="secao-titulo">Atingimento dos principais</div>';
+  h += '<div class="grid g-2">';
+  h += cartao('Metade de cima &middot; até a reunião',
+    'Percentual da meta de referência de cada principal. A linha tracejada marca 100%.',
+    vizAtingimento(K.prequal, { rotuloW: 236 }));
+  h += cartao('Metade de baixo &middot; da reunião ao contrato',
+    'Mesma escala, para comparar as duas metades sem trocar de tela.',
+    vizAtingimento(K.fecha, { rotuloW: 236 }));
+  h += '</div>';
+
+  const al = alertasOperacao();
+  if (al) {
+    h += '<div class="secao-titulo">Pontos de atenção da operação</div>';
+    h += al;
+  }
+  return h;
+}
+
+/* ==========================================================================
+   ABA COMPARATIVOS  -  o que mudou de um mes para o outro
+   --------------------------------------------------------------------------
+   Todo grafico de serie e de comparacao num lugar so, em duas secoes que
+   seguem a ordem do funil. Antes eram dois blocos chamados "Comparativos",
+   um em cada metade, e a mesma pergunta - melhorou ou piorou? - era
+   respondida em dois pontos distantes da mesma rolagem.
+   ========================================================================== */
+function kdComparativos(c) {
+  const K = kpisArea('comercial');
+  let h = '<div class="secao-titulo primeiro">Da entrada do lead à reunião</div>';
+  h += '<div class="grid g-2">';
   h += cartao('Leads do Meta Ads, mês a mês', 'Campanha paga pelos insights do Meta; o orgânico vem da planilha de Metas e só existe no mês corrente e no anterior.',
     (() => {
       const xs = c.serie;
@@ -7634,41 +7665,8 @@ function prequalIndicadores(parcial) {
       ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s1)' }]));
   h += '</div>';
 
-  h += '<div class="secao-titulo">Diagnóstico da pré-venda</div>';
-  h += '<div style="font-size:0.73rem;color:var(--texto-muted);line-height:1.5;margin:-0.35rem 0 0.9rem;max-width:74ch">' +
-    'O detalhe que se consulta quando um principal acende. Indicador com borda tracejada não tem fonte: ' +
-    'o pé do cartão diz o que falta para ele existir.</div>';
-  h += blocoEsp(preVenda.t || 'Pré-venda (SDR)', preVenda.s, preVenda.l);
-
-  if (!parcial) {
-    h += '<div class="secao-titulo">Todos os indicadores da pré-qualificação</div>';
-    h += tabelaKpi('kpi-prequal', todos, 'Indicadores da pré-qualificação');
-  }
-  return h;
-}
-
-/* ==========================================================================
-   INDICADORES DE NEGOCIACAO E FECHAMENTO
-   --------------------------------------------------------------------------
-   A metade de baixo: da reuniao realizada ate o honorario assinado - e o
-   custo do que foi preciso para chegar la.
-   ========================================================================== */
-function fechamentoIndicadores(parcial) {
-  const c = ctxAreaMemo();
-  const K = kpisArea('comercial');
-  const grupos = K.grupos.filter(g => g.t.indexOf('Pré-venda') !== 0);
-  const todos = K.fecha.concat(grupos.reduce((a, g) => a.concat(g.l), []));
-
-  let h = '';
-  if (!parcial) h += barraTela(c, true) + resumoArea(todos);
-  h += '<div class="secao-titulo' + (parcial ? '' : ' primeiro') + '">Atendimento e fechamento &middot; principais</div>';
-  h += blocoPrincipais(K.fecha);
-
-  h += '<div class="secao-titulo">Comparativos</div>';
+  h += '<div class="secao-titulo">Da reunião ao contrato</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Atingimento dos principais', 'Única escala em que indicadores de unidades diferentes dividem o gráfico: percentual da meta de referência. A linha tracejada marca 100%.',
-    vizAtingimento(K.fecha, { rotuloW: 236 }));
-
   h += cartao('Reuniões realizadas x clientes fechados',
     'Seis meses até ' + rotuloMes(c.mes) + ', na mesma escala (contagem) &mdash; a distância entre as linhas é o que a reunião não converteu. Segue o mês e os filtros desta tela, como os cartões ao lado.',
     (() => {
@@ -7718,7 +7716,6 @@ function fechamentoIndicadores(parcial) {
         (geral != null ? '<div style="font-size:0.7rem;color:var(--texto-muted);margin-top:0.5rem">A linha tracejada é o ticket médio geral do mês: <b style="color:var(--texto-2)">' + brl0(geral) + '</b>.</div>' : '');
     })());
   h += '</div>';
-
   /* ----- Fechamentos por etapa da esteira ----- */
   h += '<div class="secao-titulo">Fechamentos por etapa da esteira</div>';
   if (!K.totEtapa) {
@@ -7737,18 +7734,28 @@ function fechamentoIndicadores(parcial) {
           extra: [{ rot: 'Do mês', val: pct(taxa(x.n, K.totEtapa), 1) }] })) }));
     h += '</div>';
   }
+  return h;
+}
 
-  /* ----- Especialista ----- */
-  h += '<div class="secao-titulo">Diagnóstico do gestor comercial</div>';
-  h += '<div style="font-size:0.73rem;color:var(--texto-muted);line-height:1.5;margin:-0.35rem 0 0.9rem;max-width:74ch">' +
-    'O detalhe que se consulta quando um principal acende. Indicador com borda tracejada não tem fonte: ' +
-    'o pé do cartão diz o que falta para ele existir.</div>';
+/* ==========================================================================
+   ABA DIAGNOSTICO  -  o detalhe que se consulta quando um principal acende
+   --------------------------------------------------------------------------
+   Os blocos de especialista das duas metades, um atras do outro. A linha que
+   explica o que e isto estava escrita duas vezes, identica, uma em cada
+   metade: agora e dita uma vez, no alto.
+   ========================================================================== */
+function kdDiagnostico(c) {
+  const K = kpisArea('comercial');
+  const preVenda = (K.grupos.find(g => g.t.indexOf('Pré-venda') === 0) || { l: [] });
+  const grupos = K.grupos.filter(g => g.t.indexOf('Pré-venda') !== 0);
+
+  let h = '<div style="font-size:0.78rem;color:var(--texto-muted);line-height:1.6;margin:0 0 1.1rem;max-width:74ch">' +
+    'Nada aqui precisa ser lido todo dia. Isto existe para o dia em que um principal acende no ' +
+    '<b>Panorama</b> e a pergunta passa a ser <i>por quê</i> — são ' +
+    n0(K.grupos.reduce((a, g) => a + g.l.length, 0)) + ' indicadores de apoio, no mês de ' + esc(c.rotMes) +
+    '. Cartão com borda tracejada não tem fonte: o pé dele diz o que falta para o número existir.</div>';
+  h += blocoEsp(preVenda.t || 'Pré-venda (SDR)', preVenda.s, preVenda.l);
   grupos.forEach(g => { h += blocoEsp(g.t, g.s, g.l); });
-
-  if (!parcial) {
-    h += '<div class="secao-titulo">Todos os indicadores do fechamento</div>';
-    h += tabelaKpi('kpi-fechamento', todos, 'Indicadores de negociação e fechamento');
-  }
   return h;
 }
 
@@ -7948,8 +7955,15 @@ function funilPorCampanha(c) {
   return h;
 }
 
-function telaFunilVendas() {
-  const c = ctxAreaMemo();
+/* ==========================================================================
+   A CONTA DO FUNIL
+   --------------------------------------------------------------------------
+   As linhas do funil, cada uma com realizado, meta cheia, meta proporcional
+   e a diferenca entre as duas. Fica numa funcao a parte porque as abas Funil
+   e Indicadores leem as MESMAS linhas - duplicar a conta seria duplicar
+   tambem o jeito de errar. Roda uma vez por desenho: so uma aba esta a vista.
+   ========================================================================== */
+function calcFunil(c) {
   const metas = metasAtivas();
   const koCom = c.koCom || [];
   const koOrg = koCom.filter(r => !temCampanha(r));
@@ -8063,9 +8077,33 @@ function telaFunilVendas() {
     l.vsMes = taxa(l.real, l.meta);
   });
 
-  let h = barraTela(c, true);
-  h += avisoPeriodoMensal('<a href="#" data-ir="prequal:kommo">Leads do CRM</a>');
-  h += avisoFiltro(c);
+  const etapasL = linhas.filter(l => l.etapa && l.real != null);
+  return { linhas: linhas, etapas: etapasL.map(l => ({ k: l.rot, v: l.real })),
+           leadsTot: leadsTot, krCalc: krCalc, krQual: krQual, krDiag: krDiag };
+}
+
+/* Cartao de um indicador do funil: o valor, o selo de ritmo e a meta do mes
+   no pe. Serve "De onde vem o lead" e "Taxas e resultado". */
+function cartaoFunil(l) {
+  const at = l.meta ? taxa(l.real, l.metaProp) : null;
+  return kpi({ rotulo: l.rot, valor: l.real == null ? null : fmtPorTipo(l.tipo)(l.real),
+    pequeno: true, dica: l.nota ? l.nota.replace(/<[^>]+>/g, '') : null,
+    selo: at == null ? null : selo(nivelMeta(at), pct(at, 0) + ' do ritmo'),
+    nota: l.meta ? 'Meta do mês: ' + fmtPorTipo(l.tipo)(l.meta) : null });
+}
+
+/* ==========================================================================
+   ABA FUNIL  -  onde o lead trava
+   --------------------------------------------------------------------------
+   So o caminho: de onde vem o lead, os dois funis que contam a mesma esteira
+   por duas maos, o avanco degrau a degrau e, no fim, de quem e a perda. As
+   tabelas de meta contra realizado ficam na aba Indicadores - aqui elas
+   enterravam o funil, que e o que esta aba existe para mostrar.
+   ========================================================================== */
+function kdFunil(c) {
+  const f = calcFunil(c);
+  const linhas = f.linhas, etapas = f.etapas, leadsTot = f.leadsTot;
+  let h = '';
   h += aviso('info', '<b>O funil sai dos KRs da aba KPIS ' + esc(c.nomeMes) + '</b> &mdash; a contagem que o time ' +
     'anota à mão, que é a única com meta combinada e meta proporcional. Ao lado de cada degrau vai a contagem do ' +
     '<b>CRM</b>, que é completa e conta todo lead criado: as duas convivem de propósito, e a diferença entre elas é ' +
@@ -8075,16 +8113,8 @@ function telaFunilVendas() {
     '<br><b>As metas são do painel</b>, em <a href="#" data-ir="metasconfig">Ajustes &gt; Metas</a>, e valem sobre ' +
     'o realizado que vem do KR. Onde a planilha trouxer meta diferente, a linha avisa e mostra as duas.');
 
-  /* ----- De onde vem o lead ----- */
-  const cartaoFonte = l => {
-    const at = l.meta ? taxa(l.real, l.metaProp) : null;
-    return kpi({ rotulo: l.rot, valor: l.real == null ? null : fmtPorTipo(l.tipo)(l.real),
-      pequeno: true, dica: l.nota ? l.nota.replace(/<[^>]+>/g, '') : null,
-      selo: at == null ? null : selo(nivelMeta(at), pct(at, 0) + ' do ritmo'),
-      nota: l.meta ? 'Meta do mês: ' + fmtPorTipo(l.tipo)(l.meta) : null });
-  };
   h += '<div class="secao-titulo primeiro">De onde vem o lead &middot; ' + esc(c.rotMes) + '</div>';
-  h += '<div class="grid g-kpi g-fonte">' + linhas.slice(0, 4).map(cartaoFonte).join('') + '</div>';
+  h += '<div class="grid g-kpi g-fonte">' + linhas.slice(0, 4).map(cartaoFunil).join('') + '</div>';
 
   /* ----- A PRE-QUALIFICACAO, DENTRO DO FUNIL COMPLETO -----
      O funil dos KRs comeca na entrada do Kommo e pula os dois degraus de
@@ -8106,9 +8136,6 @@ function telaFunilVendas() {
     h += cartao('Funil de pré-qualificação', 'Volume por etapa e conversão etapa a etapa.', vizFunil(FP.etapas));
   }
 
-  /* ----- O funil ----- */
-  const etapasL = linhas.filter(l => l.etapa && l.real != null);
-  const etapas = etapasL.map(l => ({ k: l.rot, v: l.real }));
   h += '<div class="secao-titulo">Funil de vendas &middot; ' + esc(c.rotMes) +
     (c.emCurso ? ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(mês em andamento &mdash; dia ' +
       n0(c.dias) + ' de ' + n0(c.diasMes) + ')</span>' : '') + '</div>';
@@ -8119,55 +8146,7 @@ function telaFunilVendas() {
     return h;
   }
 
-  const fmtL = l => l.real == null ? '&mdash;' : fmtPorTipo(l.tipo)(l.real);
-
   h += cartao('Funil realizado no mês', 'Volume por etapa, do topo ao contrato.', vizFunil(etapas));
-
-  h += '<div class="secao-titulo">Realizado x projetado</div>';
-  h += cartao('Os ' + n0(linhas.length) + ' indicadores do funil',
-    'A meta cheia do mês, o ritmo esperado para hoje (meta proporcional) e o que já entrou. '
-    + 'As duas últimas colunas são a mesma diferença — resultado menos meta proporcional — primeiro em '
-    + 'percentual, depois em número. Em indicador que já é percentual, a diferença está em pontos percentuais.',
-    '<div class="tbl-compacta">' + tabelaInterativa('funilv-proj', [
-      /* Ordenacao desligada de proposito: a ordem da tabela e a do funil, do
-         topo ao contrato. Reordenar por qualquer coluna desmonta a leitura
-         de esteira, que e a razao desta tela existir. */
-      { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap', ord: false,
-        html: r => esc(r.rot) + '<span class="cel-sub">' + r.fonte +
-          (r.metaPlanilha != null ? ' &middot; meta do painel' : '') + '</span>' },
-      { k: 'meta', rot: 'Meta mensal', tipo: 'num', ord: false,
-        html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) },
-      { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num', ord: false,
-        html: r => r.metaProp == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.metaProp) },
-      { k: 'real', rot: 'Resultado atual', tipo: 'num', ord: false,
-        html: r => '<b style="color:var(--texto)">' + fmtL(r) + '</b>' },
-      { k: 'vsProp', rot: '% da diferença', tipo: 'num', ord: false,
-        html: r => { if (r.vsProp == null) return '&mdash;';
-          const d = r.vsProp - 100;
-          /* No-Show e o unico em que menos e melhor: o nivel espelha. */
-          return selo(nivelMeta(r.inverso ? 100 - d : 100 + d),
-            (d > 0 ? '+' : '') + pct(d, 0)); } },
-      { k: 'difNum', rot: 'Diferença', tipo: 'num', ord: false,
-        v: r => (r.real == null || r.metaProp == null) ? null : r.real - r.metaProp,
-        html: r => difProporcional(r) }
-    ], linhas, { titulo: 'Funil de vendas realizado x projetado', limite: 25, ativa: false }) + '</div>');
-
-  /* ===== POR QUE O DIAGNOSTICO REALIZADO NAO E UM DEGRAU =====
-     Ele passa dos qualificados do mes, e isso esta certo: o calculo nao e
-     feito so para lead que qualificou dentro do mes - entra fila do mes
-     anterior e recalculo. Como barra do funil ele faria o funil engordar no
-     meio, que e a leitura errada. Fica na tabela, onde tem meta e
-     comparacao, e a tela diz por que nao esta nas barras. */
-  if (krCalc && krQual && krCalc.resultado > krQual.resultado) {
-    h += aviso('info', '<b>Diagn\u00f3sticos realizados (' + n0(krCalc.resultado) + ') passa dos qualificados do m\u00eas (' +
-      n0(krQual.resultado) + ')</b>, e por isso ele n\u00e3o \u00e9 uma barra do funil. O c\u00e1lculo n\u00e3o \u00e9 feito apenas para ' +
-      'quem qualificou dentro do m\u00eas: entra fila que veio do m\u00eas anterior e rec\u00e1lculo de caso j\u00e1 analisado. ' +
-      'Ele mede <b>produ\u00e7\u00e3o de c\u00e1lculo</b>, n\u00e3o passagem de etapa &mdash; virar barra faria o funil engordar no meio. ' +
-      'Na tabela ele est\u00e1 inteiro, com meta e compara\u00e7\u00e3o.' +
-      (krDiag ? ' O degrau do funil continua sendo o <i>' + esc(krDiag.kr) + '</i>, com ' + n0(krDiag.resultado) +
-        ' no m\u00eas: desses c\u00e1lculos, os que fecharam com direito a revisar.' : ''));
-  }
-
   /* ----- Avanco etapa a etapa -----
      Mesma leitura da tela de pre-qualificacao: o AVANCO e sobre a etapa
      imediatamente anterior e o ACUMULADO e sobre o topo. */
@@ -8216,6 +8195,84 @@ function telaFunilVendas() {
         'conversão que não existe.');
     }
   }
+
+  /* O diagnostico por campanha fecha a tela: primeiro o funil da casa
+     inteira, depois de quem e a perda. */
+  h += funilPorCampanha(c);
+  return h;
+}
+
+/* ==========================================================================
+   ABA INDICADORES  -  meta contra realizado, numero por numero
+   --------------------------------------------------------------------------
+   As tres tabelas da casa, na ordem em que a pergunta aparece: o funil contra
+   a meta do mes, o funil contra a media do ano, e o comercial inteiro. Juntas
+   de proposito - sao a mesma leitura em recortes diferentes, e antes estavam
+   em duas telas, o que fazia parecer que uma contradizia a outra.
+   ========================================================================== */
+function kdIndicadores(c) {
+  const f = calcFunil(c);
+  const linhas = f.linhas;
+  const krCalc = f.krCalc, krQual = f.krQual, krDiag = f.krDiag;
+  const fmtL = l => l.real == null ? '&mdash;' : fmtPorTipo(l.tipo)(l.real);
+  const K = kpisArea('comercial');
+  const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
+
+  /* O aviso longo sobre KR x CRM mora na aba Funil, onde o funil e explicado
+     pela primeira vez. Aqui basta o que muda a leitura DESTAS tabelas: de
+     onde vem a meta. */
+  let h = aviso('info', '<b>O realizado vem dos KRs da aba KPIS ' + esc(c.nomeMes) + '</b> da planilha de Metas, ' +
+    'e <b>as metas vêm do painel</b>, em <a href="#" data-ir="metasconfig">Ajustes &gt; Metas</a>. ' +
+    'Onde a planilha trouxer meta diferente no mesmo KR, vale a do painel e a linha mostra as duas. ' +
+    'A leitura degrau a degrau, com os dois funis lado a lado, está na aba <b>Funil</b>.');
+
+  h += '<div class="secao-titulo">Funil contra a meta do mês</div>';
+  h += cartao('Os ' + n0(linhas.length) + ' indicadores do funil',
+    'A meta cheia do mês, o ritmo esperado para hoje (meta proporcional) e o que já entrou. '
+    + 'As duas últimas colunas são a mesma diferença — resultado menos meta proporcional — primeiro em '
+    + 'percentual, depois em número. Em indicador que já é percentual, a diferença está em pontos percentuais.',
+    '<div class="tbl-compacta">' + tabelaInterativa('funilv-proj', [
+      /* Ordenacao desligada de proposito: a ordem da tabela e a do funil, do
+         topo ao contrato. Reordenar por qualquer coluna desmonta a leitura
+         de esteira, que e a razao desta tela existir. */
+      { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap', ord: false,
+        html: r => esc(r.rot) + '<span class="cel-sub">' + r.fonte +
+          (r.metaPlanilha != null ? ' &middot; meta do painel' : '') + '</span>' },
+      { k: 'meta', rot: 'Meta mensal', tipo: 'num', ord: false,
+        html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) },
+      { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num', ord: false,
+        html: r => r.metaProp == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.metaProp) },
+      { k: 'real', rot: 'Resultado atual', tipo: 'num', ord: false,
+        html: r => '<b style="color:var(--texto)">' + fmtL(r) + '</b>' },
+      { k: 'vsProp', rot: '% da diferença', tipo: 'num', ord: false,
+        html: r => { if (r.vsProp == null) return '&mdash;';
+          const d = r.vsProp - 100;
+          /* No-Show e o unico em que menos e melhor: o nivel espelha. */
+          return selo(nivelMeta(r.inverso ? 100 - d : 100 + d),
+            (d > 0 ? '+' : '') + pct(d, 0)); } },
+      { k: 'difNum', rot: 'Diferença', tipo: 'num', ord: false,
+        v: r => (r.real == null || r.metaProp == null) ? null : r.real - r.metaProp,
+        html: r => difProporcional(r) }
+    ], linhas, { titulo: 'Funil de vendas realizado x projetado', limite: 25, ativa: false }) + '</div>');
+
+  /* ===== POR QUE O DIAGNOSTICO REALIZADO NAO E UM DEGRAU =====
+     Ele passa dos qualificados do mes, e isso esta certo: o calculo nao e
+     feito so para lead que qualificou dentro do mes - entra fila do mes
+     anterior e recalculo. Como barra do funil ele faria o funil engordar no
+     meio, que e a leitura errada. Fica na tabela, onde tem meta e
+     comparacao, e a tela diz por que nao esta nas barras. */
+  if (krCalc && krQual && krCalc.resultado > krQual.resultado) {
+    h += aviso('info', '<b>Diagn\u00f3sticos realizados (' + n0(krCalc.resultado) + ') passa dos qualificados do m\u00eas (' +
+      n0(krQual.resultado) + ')</b>, e por isso ele n\u00e3o \u00e9 uma barra do funil. O c\u00e1lculo n\u00e3o \u00e9 feito apenas para ' +
+      'quem qualificou dentro do m\u00eas: entra fila que veio do m\u00eas anterior e rec\u00e1lculo de caso j\u00e1 analisado. ' +
+      'Ele mede <b>produ\u00e7\u00e3o de c\u00e1lculo</b>, n\u00e3o passagem de etapa &mdash; virar barra faria o funil engordar no meio. ' +
+      'Na tabela ele est\u00e1 inteiro, com meta e compara\u00e7\u00e3o.' +
+      (krDiag ? ' O degrau do funil continua sendo o <i>' + esc(krDiag.kr) + '</i>, com ' + n0(krDiag.resultado) +
+        ' no m\u00eas: desses c\u00e1lculos, os que fecharam com direito a revisar.' : ''));
+  }
+
+  h += '<div class="secao-titulo">Taxas e resultado</div>';
+  h += '<div class="grid g-3">' + linhas.slice(11).map(cartaoFunil).join('') + '</div>';
 
   /* ===== CADA KPI CONTRA A MEDIA DO ANO =====
      A meta diz para onde o escritorio quer ir; a media do ano diz de onde
@@ -8279,13 +8336,8 @@ function telaFunilVendas() {
       ], comp, { titulo: 'KPI contra a média do ano', limite: 25, ativa: false }) + '</div>');
   }
 
-  /* ----- Taxas e resultado ----- */
-  h += '<div class="secao-titulo">Taxas e resultado</div>';
-  h += '<div class="grid g-3">' + linhas.slice(11).map(cartaoFonte).join('') + '</div>';
-
-  /* O diagnostico por campanha fecha a tela: primeiro o funil da casa
-     inteira, depois de quem e a perda. */
-  h += funilPorCampanha(c);
+  h += '<div class="secao-titulo">Todos os indicadores do comercial</div>';
+  h += tabelaKpi('kpi-comercial', todos, 'Indicadores do comercial');
   return h;
 }
 /* ==========================================================================
@@ -8313,8 +8365,22 @@ function telaFunilVendas() {
        por closer e SDR que ja estava la.
      . Na aba Vendas sairam a linha de KPI e as quebras por closer, produto,
        origem e pagamento: Fluxo de clientes traz as cinco, com mais colunas.
+     . "KPIS e Dashboards" e "Funil de Vendas Completo" eram duas telas do
+       mesmo mes, dos mesmos filtros e, em boa parte, dos mesmos numeros -
+       e nenhuma das duas respondia uma pergunta inteira. Viraram uma tela
+       com cinco abas, em KPIs e Funil de Vendas. Nenhum quadro foi perdido:
+       o que estava em dois lugares passou a ser dito uma vez.
    ========================================================================== */
 const MODULOS = {
+  /* Cinco perguntas, nao cinco origens de dado. A ordem e a do dia: o que
+     esta acontecendo, onde trava, o numero exato, o que mudou, e por que. */
+  kpisdash: [
+    { k: 'panorama',     rot: 'Panorama' },
+    { k: 'funil',        rot: 'Funil' },
+    { k: 'indicadores',  rot: 'Indicadores' },
+    { k: 'comparativos', rot: 'Comparativos' },
+    { k: 'diagnostico',  rot: 'Diagnóstico' }
+  ],
   campanhas: [
     { k: 'ind',      rot: 'Indicadores' },
     { k: 'camp',     rot: 'Campanhas' },
@@ -8333,7 +8399,7 @@ const MODULOS = {
 };
 /* A aba escolhida fica no estado global, junto com os filtros: sair do
    modulo e voltar nao perde onde a pessoa estava. */
-F.aba = { campanhas: 'ind', prequal: 'produto', fechamento: 'esteira' };
+F.aba = { kpisdash: 'panorama', campanhas: 'ind', prequal: 'produto', fechamento: 'esteira' };
 
 function abasDe(mod) {
   const lista = MODULOS[mod];
@@ -8614,37 +8680,37 @@ function moduloMarketing() {
   return telaAreaMarketing();
 }
 
-/* KPIS e Dashboards: o comercial inteiro num lugar so - as duas metades do
-   funil lado a lado, os comparativos, os fechamentos por degrau da esteira e
-   o diagnostico completo. E a tela de comando do comercial. */
+/* ==========================================================================
+   COMERCIAL  -  KPIs E FUNIL DE VENDAS
+   --------------------------------------------------------------------------
+   Eram duas telas: "KPIS e Dashboards" e "Funil de Vendas Completo". Liam o
+   mesmo mes, os mesmos filtros e, em boa parte, os mesmos numeros - quem
+   abria uma nao sabia se a outra diria diferente, e a resposta para uma
+   pergunta so costumava estar partida entre as duas. Agora e uma tela, e as
+   abas separam por PERGUNTA, nao por origem do dado:
+
+     Panorama      - como estamos hoje, e o que pede acao
+     Funil         - onde o lead trava, degrau a degrau
+     Indicadores   - meta contra realizado, numero por numero
+     Comparativos  - o que mudou de um mes para o outro
+     Diagnostico   - o detalhe que se consulta quando um principal acende
+
+   A barra do mes e os dois avisos de alcance ficam FORA das abas: valem para
+   a tela inteira, e repetidos dentro de cada aba davam tres tarjas de aviso
+   antes do primeiro numero.
+   ========================================================================== */
 function moduloKpisDash() {
   const c = ctxAreaMemo();
-  const K = kpisArea('comercial');
-  const todos = K.prequal.concat(K.fecha, K.grupos.reduce((a, g) => a.concat(g.l), []));
-
-  let h = barraTela(c, true);
-  h += avisoPeriodoMensal('<a href="#" data-ir="fechamento:vendas">Vendas</a> ou ' +
+  const a = F.aba.kpisdash;
+  let h = barraTela(c, true) + abasDe('kpisdash');
+  h += avisoPeriodoMensal('<a href="#" data-ir="prequal:kommo">Leads do CRM</a> ou ' +
     '<a href="#" data-ir="clientes">Fluxo de clientes</a>');
   h += avisoFiltro(c);
-  h += resumoArea(todos);
-  if (c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das leituras que vivem sendo confundidas: ' +
-    'o <b>realizado</b>, quanto ele representa da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia, ' +
-    '<b>quanto falta e por dia</b>, e a <b>projeção</b> do mês pelo ritmo de hoje. No dia ' + n0(c.dias) +
-    ' o certo é ter ' + pct(c.fracao * 100, 0) + ' da meta — é onde a marca da barra de ritmo está.');
-
-  h += prequalIndicadores(true);
-  h += fechamentoIndicadores(true);
-
-  h += '<div class="secao-titulo">Todos os indicadores do comercial</div>';
-  h += tabelaKpi('kpi-comercial', todos, 'Indicadores do comercial');
-
-  /* Os alertas fecham a p\u00e1gina. Eles pedem a\u00e7\u00e3o, n\u00e3o leitura: no alto,
-     empurravam para baixo o que a tela existe para mostrar. */
-  const al = alertasOperacao();
-  if (al) {
-    h += '<div class="secao-titulo">Pontos de aten\u00e7\u00e3o da opera\u00e7\u00e3o</div>';
-    h += al;
-  }
+  if (a === 'funil')             h += kdFunil(c);
+  else if (a === 'indicadores')  h += kdIndicadores(c);
+  else if (a === 'comparativos') h += kdComparativos(c);
+  else if (a === 'diagnostico')  h += kdDiagnostico(c);
+  else                           h += kdPanorama(c);
   return h;
 }
 
@@ -8919,7 +8985,6 @@ const IC = {
   termometro: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/><line x1="11.5" y1="16.5" x2="11.5" y2="9"/></svg>',
   visao:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
   kpis:    '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
-  funilvendas: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/><polyline points="15.5 17.5 17.5 19.5 21.5 15.5"/></svg>',
   funil:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>',
   esteira: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
   clifluxo:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>',
@@ -8945,13 +9010,12 @@ const TELAS = [
   { k: 'campanhas', rot: 'Campanhas Meta Ads', sub: 'Do investimento ao honorário, campanha e criativo', fn: moduloCampanhas },
   { k: 'marketing', rot: 'Marketing',          sub: 'Audiência, conteúdo, marca e demanda sem verba', fn: moduloMarketing },
   { grupo: 'Comercial' },
-  { k: 'kpisdash',  rot: 'KPIS e Dashboards',  sub: 'O comercial inteiro: indicadores, comparativos e diagnóstico', fn: moduloKpisDash },
-  /* Pre-qualificacao e Negociacao saem do MENU, nao do painel: o Funil de
-     Vendas Completo ja conta a esteira inteira. Continuam montadas porque
+  { k: 'kpisdash',  rot: 'KPIs e Funil de Vendas', sub: 'Do anúncio ao contrato: panorama, funil, indicadores, comparativos e diagnóstico', fn: moduloKpisDash },
+  /* Pre-qualificacao e Negociacao saem do MENU, nao do painel: KPIs e Funil
+     de Vendas ja conta a esteira inteira. Continuam montadas porque
      outras telas linkam para elas (data-ir="prequal:kommo"), e link quebrado
      e pior do que item de menu a mais. */
   { k: 'prequal',   rot: 'Funil de Pré-Qualificação', sub: 'Do lead que chega até a reunião marcada', fn: moduloPrequal, oculta: true },
-  { k: 'funilvendas', rot: 'Funil de Vendas Completo', sub: 'Do anúncio ao contrato assinado, com a meta de cada degrau', fn: telaFunilVendas },
   { k: 'fechamento', rot: 'Negociação e Fechamento',  sub: 'Esteira, vendas, financeiro e metas', fn: moduloFechamento, oculta: true },
   { k: 'clientes',  rot: 'Fluxo de clientes',  sub: 'Quem assina, por onde chega e quem fecha', fn: moduloClientes },
   { k: 'termometro', rot: 'Termômetro dos clientes', sub: 'A pesquisa de satisfação: nota de 0 a 100, por dimensão e por cliente', fn: telaTermometro },
