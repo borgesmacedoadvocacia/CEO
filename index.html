@@ -1238,7 +1238,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '05/11/2026 14:05';
+const BUILD = '05/11/2026 14:20';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -8187,21 +8187,21 @@ function telaFunilVendas() {
         'entram ' + n0(pior.volume + pior.perda) + ', seguem ' + n0(pior.volume) + ' &mdash; ' +
         '<b>' + n0(pior.perda) + ' ficam pelo caminho</b> (' + pct(pior.perdaPct, 0) + ' daquela etapa).');
     }
-    h += tabelaInterativa('funilv-passos', [
-      { k: 'ordem', rot: '#', tipo: 'num' },
-      { k: 'etapa', rot: 'Etapa', tipo: 'txt', cls: 'forte' },
-      { k: 'volume', rot: 'Volume', tipo: 'num',
+    h += '<div class="tbl-compacta">' + tabelaInterativa('funilv-passos', [
+      { k: 'ordem', rot: '#', tipo: 'num', ord: false },
+      { k: 'etapa', rot: 'Etapa', tipo: 'txt', cls: 'forte', ord: false },
+      { k: 'volume', rot: 'Volume', tipo: 'num', ord: false,
         html: r => barraCelula(r.volume, etapas[0].v, corRampa(r.ordem - 1, etapas.length), n0(r.volume)) },
       { k: 'avanco', rot: 'Avanço da etapa anterior', tipo: 'num', ord: false,
         html: r => r.avanco == null ? '<span style="color:var(--texto-muted)">topo do funil</span>'
           : selo(r.avanco >= 80 ? 'ok' : r.avanco >= 50 ? 'atencao' : 'critico', pct(r.avanco, 1)) },
-      { k: 'perda', rot: 'Perda no degrau', tipo: 'num',
+      { k: 'perda', rot: 'Perda no degrau', tipo: 'num', ord: false,
         html: r => r.perda == null ? '&mdash;' : (r.perda > 0
           ? '<span style="color:#e98a8a">-' + n0(r.perda) + '</span> <span style="color:var(--texto-muted)">(' + pct(r.perdaPct, 0) + ')</span>'
           : n0(0)) },
       { k: 'acumulado', rot: 'Do topo do funil', tipo: 'num', ord: false,
         html: r => pct(r.acumulado, r.acumulado < 10 ? 2 : 1) }
-    ], passos, { titulo: 'Avanço do funil de vendas', limite: 20, ativa: false });
+    ], passos, { titulo: 'Avanço do funil de vendas', limite: 20, ativa: false }) + '</div>';
 
     /* O degrau que a plataforma deixa para tras: ele nao cabe na tabela
        acima porque muda de base, e e justamente por isso que precisa ser
