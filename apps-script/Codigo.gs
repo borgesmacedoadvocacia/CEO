@@ -169,7 +169,13 @@ function _fontes() {
       colunas: [1,2,3,4,5,8,9,10,11,12,13,14,15,16,17,18,19,22,24,25,26,29,31,32,33,34,35,42,43,47],
       limite: 30000
     },
-    cerebroResumo: { sheet: 'cerebro', abas: ['RESUMO'], cabec: 1, colunas: null }
+    cerebroResumo: { sheet: 'cerebro', abas: ['RESUMO'], cabec: 1, colunas: null },
+
+    /* Termometro dos clientes. Pede a propriedade de script
+       SHEET_pesquisa com o ID da planilha de respostas do formulario
+       "Pesquisa de Satisfacao | BM Advocacia". Sem ela o painel mostra
+       a tela com o aviso de fonte faltando, e nada mais quebra. */
+    pesquisa: { sheet: 'pesquisa', abas: ['Respostas'], cabec: 1, colunas: null, limite: 20000 }
   };
 }
 

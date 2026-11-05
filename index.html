@@ -204,12 +204,13 @@ if (window.self !== window.top) {
     font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--texto-muted); font-weight: 700;
   }
-  .filtro select, .filtro input {
+  .filtro select, .filtro input, .bp-campo select, .bp-campo input {
     background: var(--bg3); border: 1px solid var(--borda); color: var(--texto);
     border-radius: 8px; padding: 0.42rem 0.6rem; font-size: 0.8rem;
     font-family: inherit; outline: none; min-width: 132px; max-width: 200px;
   }
-  .filtro select:focus, .filtro input:focus { border-color: var(--azul-claro); }
+  .filtro select:focus, .filtro input:focus,
+  .bp-campo select:focus, .bp-campo input:focus { border-color: var(--azul-claro); }
   .filtro input[type="search"] { min-width: 186px; }
   .chip-multi { position: relative; }
   .chip-botao {
@@ -606,6 +607,9 @@ if (window.self !== window.top) {
     border-radius: 8px; padding: 0.5rem 0.75rem; margin: 0 0 1rem;
   }
   .recorte-aba b { color: var(--texto-2); font-weight: 600; }
+  .barra-periodo { flex-wrap: wrap; row-gap: 0.4rem; }
+  .bp-sep { width: 1px; align-self: stretch; min-height: 22px; background: var(--borda); margin: 0 0.25rem; }
+  .bp-campo { display: inline-flex; align-items: center; gap: 0.32rem; font-size: 0.72rem; color: var(--texto-2); }
 
   /* --- grafico: tinta discreta e largura com teto --- */
   :root { --grade: rgba(148,163,184,0.085); }
@@ -1114,6 +1118,7 @@ if (window.self !== window.top) {
       <section class="tela oculto" id="tela-funilvendas"></section>
       <section class="tela oculto" id="tela-fechamento"></section>
       <section class="tela oculto" id="tela-clientes"></section>
+      <section class="tela oculto" id="tela-termometro"></section>
       <section class="tela oculto" id="tela-metasconfig"></section>
       <section class="tela oculto" id="tela-fontes"></section>
     </div>
@@ -1176,7 +1181,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '29/10/2026 14:16';
+const BUILD = '05/11/2026 10:08';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -1816,6 +1821,9 @@ async function carregarMetaDia() {
     const d = parseData(m.cel(l, 'data'));
     return {
       d: d, mes: d ? chaveMes(d) : '',
+      /* A aba ja trazia a conta de anuncios; o painel mapeava e jogava fora.
+         Com ela o filtro de Conta da tela de Campanhas fica possivel. */
+      conta: String(m.cel(l, 'conta') || '').trim(),
       campanha: m.cel(l, 'campanha') || 'Sem campanha',
       idCamp: m.cel(l, 'idCamp'),
       gasto: num(m.cel(l, 'gasto')),
@@ -2532,6 +2540,113 @@ async function carregarCerebro() {
 }
 
 /* ===================== ORQUESTRACAO ===================== */
+/* ==========================================================================
+   TERMOMETRO DOS CLIENTES  -  a pesquisa de satisfacao dentro do painel
+   --------------------------------------------------------------------------
+   Reproduz o painel "Termometro de Relacionamento" publicado em
+   /termometro, com a mesma base e as mesmas contas, na linguagem visual
+   deste painel. O que vem de la, igual:
+
+     . a escala de 5 opcoes vira termometro de 0 a 100 - neutro e exatamente
+       50 -, para a nota se ler sem explicacao;
+     . as colunas sao achadas pelo TEXTO da pergunta, nunca pela letra:
+       editar o formulario reordena e renomeia colunas, e ler por posicao
+       passaria a mostrar a resposta de outra pergunta sem avisar;
+     . o texto da opcao casa sem emoji e sem acento, entao tirar o emoji do
+       formulario nao quebra a leitura.
+   ========================================================================== */
+const PESQ_ESCALA = [
+  { nota: 1, rotulo: 'Muito insatisfeito', cor: '#ef4444' },
+  { nota: 2, rotulo: 'Insatisfeito',       cor: '#f97316' },
+  { nota: 3, rotulo: 'Neutro',             cor: '#f59e0b' },
+  { nota: 4, rotulo: 'Satisfeito',         cor: '#84cc16' },
+  { nota: 5, rotulo: 'Muito satisfeito',   cor: '#22c55e' }
+];
+const PESQ_LEALDADE = ['Sim', 'Talvez', 'Não'];
+const PESQ_DIMENSOES = [
+  { chave: 'resultado',   curto: 'Resultado do processo', pistas: ['resultado do seu processo'] },
+  { chave: 'conducao',    curto: 'Condução do processo',  pistas: ['conduzindo o seu processo', 'forma como a bm'] },
+  { chave: 'atendimento', curto: 'Atendimento da equipe', pistas: ['atendimento prestado'] },
+  { chave: 'comunicacao', curto: 'Comunicação',           pistas: ['comunicacao da bm', 'clareza e frequencia'] },
+  { chave: 'geral',       curto: 'Satisfação geral',      pistas: ['satisfacao geral', 'considerando tudo'] }
+];
+const PESQ_LEAIS = [
+  { chave: 'indicaria', curto: 'Indicaria a BM',       pistas: ['indicaria'] },
+  { chave: 'voltaria',  curto: 'Voltaria a contratar', pistas: ['voltaria a contratar'] }
+];
+const PESQ_OUTROS = [
+  { chave: 'quando',    pistas: ['carimbo de data', 'timestamp'] },
+  { chave: 'positivos', pistas: ['pontos positivos'] },
+  { chave: 'melhorar',  pistas: ['precisamos melhorar'] },
+  { chave: 'nome',      pistas: ['nome completo'] },
+  { chave: 'telefone',  pistas: ['telefone'] }
+];
+
+const soTextoPesq = s => chaveBusca(s).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const notaPesq = v => {
+  const t = soTextoPesq(v);
+  if (!t) return null;
+  const e = PESQ_ESCALA.find(x => soTextoPesq(x.rotulo) === t);
+  return e ? e.nota : null;
+};
+const lealdadePesq = v => {
+  const t = soTextoPesq(v);
+  if (!t) return '';
+  return PESQ_LEALDADE.find(x => soTextoPesq(x) === t) || '';
+};
+/* Nota 1-5 vira termometro 0-100: neutro e exatamente 50. */
+const termometro = m => m == null ? null : (m - 1) / 4 * 100;
+const nivelTermometro = t => t == null ? 'neutro' : t >= 75 ? 'ok' : t >= 50 ? 'atencao' : 'critico';
+const mediaDe = l => l.length ? l.reduce((s, v) => s + v, 0) / l.length : null;
+
+function acharColunaPesq(norm, pistas) {
+  for (const p of pistas) {
+    const alvo = soTextoPesq(p);
+    const i = norm.findIndex(c => c.indexOf(alvo) >= 0);
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+async function carregarPesquisa() {
+  const linhas = await lerAba(CONFIG.SHEETS.pesquisa, 'Respostas',
+    { fonte: 'pesquisa', esperado: ['Carimbo de data/hora'] });
+  const t = tabela(linhas);
+  const norm = t.cab.map(soTextoPesq);
+  const idx = {}, faltando = [];
+  PESQ_DIMENSOES.concat(PESQ_LEAIS, PESQ_OUTROS).forEach(q => {
+    idx[q.chave] = acharColunaPesq(norm, q.pistas);
+    if (idx[q.chave] < 0 && q.curto) faltando.push(q.curto);
+  });
+  const cel = (l, k) => {
+    const i = idx[k];
+    if (i < 0) return '';
+    const v = l[i];
+    return v === undefined || v === null ? '' : String(v).trim();
+  };
+
+  const reg = t.linhas.map((l, n) => {
+    const r = { n: n, d: parseData(cel(l, 'quando')) };
+    r.mes = r.d ? chaveMes(r.d) : '';
+    PESQ_DIMENSOES.forEach(d => { r[d.chave] = notaPesq(cel(l, d.chave)); });
+    PESQ_LEAIS.forEach(d => { r[d.chave] = lealdadePesq(cel(l, d.chave)); });
+    r.positivos = cel(l, 'positivos');
+    r.melhorar = cel(l, 'melhorar');
+    r.nome = cel(l, 'nome');
+    r.telefone = cel(l, 'telefone');
+    r.identificado = !!(r.nome || r.telefone);
+    r.quem = r.nome || (r.telefone ? 'Sem nome · ' + r.telefone : 'Anônimo');
+    const notas = PESQ_DIMENSOES.map(d => r[d.chave]).filter(v => v !== null);
+    r.media = mediaDe(notas);
+    r.pior = notas.length ? Math.min.apply(null, notas) : null;
+    r.piorDimensao = r.pior == null ? null
+      : (PESQ_DIMENSOES.find(d => r[d.chave] === r.pior) || {}).curto || null;
+    return r;
+  }).filter(r => r.d || PESQ_DIMENSOES.some(d => r[d.chave] !== null));
+
+  return { reg: reg, faltando: faltando, semData: reg.filter(r => !r.d).length };
+}
+
 const FONTES = [
   { k: 'atend',    nome: 'Fluxo de Atendimentos [NOVA]',      papel: 'Reunioes, proposta e esteira de negociacao', sheet: 'atend',    fn: carregarAtend,     critica: true },
   { k: 'clientes', nome: 'FLUXO DE CLIENTES [2026]',          papel: 'Fechamentos, honorarios e ticket medio',     sheet: 'clientes', fn: carregarClientes,  critica: true },
@@ -2544,7 +2659,8 @@ const FONTES = [
   { k: 'fin',      nome: 'FLUXO FINANCEIRO 2026 - DRE COMERCIAL', papel: 'Custo real do setor comercial, CAC e margem', sheet: 'financeiro', fn: carregarFinanceiro, critica: false },
   { k: 'cerebro',  nome: 'TODOS OS LEADS [CEREBRO COMERCIAL]',   papel: 'Jornada do lead e historico 2025+2026',       sheet: 'cerebro',  fn: carregarCerebro,   critica: false, soProxy: true },
   { k: 'kommo',    nome: 'Leads Kommo [DASHBOARDS]',          papel: 'Pre-qualificacao lead a lead',               sheet: 'kommo',    fn: carregarKommo,     critica: false },
-  { k: 'hist',     nome: 'Metas e Resultados (antiga)',       papel: 'Acumulado do ano, base historica',           sheet: 'antiga',   fn: carregarHistorico, critica: false }
+  { k: 'hist',     nome: 'Metas e Resultados (antiga)',       papel: 'Acumulado do ano, base historica',           sheet: 'antiga',   fn: carregarHistorico, critica: false },
+  { k: 'pesquisa', nome: 'Pesquisa de Satisfacao | BM Advocacia', papel: 'Termometro de relacionamento com o cliente', sheet: 'pesquisa', fn: carregarPesquisa, critica: false }
 ];
 
 let ULTIMA_LEITURA = null;
@@ -2554,7 +2670,7 @@ let ULTIMA_LEITURA = null;
 const FONTES_PROXY = ['atend', 'clientes', 'metaDia', 'metaCamp', 'metaReun',
   'metaAnuncios', 'metaJanelas',
   'kpisAtual', 'kpisAnterior', 'kpisMkt', 'prodAtual', 'prodAnterior', 'okrs',
-  'hist', 'fin', 'kommo', 'cerebro']
+  'hist', 'fin', 'kommo', 'cerebro', 'pesquisa']
   /* Mais um pedido por mes do ano, fora os dois que ja vao acima. Enquanto o
      proxy publicado nao conhecer essas chaves, ele responde erro nelas e o
      painel segue com os dois meses de sempre. */
@@ -3365,6 +3481,13 @@ const F = {
   grupo: 'aberto',
   /* Recorte de campanhas ativas, so da tela de trafego. */
   soAtivas: false,
+  /* Conta de anuncios do Meta: 'todas' ou o ID. So a tela de Campanhas
+     oferece o recorte, e so o que vem do Meta o obedece - o CRM nao sabe
+     de que conta veio o anuncio. */
+  conta: 'todas',
+  /* Extremos de um periodo escolhido a mao - mes do seletor ou faixa de
+     datas. Ficam nulos enquanto o periodo for um dos atalhos. */
+  pIni: null, pFim: null,
   /* Mes inspecionado na tela de KPIs. */
   mesKpi: null
 };
@@ -3378,12 +3501,19 @@ function mesMais(chave, delta) {
 
 const PERIODOS = [
   { k: 'mes',   rot: 'Mês atual' },
+  { k: 'u30',   rot: 'Últimos 30 dias' },
   { k: 'ant',   rot: 'Mês anterior' },
   { k: 'u3',    rot: 'Últimos 3 meses' },
   { k: 'u6',    rot: 'Últimos 6 meses' },
   { k: 'u12',   rot: 'Últimos 12 meses' },
   { k: 'ano',   rot: 'Ano corrente' },
-  { k: 'tudo',  rot: 'Todo o histórico' }
+  { k: 'tudo',  rot: 'Todo o histórico' },
+  /* Os dois de baixo nascem de um clique na tela de Campanhas, nao do
+     seletor. Ficam na lista para o seletor de cima nunca mentir sobre o
+     recorte em uso: quando um deles esta ativo, ele aparece ali com o
+     rotulo do recorte real. */
+  { k: 'mesesc', rot: 'Mês escolhido', dinamico: true },
+  { k: 'faixa',  rot: 'Período escolhido', dinamico: true }
 ];
 
 /* Resolve o periodo em uma faixa de datas e na lista de meses do eixo X. */
@@ -3393,6 +3523,18 @@ function faixa() {
   let de, ate = fimMes;
   switch (F.periodo) {
     case 'mes': de = new Date(h.getFullYear(), h.getMonth(), 1); break;
+    /* Janela corrida: 30 dias contados de hoje para tras, hoje incluido.
+       Nao e "mes passado" - e a leitura de entrega recente do Meta. */
+    case 'u30': de = new Date(h.getFullYear(), h.getMonth(), h.getDate() - 29);
+                ate = new Date(h.getFullYear(), h.getMonth(), h.getDate(), 23, 59, 59); break;
+    case 'mesesc': if (F.pIni) { de = F.pIni;
+                     ate = new Date(F.pIni.getFullYear(), F.pIni.getMonth() + 1, 0, 23, 59, 59); }
+                   else de = new Date(h.getFullYear(), h.getMonth(), 1);
+                   break;
+    case 'faixa': if (F.pIni && F.pFim) { de = F.pIni;
+                    ate = new Date(F.pFim.getFullYear(), F.pFim.getMonth(), F.pFim.getDate(), 23, 59, 59); }
+                  else de = new Date(h.getFullYear(), h.getMonth(), 1);
+                  break;
     case 'ant': de = new Date(h.getFullYear(), h.getMonth() - 1, 1);
                 ate = new Date(h.getFullYear(), h.getMonth(), 0, 23, 59, 59); break;
     case 'u3':  de = new Date(h.getFullYear(), h.getMonth() - 2, 1); break;
@@ -3442,10 +3584,17 @@ function selClientes() {
     passaSet(F.closers, r.closer) && passaSet(F.origens, r.origem) &&
     passaBusca([r.contato, r.cliente, r.produto, r.closer, r.sdr, r.origem, r.tipoPag]));
 }
+/* So o Meta sabe de que conta saiu o gasto. Reuniao e cliente vem do CRM,
+   que nao guarda conta - por isso o recorte nao se aplica a eles, e a barra
+   diz isso na tela em vez de fingir que filtrou tudo. */
+const daConta = r => F.conta === 'todas' || String(r.conta || '') === F.conta;
+const contasDoMeta = () => Array.from(new Set(((DADOS.metaDia && DADOS.metaDia.reg) || [])
+  .map(r => r.conta).filter(Boolean))).sort();
+
 function selMetaDia() {
   const d = DADOS.metaDia;
   if (!d) return [];
-  return d.reg.filter(r => noPeriodo(r.d) && passaBusca([r.campanha]));
+  return d.reg.filter(r => noPeriodo(r.d) && daConta(r) && passaBusca([r.campanha]));
 }
 function selMetaReun() {
   const d = DADOS.metaReun;
@@ -3679,6 +3828,58 @@ function avisoAlcance(o) {
     l.join('<br>') + (o.ondeVale ? '<br>' + o.ondeVale : ''));
 }
 
+/* ===== O FUNIL DO PRODUTO MORA NUM LUGAR SO =====
+   A aba "Produtos Juridicos" da planilha de Metas e a contagem que o time
+   mantem a mao: e ela que sabe quantos responderam a triagem e quantos
+   responderam a qualificacao, degraus que os KRs nao tem. Era montada so
+   dentro da tela de Pre-Qualificacao; agora o Funil de Vendas Completo
+   mostra o mesmo funil, para a tela dar a esteira inteira de uma vez.
+   A conta vive aqui para as duas telas nunca divergirem. */
+function funilDoProduto() {
+  const p = DADOS.metas && DADOS.metas.produtos;
+  const mesSel = F.periodo === 'ant' ? mesMais(MES_ATUAL, -1) : MES_ATUAL;
+  const atual = F.periodo === 'ant' ? (p && p.anterior) : (p && p.atual);
+  if (!atual || !atual.real) return { mesSel: mesSel, atual: atual };
+
+  const ordem = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)', 'responderam a triagem', 'elegiveis',
+    'responderam a qualificacao', 'qualificados (aguardando documentacao)', 'diagnosticos', 'viaveis',
+    'atendimentos realizados', 'clientes'];
+  /* ===== TODO LEAD ENTRA NO KOMMO =====
+     "Leads (Kommo)" nao e uma origem ao lado de "Leads (Organico)": e o
+     TOTAL, e o organico e um pedaco de dentro dele. Somar os dois contava o
+     organico duas vezes e inflava o topo do funil - e com o topo inflado
+     toda conversao abaixo sai menor do que e. A propria planilha confirma a
+     relacao: a projecao encadeia "Responderam a Triagem" em cima do Kommo
+     (990 de 1.100 = 90%), nunca em cima da soma. */
+  const FONTES_LEAD = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)',
+                       'leads abordados ou que falaram no whatsapp'];
+  const valorDe = k => (atual.real && atual.real[k] != null && atual.real[k] !== '') ? num(atual.real[k]) : null;
+
+  const leadsOrg = valorDe('leads (organico)');
+  const leadsPagoCol = valorDe('leads (meta ads)');
+  const totalLeads = valorDe('leads (kommo)') || ((leadsOrg || 0) + (leadsPagoCol || 0)) || null;
+  /* Sem coluna propria de Meta Ads, o pago e o que resta do total depois do
+     organico. E deducao, nao registro, e o cartao diz isso. */
+  const pagoDeduzido = leadsPagoCol == null && !!totalLeads && leadsOrg != null;
+  const leadsPago = leadsPagoCol != null ? leadsPagoCol
+    : (pagoDeduzido ? Math.max(0, totalLeads - leadsOrg) : null);
+  const origens = [
+    leadsPago ? { k: 'Leads · Meta Ads', v: leadsPago } : null,
+    leadsOrg ? { k: 'Leads · orgânicos', v: leadsOrg } : null
+  ].filter(Boolean);
+
+  const etapas = totalLeads ? [{ k: 'Leads · total (CRM)', v: totalLeads }] : [];
+  ordem.filter(k => FONTES_LEAD.indexOf(k) < 0).forEach(k => {
+    const v = valorDe(k);
+    if (!v) return;
+    const e = atual.etapas.find(x => x.k === k);
+    etapas.push({ k: (e && e.rot) || k, v: v });
+  });
+
+  return { mesSel: mesSel, atual: atual, ordem: ordem, valorDe: valorDe,
+           totalLeads: totalLeads, origens: origens, etapas: etapas, pagoDeduzido: pagoDeduzido };
+}
+
 function telaFunil(aba) {
   aba = aba || 'produto';
   let h = '';
@@ -3693,48 +3894,15 @@ function telaFunil(aba) {
      Periodo mais largo (3, 6, 12 meses, ano, historico) nao tem onde cair:
      nao existe serie dessas abas no painel. Em vez de fingir que o recorte
      valeu, a tela mostra o mes corrente e diz que nao cobriu. */
-  const mesSel = F.periodo === 'ant' ? mesMais(MES_ATUAL, -1) : MES_ATUAL;
-  const atual = F.periodo === 'ant' ? (p && p.anterior) : (p && p.atual);
+  /* A conta do funil mora em funilDoProduto(): esta tela e o Funil de
+     Vendas Completo leem a mesma, e por isso nao podem divergir. */
+  const FP = funilDoProduto();
+  const mesSel = FP.mesSel;
+  const atual = FP.atual;
 
   if (atual && atual.real) {
-    const ordem = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)', 'responderam a triagem', 'elegiveis',
-      'responderam a qualificacao', 'qualificados (aguardando documentacao)', 'diagnosticos', 'viaveis',
-      'atendimentos realizados', 'clientes'];
-    /* ===== TODO LEAD ENTRA NO KOMMO =====
-       "Leads (Kommo)" nao e uma origem ao lado de "Leads (Organico)": e o
-       TOTAL, e o organico e um pedaco de dentro dele. Somar os dois, como
-       esta tela fazia, contava o organico duas vezes e inflava o topo do
-       funil - e com o topo inflado toda conversao abaixo saia menor do que
-       e. A propria planilha confirma a relacao: a projecao encadeia
-       "Responderam a Triagem" em cima do Kommo (990 de 1.100 = 90%), nunca
-       em cima da soma.
-       Entao: o total e o Kommo, o organico e recorte, e o pago e o que
-       resta quando a planilha nao traz coluna propria de Meta Ads. */
-    const FONTES_LEAD = ['leads (organico)', 'leads (kommo)', 'leads (meta ads)',
-                         'leads abordados ou que falaram no whatsapp'];
-    const valorDe = k => (atual.real && atual.real[k] != null && atual.real[k] !== '') ? num(atual.real[k]) : null;
-
-    const leadsOrg = valorDe('leads (organico)');
-    const leadsPagoCol = valorDe('leads (meta ads)');
-    const totalLeads = valorDe('leads (kommo)') ||
-      ((leadsOrg || 0) + (leadsPagoCol || 0)) || null;
-    /* Sem coluna propria de Meta Ads, o pago e o que resta do total depois
-       do organico. E deducao, nao registro, e o cartao diz isso. */
-    const pagoDeduzido = leadsPagoCol == null && !!totalLeads && leadsOrg != null;
-    const leadsPago = leadsPagoCol != null ? leadsPagoCol
-      : (pagoDeduzido ? Math.max(0, totalLeads - leadsOrg) : null);
-    const origens = [
-      leadsPago ? { k: 'Leads · Meta Ads', v: leadsPago } : null,
-      leadsOrg ? { k: 'Leads · orgânicos', v: leadsOrg } : null
-    ].filter(Boolean);
-
-    const etapas = totalLeads ? [{ k: 'Leads · total (CRM)', v: totalLeads }] : [];
-    ordem.filter(k => FONTES_LEAD.indexOf(k) < 0).forEach(k => {
-      const v = valorDe(k);
-      if (!v) return;
-      const e = atual.etapas.find(x => x.k === k);
-      etapas.push({ k: (e && e.rot) || k, v: v });
-    });
+    const ordem = FP.ordem, valorDe = FP.valorDe, totalLeads = FP.totalLeads,
+          origens = FP.origens, etapas = FP.etapas, pagoDeduzido = FP.pagoDeduzido;
 
     h += '<div class="secao-titulo primeiro">Funil do produto &middot; ' + rotuloMes(mesSel) +
       (atual.medicao ? ' &middot; medicao de ' + esc(atual.medicao) : '') + '</div>';
@@ -4286,6 +4454,19 @@ const SEM_ATRIB = '<span class="cel-na" title="O CRM n\u00e3o escreve o nome des
 
 function blocoCampanhas(campanhas, campVis, diasDoMes, notaAtrib) {
   let h = '';
+  /* ===== O PERCENTUAL EMBAIXO DO NUMERO =====
+     E a conversao DESTE degrau sobre o DEGRAU ANTERIOR - 61 elegiveis em 362
+     leads sao 16,9%, e e isso que diz onde a campanha trava. As colunas de
+     conversao que ja existiam (Conv. reun., Conv. cliente) seguem medindo
+     sobre LEADS, que e outra pergunta: o peso da campanha no funil inteiro,
+     nao a perda de um degrau para o outro. Base ausente nao vira 0%: sem
+     base nao ha conta, e a linha fica so com o numero. */
+  const subPct = (v, base, deQuem) => (!base || v == null) ? '' :
+    '<span class="cel-sub">' + pct(v / base * 100, 1) + ' ' + deQuem + '</span>';
+  const subTot = (d, campo, baseCampo, deQuem) => {
+    const b = soma(d, r => r[baseCampo]);
+    return b ? '<span class="cel-sub">' + pct(soma(d, r => r[campo]) / b * 100, 1) + ' ' + deQuem + '</span>' : '';
+  };
   h += barraMostrar([
     { rot: 'Todas as campanhas', n: campanhas.length, ativa: !F.soAtivas, attr: 'data-ativas="false"' },
     { rot: 'S\u00f3 as ativas', n: campanhas.filter(c => c.ativa).length, ativa: !!F.soAtivas, attr: 'data-ativas="true"' }
@@ -4298,6 +4479,11 @@ function blocoCampanhas(campanhas, campVis, diasDoMes, notaAtrib) {
     '<b>Custo/eleg.</b> = gasto \u00f7 eleg\u00edveis &middot; ' +
     '<b>Qualificados</b> = os que avan\u00e7aram mais um degrau e j\u00e1 est\u00e3o na documenta\u00e7\u00e3o, ' +
     'na an\u00e1lise de viabilidade, no agendamento, no ADVBOX ou na pesquisa de satisfa\u00e7\u00e3o &middot; ' +
+    '<b>O n\u00famero pequeno embaixo de Eleg\u00edveis, Qualificados, Reuni\u00f5es e Clientes</b> ' +
+    '\u00e9 a convers\u00e3o <b>do degrau anterior</b>: eleg\u00edveis sobre leads, qualificados sobre eleg\u00edveis, ' +
+    'reuni\u00f5es sobre qualificados, clientes sobre reuni\u00f5es. \u00c9 nele que se v\u00ea <b>onde</b> a campanha trava. ' +
+    'J\u00e1 as colunas <b>Conv. reun.</b> e <b>Conv. cliente</b> medem sobre o total de <b>leads</b> &mdash; ' +
+    'peso no funil inteiro, n\u00e3o perda de um degrau para o outro &middot; ' +
     '<b>Reuni\u00f5es</b> = reuni\u00f5es com esta campanha anotada na aba Reuni\u00f5es do Meta &middot; ' +
     '<b>Conv. reun.</b> = reuni\u00f5es \u00f7 leads &middot; <b>Custo/reun.</b> = gasto \u00f7 reuni\u00f5es &middot; ' +
     '<b>Clientes</b> = fechamentos cuja ORIGEM \u00e9 esta campanha &middot; <b>Conv. cliente</b> = clientes \u00f7 leads &middot; ' +
@@ -4335,15 +4521,16 @@ function blocoCampanhas(campanhas, campVis, diasDoMes, notaAtrib) {
     { k: 'leads', rot: 'Leads', tipo: 'num' },
     { k: 'cpl', rot: 'CPL', tipo: 'moeda' },
     { k: 'elegiveis', rot: 'Eleg\u00edveis', tipo: 'num', cls: 'forte',
-      html: r => !r.crmAnota ? SEM_ATRIB : n0(r.elegiveis) },
+      html: r => !r.crmAnota ? SEM_ATRIB : n0(r.elegiveis) + subPct(r.elegiveis, r.leads, 'dos leads') },
     { k: 'custoEleg', rot: 'Custo/eleg.', tipo: 'moeda' },
     { k: 'qualificados', rot: 'Qualificados', tipo: 'num', cls: 'forte',
-      html: r => !r.crmAnota ? SEM_ATRIB : n0(r.qualificados) },
+      html: r => !r.crmAnota ? SEM_ATRIB : n0(r.qualificados) + subPct(r.qualificados, r.elegiveis, 'dos eleg\u00edveis') },
     { k: 'reunioes', rot: 'Reuni\u00f5es', tipo: 'num', cls: 'forte',
-      html: r => !r.reunioes ? '&mdash;' : n0(r.reunioes) },
+      html: r => !r.reunioes ? '&mdash;' : n0(r.reunioes) + subPct(r.reunioes, r.qualificados, 'dos qualificados') },
     { k: 'convReuniao', rot: 'Conv. reun.', tipo: 'pct', casas: 1 },
     { k: 'custoReuniao', rot: 'Custo/reun.', tipo: 'moeda0' },
-    { k: 'clientes', rot: 'Clientes', tipo: 'num' },
+    { k: 'clientes', rot: 'Clientes', tipo: 'num',
+      html: r => !r.clientes ? '&mdash;' : n0(r.clientes) + subPct(r.clientes, r.reunioes, 'das reuni\u00f5es') },
     { k: 'honorarios', rot: 'Retorno', tipo: 'moeda0', cls: 'forte' },
     { k: 'convCliente', rot: 'Conv. cliente', tipo: 'pct', casas: 1 },
     { k: 'cac', rot: 'CAC', tipo: 'moeda0' },
@@ -4355,13 +4542,68 @@ function blocoCampanhas(campanhas, campVis, diasDoMes, notaAtrib) {
   ], campVis, { ord: 'gasto', dir: -1, titulo: 'Campanhas Meta Ads', limite: 50,
     total: { orcDia: d => brl0(soma(d, r => r.orcDia)), orcMes: d => brl0(soma(d, r => r.orcMes)),
              gasto: d => brl0(soma(d, r => r.gasto)), leads: d => n0(soma(d, r => r.leads)),
-             elegiveis: d => n0(soma(d, r => r.elegiveis)),
-             qualificados: d => n0(soma(d, r => r.qualificados)),
-             reunioes: d => n0(soma(d, r => r.reunioes)), clientes: d => n0(soma(d, r => r.clientes)),
+             elegiveis: d => n0(soma(d, r => r.elegiveis)) + subTot(d, 'elegiveis', 'leads', 'dos leads'),
+             qualificados: d => n0(soma(d, r => r.qualificados)) + subTot(d, 'qualificados', 'elegiveis', 'dos eleg\u00edveis'),
+             reunioes: d => n0(soma(d, r => r.reunioes)) + subTot(d, 'reunioes', 'qualificados', 'dos qualificados'),
+             clientes: d => n0(soma(d, r => r.clientes)) + subTot(d, 'clientes', 'reunioes', 'das reuni\u00f5es'),
              honorarios: d => brl0(soma(d, r => r.honorarios)),
              cac: d => { const c2 = soma(d, r => r.clientes); return c2 ? brl0(soma(d, r => r.gasto) / c2) : ''; },
              custoEleg: d => { const e = soma(d, r => r.elegiveis); return e ? brl(soma(d, r => r.gasto) / e) : ''; },
              cpl: d => { const l = soma(d, r => r.leads); return l ? brl(soma(d, r => r.gasto) / l) : ''; } } });
+  return h;
+}
+
+/* ===== BARRA DE PERIODO E CONTA DA TELA DE CAMPANHAS =====
+   E a mesma barra do painel de Meta Ads: os atalhos de periodo como botoes,
+   o mes cheio num seletor e a faixa de datas a mao. Ela mexe no periodo
+   GLOBAL do painel - nao e um segundo relogio -, e por isso o seletor de
+   cima acompanha o que se clica aqui.
+   A conta so existe nesta tela: o CRM nao guarda de que conta de anuncios
+   veio o lead, so o nome da campanha. O recorte vale para o que vem do Meta
+   e a propria barra diz onde ele nao alcanca. */
+const ATALHOS_PERIODO = [
+  { k: 'mes',  rot: 'Mês atual' },
+  { k: 'u30',  rot: 'Últimos 30 dias' },
+  { k: 'u3',   rot: 'Últimos 3 meses' },
+  { k: 'ano',  rot: 'Ano corrente' },
+  { k: 'tudo', rot: 'Todo o histórico' }
+];
+function barraPeriodoConta() {
+  const f = faixa();
+  const iso = d => !d ? '' : d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const meses = Array.from(new Set(((DADOS.metaDia && DADOS.metaDia.reg) || [])
+    .map(r => r.mes).filter(Boolean))).sort().reverse();
+  const mesAtivo = F.periodo === 'mesesc' ? chaveMes(f.de) : '';
+
+  let h = '<div class="mostrar barra-periodo"><span class="mostrar-rot">Período</span>';
+  h += ATALHOS_PERIODO.map(a => '<button class="btn-acao' + (F.periodo === a.k ? ' primario' : '') +
+    '" type="button" data-per="' + a.k + '">' + esc(a.rot) + '</button>').join('');
+  h += '<span class="bp-sep"></span>';
+  h += '<label class="bp-campo">Mês <select id="bpMes"><option value="">&mdash;</option>' +
+    meses.map(m => '<option value="' + m + '"' + (m === mesAtivo ? ' selected' : '') + '>' +
+      esc(rotuloMes(m)) + '</option>').join('') + '</select></label>';
+  h += '<label class="bp-campo">De <input type="date" id="bpDe" value="' +
+    (F.periodo === 'faixa' ? iso(f.de) : '') + '"></label>';
+  h += '<label class="bp-campo">Até <input type="date" id="bpAte" value="' +
+    (F.periodo === 'faixa' ? iso(f.ate) : '') + '"></label>';
+  h += '<button class="btn-acao' + (F.periodo === 'faixa' ? ' primario' : '') +
+    '" type="button" id="bpAplicar">Aplicar período</button></div>';
+
+  const contas = contasDoMeta();
+  if (contas.length > 1) {
+    h += '<div class="mostrar barra-periodo"><span class="mostrar-rot">Conta</span>' +
+      '<button class="btn-acao' + (F.conta === 'todas' ? ' primario' : '') +
+      '" type="button" data-conta="todas">Todas</button>' +
+      contas.map(c => '<button class="btn-acao' + (F.conta === c ? ' primario' : '') +
+        '" type="button" data-conta="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>';
+    if (F.conta !== 'todas') {
+      h += '<div class="recorte-aba">Recorte de conta: <b>' + esc(F.conta) + '</b> &mdash; vale para o que ' +
+        'vem do Meta: gasto, CPL, entrega e as campanhas listadas. ' +
+        '<b>Reuniões, elegíveis, qualificados e clientes não são recortados</b> &mdash; o CRM anota o ' +
+        'nome da campanha, não a conta de anúncios.</div>';
+    }
+  }
   return h;
 }
 
@@ -4383,6 +4625,7 @@ function telaTrafego(aba) {
   const todosT = KT.principais.concat(KT.grupos.reduce((a, g) => a.concat(g.l), []));
 
   let h = '';
+  h += barraPeriodoConta();
   h += avisoFiltro(c);
   if (aba !== 'ind') {
     h += '<div class="recorte-aba">Recorte desta aba: <b>' + esc(rotuloPeriodo()) + '</b> ' +
@@ -5619,6 +5862,9 @@ function rotuloPeriodo() {
   const p = PERIODOS.find(x => x.k === F.periodo);
   const f = faixa();
   if (F.periodo === 'tudo') return 'todo o historico';
+  if (F.periodo === 'u30') return 'últimos 30 dias (' + fmtData(f.de) + ' a ' + fmtData(f.ate) + ')';
+  if (F.periodo === 'mesesc') return rotuloMes(chaveMes(f.de)).replace('&mdash;', '');
+  if (F.periodo === 'faixa') return fmtData(f.de) + ' a ' + fmtData(f.ate);
   if (F.periodo === 'mes' || F.periodo === 'ant') return rotuloMes(chaveMes(f.de)).replace('&mdash;', '');
   return (p ? p.rot.toLowerCase() : '') + ' (' + rotuloMesCurto(chaveMes(f.de)) + ' a ' + rotuloMesCurto(chaveMes(f.ate)) + ')';
 }
@@ -7498,6 +7744,102 @@ function telaAreaMarketing() {
    lead que clicou no anuncio e nunca virou registro. Ele aparece de
    proposito, em vez de sumir numa soma.
    ========================================================================== */
+/* ===== O FUNIL INTEIRO, CAMPANHA A CAMPANHA =====
+   A pergunta que esta tela nao respondia: dos 1.092 leads que entraram, so
+   505 ficaram elegiveis - ONDE, e em QUAL campanha, a metade se perdeu.
+   Cada linha e uma campanha e cada coluna um degrau; embaixo do numero vai
+   a conversao do degrau anterior, que e onde o estrangulamento aparece.
+
+   Tudo aqui sai de UMA fonte so, o CRM, de proposito: misturar o lead do
+   Meta com a etapa do Kommo e o cliente da planilha faria cada coluna ter
+   uma regua diferente e a conta do degrau nao fecharia. Clientes e a unica
+   excecao, e a linha avisa.
+
+   Duas verdades que a tela precisa dizer em voz alta:
+     . o Kommo guarda so a ETAPA DE HOJE, nao a data de cada degrau - entao
+       isto e a foto de agora dos leads criados no mes, nao o caminho deles;
+     . lead sem campanha anotada nao vira zero: ganha a sua propria linha,
+       porque 38% de "sem atribuicao" lido como campanha ruim e erro caro. */
+const DEGRAUS_CAMP = [
+  { k: 'elegiveis',    rot: 'Elegíveis',     fn: ehElegivel,    base: 'leads',       deQuem: 'dos leads' },
+  { k: 'qualificados', rot: 'Qualificados',  fn: ehQualificado, base: 'elegiveis',   deQuem: 'dos elegíveis' },
+  { k: 'diagnosticos', rot: 'Diagnósticos',  fn: ehDiagnostico, base: 'qualificados', deQuem: 'dos qualificados' },
+  { k: 'viaveis',      rot: 'Viáveis',       fn: ehViavel,      base: 'diagnosticos', deQuem: 'dos diagnósticos' },
+  { k: 'reunioes',     rot: 'Reuniões',      fn: r => passouDe(r, DEG.REUNIAO),  base: 'viaveis',  deQuem: 'dos viáveis' },
+  { k: 'atendidos',    rot: 'Atendidos',     fn: r => passouDe(r, DEG.ATENDIDO), base: 'reunioes', deQuem: 'das reuniões' }
+];
+function funilPorCampanha(c) {
+  if (!c.temKommo) return '';
+  const leads = c.koCom;
+  if (!leads.length) return '';
+
+  const SEM = '— sem campanha anotada —';
+  const porNome = new Map();
+  leads.forEach(r => {
+    const k = temCampanha(r) ? r.campanha.trim() : SEM;
+    if (!porNome.has(k)) porNome.set(k, []);
+    porNome.get(k).push(r);
+  });
+
+  /* Cliente vem da planilha de fechamentos, pela ORIGEM - a mesma regra da
+     tabela de campanhas do modulo de trafego. E a unica coluna que nao sai
+     do CRM, e por isso ela nao entra na conta de degrau. */
+  const cliPor = {};
+  (c.cli || []).forEach(r => {
+    const k = chaveBusca(r.origem || '');
+    if (!k) return;
+    cliPor[k] = (cliPor[k] || 0) + 1;
+  });
+
+  const linhas = Array.from(porNome.entries()).map(([nome, lista]) => {
+    const o = { campanha: nome, leads: lista.length, semAtrib: nome === SEM };
+    DEGRAUS_CAMP.forEach(d => { o[d.k] = lista.filter(d.fn).length; });
+    o.clientes = cliPor[chaveBusca(nome)] || 0;
+    o.convFim = o.leads ? o.atendidos / o.leads * 100 : null;
+    return o;
+  }).sort((a, b) => b.leads - a.leads);
+
+  const subC = (v, base, deQuem) => !base ? '' :
+    '<span class="cel-sub">' + pct(v / base * 100, 1) + ' ' + deQuem + '</span>';
+
+  const cols = [{ k: 'campanha', rot: 'Campanha', tipo: 'txt', cls: 'forte wrap',
+    html: r => esc(r.campanha) + (r.semAtrib
+      ? '<span class="cel-sub">o CRM não gravou campanha nestes leads</span>' : '') },
+    { k: 'leads', rot: 'Leads', tipo: 'num', cls: 'forte' }];
+  DEGRAUS_CAMP.forEach(d => cols.push({ k: d.k, rot: d.rot, tipo: 'num',
+    html: r => n0(r[d.k]) + subC(r[d.k], r[d.base], d.deQuem) }));
+  cols.push({ k: 'clientes', rot: 'Clientes', tipo: 'num',
+    html: r => !r.clientes ? '&mdash;' : n0(r.clientes) + subC(r.clientes, r.leads, 'dos leads') });
+  cols.push({ k: 'convFim', rot: 'Lead → atendido', tipo: 'pct', casas: 1 });
+
+  let h = '<div class="secao-titulo">Onde cada campanha trava</div>';
+  h += tabelaExplicada('Funil campanha a campanha',
+    '<b>Cada coluna é um degrau do funil</b> e o número pequeno embaixo é a ' +
+    'conversão <b>do degrau anterior</b> &mdash; é nele que o estrangulamento aparece: ' +
+    'a campanha que leva 300 leads e entrega 16% de elegibilidade está travando na triagem, ' +
+    'não na venda &middot; <b>Lead &rarr; atendido</b> = atendidos ÷ leads, a travessia inteira.',
+    'Tudo sai do <b>CRM</b>, dos leads <b>criados no mês inspecionado</b>, menos <b>Clientes</b>, ' +
+    'que vem da planilha de fechamentos pela <b>ORIGEM</b> &mdash; por isso Clientes não entra na ' +
+    'conta de degrau e aparece sobre os leads.' +
+    '<br><b>O Kommo guarda só a etapa de hoje</b>, não a data de cada degrau: isto é a foto de ' +
+    'agora dos leads do mês, não o caminho que eles fizeram. Um lead que entrou dia 2 e avançou ' +
+    'dia 30 conta no degrau de hoje.' +
+    '<br><b>Os degraus são cumulativos</b>: quem chegou a Reuniões passou antes por Elegíveis e ' +
+    'Qualificados, então a coluna da direita nunca é maior que a da esquerda.' +
+    '<br><b>Lead sem campanha anotada tem linha própria</b> e não vira zero em campanha nenhuma.');
+  h += tabelaInterativa('funil-campanha', cols, linhas,
+    { ord: 'leads', dir: -1, titulo: 'Funil campanha a campanha', limite: 40,
+      total: { leads: d => n0(soma(d, r => r.leads)),
+               elegiveis: d => n0(soma(d, r => r.elegiveis)),
+               qualificados: d => n0(soma(d, r => r.qualificados)),
+               diagnosticos: d => n0(soma(d, r => r.diagnosticos)),
+               viaveis: d => n0(soma(d, r => r.viaveis)),
+               reunioes: d => n0(soma(d, r => r.reunioes)),
+               atendidos: d => n0(soma(d, r => r.atendidos)),
+               clientes: d => n0(soma(d, r => r.clientes)) } });
+  return h;
+}
+
 function telaFunilVendas() {
   const c = ctxAreaMemo();
   const metas = metasAtivas();
@@ -7635,6 +7977,26 @@ function telaFunilVendas() {
   };
   h += '<div class="secao-titulo primeiro">De onde vem o lead &middot; ' + esc(c.rotMes) + '</div>';
   h += '<div class="grid g-kpi g-fonte">' + linhas.slice(0, 4).map(cartaoFonte).join('') + '</div>';
+
+  /* ----- A PRE-QUALIFICACAO, DENTRO DO FUNIL COMPLETO -----
+     O funil dos KRs comeca na entrada do Kommo e pula os dois degraus de
+     resposta - triagem e qualificacao -, que so a aba Produtos Juridicos
+     conta. Sem eles a tela mostrava a venda, nao a esteira inteira: a perda
+     de metade dos leads entre a entrada e a elegibilidade acontece
+     justamente ai. Os dois funis convivem de proposito - nao se somam, sao
+     a mesma esteira contada por duas maos - e a nota diz de onde vem cada. */
+  const FP = funilDoProduto();
+  if (FP.etapas && FP.etapas.length > 1) {
+    h += '<div class="secao-titulo">Pré-qualificação &middot; ' + rotuloMes(FP.mesSel) +
+      (FP.atual.medicao ? ' &middot; medição de ' + esc(FP.atual.medicao) : '') + '</div>';
+    h += aviso('info', 'Vem da aba <b>Produtos Jurídicos</b> da planilha de Metas &mdash; a contagem que o time ' +
+      'mantém à mão, e a única que registra <b>quem respondeu a triagem</b> e <b>quem respondeu a qualificação</b>. ' +
+      'A percentagem ao lado de cada etapa é a conversão sobre a etapa anterior. O topo é o <b>total de leads do ' +
+      'CRM</b>: Meta Ads e orgânico são recortes de dentro dele, não parcelas que se somam.' +
+      '<br>O funil logo abaixo conta a <b>mesma esteira</b> pelos KRs da aba KPIS. Os dois convivem: onde ' +
+      'divergirem, a diferença é o que ainda não foi anotado num dos dois lugares.');
+    h += cartao('Funil de pré-qualificação', 'Volume por etapa e conversão etapa a etapa.', vizFunil(FP.etapas));
+  }
 
   /* ----- O funil ----- */
   const etapasL = linhas.filter(l => l.etapa && l.real != null);
@@ -7828,6 +8190,10 @@ function telaFunilVendas() {
   /* ----- Taxas e resultado ----- */
   h += '<div class="secao-titulo">Taxas e resultado</div>';
   h += '<div class="grid g-3">' + linhas.slice(11).map(cartaoFonte).join('') + '</div>';
+
+  /* O diagnostico por campanha fecha a tela: primeiro o funil da casa
+     inteira, depois de quem e a perda. */
+  h += funilPorCampanha(c);
   return h;
 }
 /* ==========================================================================
@@ -7909,6 +8275,155 @@ function alertasOperacao() {
 }
 
 /* ===================== OS MODULOS ===================== */
+/* A tela. O recorte de periodo do topo vale aqui pela data da resposta;
+   resposta sem carimbo fica de fora do recorte e e contada nos pontos de
+   atencao, em vez de sumir calada. */
+function telaTermometro() {
+  if (ERROS.pesquisa) {
+    return aviso('critico', '<b>A pesquisa de satisfação não entrou:</b> ' + esc(ERROS.pesquisa) +
+      '<br>A planilha <b>Pesquisa de Satisfação | BM Advocacia</b> precisa estar registrada como fonte ' +
+      '<code>pesquisa</code> no proxy e no cofre do painel. Enquanto não estiver, esta tela fica sem base.');
+  }
+  const todas = (DADOS.pesquisa && DADOS.pesquisa.reg) || [];
+  if (!todas.length) return aviso('atencao', 'Nenhuma resposta de pesquisa encontrada.');
+
+  const sel = todas.filter(r => r.d && noPeriodo(r.d));
+  const base = sel.length ? sel : todas;
+  const semRecorte = !sel.length;
+
+  const gerais = base.map(r => r.geral).filter(v => v !== null);
+  const mGeral = mediaDe(gerais);
+  const tGeral = termometro(mGeral);
+  const satisfeitos = gerais.filter(v => v >= 4).length;
+  const insatisfeitos = gerais.filter(v => v <= 2).length;
+  const indicam = base.filter(r => r.indicaria === 'Sim').length;
+  const naoIndicam = base.filter(r => r.indicaria === 'Não').length;
+  const comIndic = base.filter(r => r.indicaria).length;
+  const voltam = base.filter(r => r.voltaria === 'Sim').length;
+  const comVolta = base.filter(r => r.voltaria).length;
+  const saldo = comIndic ? Math.round((indicam - naoIndicam) / comIndic * 100) : null;
+  const taxa2 = (a, b) => b ? pct(a / b * 100, 1) : '&mdash;';
+
+  let h = '';
+  h += aviso('info', 'Base: a planilha de respostas do formulário <b>Pesquisa de Satisfação | BM Advocacia</b>, ' +
+    'lida ao vivo. Cada pergunta de satisfação tem cinco opções, e elas viram uma nota de <b>0 a 100</b> &mdash; ' +
+    'muito insatisfeito = 0, neutro = 50, muito satisfeito = 100.');
+  h += avisoAlcance({
+    porqueMes: 'a resposta tem data, então o recorte de período do topo vale aqui.',
+    mostrando: rotuloPeriodo(),
+    porqueDims: 'a pesquisa não pergunta closer, SDR, produto nem origem: esses filtros não têm onde cair.'
+  });
+  if (semRecorte) {
+    h += aviso('atencao', 'Nenhuma resposta no período escolhido &mdash; a tela está mostrando ' +
+      '<b>todas as ' + n0(todas.length) + ' respostas</b> para não ficar vazia.');
+  }
+
+  h += '<div class="secao-titulo primeiro">Resumo</div>';
+  h += '<div class="grid g-kpi">';
+  h += kpi({ rotulo: 'Respostas', valor: n0(base.length),
+    nota: n0(base.filter(r => r.identificado).length) + ' identificadas &middot; ' +
+      n0(base.filter(r => !r.identificado).length) + ' anônimas' });
+  h += kpi({ rotulo: 'Termômetro geral',
+    valor: tGeral == null ? null : Math.round(tGeral) + '<span style="font-size:1rem">/100</span>',
+    selo: tGeral == null ? null : selo(nivelTermometro(tGeral), Math.round(tGeral) + ' de 100'),
+    nota: mGeral == null ? 'ainda sem nota' : 'nota média ' + n1(mGeral) + ' de 5' });
+  h += kpi({ rotulo: 'Satisfeitos', valor: n0(satisfeitos),
+    nota: taxa2(satisfeitos, gerais.length) + ' &middot; satisfeito ou muito satisfeito' });
+  h += kpi({ rotulo: 'Insatisfeitos', valor: n0(insatisfeitos),
+    selo: insatisfeitos ? selo('critico', taxa2(insatisfeitos, gerais.length)) : selo('ok', 'nenhum'),
+    nota: 'é por aqui que se começa' });
+  h += kpi({ rotulo: 'Indicariam a BM', valor: n0(indicam),
+    nota: saldo == null ? 'sem respostas' : taxa2(indicam, comIndic) + ' &middot; saldo de <b>' +
+      (saldo > 0 ? '+' : '') + saldo + '</b> (sim &minus; não)' });
+  h += kpi({ rotulo: 'Voltariam a contratar', valor: n0(voltam),
+    nota: taxa2(voltam, comVolta) + ' &middot; ' + n0(base.filter(r => r.voltaria === 'Talvez').length) +
+      ' talvez &middot; ' + n0(base.filter(r => r.voltaria === 'Não').length) + ' não' });
+  h += '</div>';
+
+  h += '<div class="secao-titulo">Termômetro por dimensão</div>';
+  h += cartao('Cada pergunta da pesquisa', 'A nota de 0 a 100 e como as respostas se distribuíram.',
+    PESQ_DIMENSOES.map(d => {
+      const notas = base.map(r => r[d.chave]).filter(v => v !== null);
+      const m = mediaDe(notas), t = termometro(m);
+      const barra = !notas.length ? '<div class="vazio">sem respostas</div>'
+        : '<div style="display:flex;height:14px;border-radius:5px;overflow:hidden;margin-top:.4rem">' +
+          PESQ_ESCALA.map(e => ({ e: e, n: notas.filter(v => v === e.nota).length }))
+            .filter(f => f.n).map(f => '<div data-tip="' + esc(f.e.rotulo) + ': ' + n0(f.n) + '" style="width:' +
+              (f.n / notas.length * 100).toFixed(1) + '%;background:' + f.e.cor + '"></div>').join('') + '</div>';
+      return '<div style="margin-bottom:1rem">' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.6rem">' +
+          '<span><b>' + esc(d.curto) + '</b></span>' +
+          '<span style="font-size:.78rem;color:var(--texto-2)">' +
+            (t == null ? 'sem respostas' : '<b style="font-size:1rem">' + Math.round(t) + '</b>/100 &middot; nota ' +
+              n1(m) + ' &middot; ' + n0(notas.length) + ' resp.') + '</span></div>' + barra + '</div>';
+    }).join('') + legenda(PESQ_ESCALA.map(e => ({ nome: e.rotulo, cor: e.cor }))));
+
+  const criticos = base.filter(r => (r.pior != null && r.pior <= 2) || r.indicaria === 'Não')
+    .sort((a, b) => (a.pior || 9) - (b.pior || 9));
+  h += '<div class="secao-titulo">Quem precisa de atenção</div>';
+  if (!criticos.length) {
+    h += aviso('info', 'Nenhuma resposta com nota baixa ou &ldquo;não indicaria&rdquo; neste recorte.');
+  } else {
+    h += tabelaExplicada('Respostas com nota baixa',
+      '<b>Pior nota</b> = a menor das cinco perguntas de satisfação, com a dimensão onde ela caiu &middot; ' +
+      '<b>Geral</b> = a nota da pergunta de satisfação geral.',
+      'Entra aqui quem deu <b>insatisfeito ou muito insatisfeito</b> em qualquer pergunta, ou respondeu ' +
+      '<b>não indicaria</b>. Quem não se identificou aparece como <i>Anônimo</i>: a pesquisa não obriga o nome.');
+    h += tabelaInterativa('termo-atencao', [
+      { k: 'd', rot: 'Quando', tipo: 'txt', html: r => r.d ? fmtData(r.d) : '&mdash;' },
+      { k: 'quem', rot: 'Quem', tipo: 'txt', cls: 'forte wrap' },
+      { k: 'geral', rot: 'Geral', tipo: 'num', html: r => r.geral == null ? '&mdash;' : n0(r.geral) + ' de 5' },
+      { k: 'pior', rot: 'Pior nota', tipo: 'num',
+        html: r => r.pior == null ? '&mdash;' : selo(r.pior <= 2 ? 'critico' : 'atencao', n0(r.pior) + ' de 5') +
+          (r.piorDimensao ? '<span class="cel-sub">' + esc(r.piorDimensao) + '</span>' : '') },
+      { k: 'indicaria', rot: 'Indicaria', tipo: 'txt', html: r => !r.indicaria ? '&mdash;' : esc(r.indicaria) },
+      { k: 'melhorar', rot: 'O que pediu para melhorar', tipo: 'txt', cls: 'wrap',
+        html: r => r.melhorar ? esc(r.melhorar) : '&mdash;' }
+    ], criticos, { ord: 'pior', dir: 1, titulo: 'Respostas com nota baixa', limite: 25 });
+  }
+
+  const comPos = base.filter(r => r.positivos), comMel = base.filter(r => r.melhorar);
+  h += '<div class="secao-titulo">O que os clientes escreveram</div>';
+  if (!comPos.length && !comMel.length) h += aviso('info', 'Ninguém escreveu nos campos abertos neste recorte.');
+  else {
+    const lista = l => l.slice(0, 12).map(r =>
+      '<div style="margin-bottom:.7rem"><b style="font-size:.78rem">' + esc(r.quem) + '</b>' +
+      '<div style="font-size:.8rem;color:var(--texto-2)">' + esc(r.texto) + '</div></div>').join('') ||
+      '<div class="vazio">&mdash;</div>';
+    h += '<div class="grid g-2">';
+    h += cartao('Pontos positivos', n0(comPos.length) + ' de ' + n0(base.length) + ' escreveram',
+      lista(comPos.map(r => ({ quem: r.quem, texto: r.positivos }))));
+    h += cartao('Precisamos melhorar', n0(comMel.length) + ' de ' + n0(base.length) + ' escreveram',
+      lista(comMel.map(r => ({ quem: r.quem, texto: r.melhorar }))));
+    h += '</div>';
+  }
+
+  const meses = Array.from(new Set(todas.filter(r => r.mes).map(r => r.mes))).sort();
+  if (meses.length > 1) {
+    h += '<div class="secao-titulo">Evolução</div>';
+    const porMes = meses.map(m => {
+      const doMes = todas.filter(r => r.mes === m);
+      return { m: m, n: doMes.length, t: termometro(mediaDe(doMes.map(r => r.geral).filter(v => v !== null))) };
+    });
+    h += cartao('Termômetro geral, mês a mês',
+      'A nota da pergunta de satisfação geral, de 0 a 100, pelo mês da resposta.',
+      vizGrupos({ x: porMes.map(p => rotuloMesCurto(p.m)), fmt: v => Math.round(v) + '/100',
+        series: [{ nome: 'Termômetro geral', cor: 'var(--s2)', vals: porMes.map(p => p.t || 0) }] }) +
+      legenda([{ nome: 'Termômetro geral (0 a 100)', cor: 'var(--s2)' }]));
+  }
+
+  const falt = (DADOS.pesquisa && DADOS.pesquisa.faltando) || [];
+  const semData = (DADOS.pesquisa && DADOS.pesquisa.semData) || 0;
+  let obs = '';
+  if (falt.length) obs += aviso('atencao', '<b>Perguntas que o painel não achou na planilha:</b> ' +
+    esc(falt.join(', ')) + '. O formulário pode ter sido editado &mdash; o painel procura pelo texto da pergunta, ' +
+    'não pela posição da coluna.');
+  if (semData) obs += aviso('info', n0(semData) + ' resposta(s) sem carimbo de data: ficam fora do recorte de ' +
+    'período e só aparecem quando o período não tem nenhuma resposta.');
+  if (obs) { h += '<div class="secao-titulo">Pontos de atenção</div>'; h += obs; }
+  return h;
+}
+
 function moduloCampanhas() {
   return abasDe('campanhas') + telaTrafego(F.aba.campanhas);
 }
@@ -8219,6 +8734,7 @@ document.addEventListener('click', ev => {
    NAVEGACAO
    ========================================================================== */
 const IC = {
+  termometro: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/><line x1="11.5" y1="16.5" x2="11.5" y2="9"/></svg>',
   visao:   '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
   kpis:    '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
   funilvendas: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/><polyline points="15.5 17.5 17.5 19.5 21.5 15.5"/></svg>',
@@ -8252,6 +8768,7 @@ const TELAS = [
   { k: 'funilvendas', rot: 'Funil de Vendas Completo', sub: 'Do anúncio ao contrato assinado, com a meta de cada degrau', fn: telaFunilVendas },
   { k: 'fechamento', rot: 'Negociação e Fechamento',  sub: 'Esteira, vendas, financeiro e metas', fn: moduloFechamento },
   { k: 'clientes',  rot: 'Fluxo de clientes',  sub: 'Quem assina, por onde chega e quem fecha', fn: moduloClientes },
+  { k: 'termometro', rot: 'Termômetro dos clientes', sub: 'A pesquisa de satisfação: nota de 0 a 100, por dimensão e por cliente', fn: telaTermometro },
   { grupo: 'Ajustes' },
   { k: 'metasconfig', rot: 'Metas',             sub: 'Configurar todas as metas, com a m\u00e9dia realizada ao lado', fn: telaMetasConfig },
   /* Fontes e dados nao entra no menu: e manutencao, nao leitura diaria. O
@@ -8336,8 +8853,9 @@ function montarFiltros() {
 
   let h = '';
   h += '<div class="filtro"><label class="filtro-rotulo" for="fPeriodo">Período</label>' +
-       '<select id="fPeriodo">' + PERIODOS.map(p =>
-         '<option value="' + p.k + '"' + (F.periodo === p.k ? ' selected' : '') + '>' + esc(p.rot) + '</option>').join('') +
+       '<select id="fPeriodo">' + PERIODOS.filter(p => !p.dinamico || F.periodo === p.k).map(p =>
+         '<option value="' + p.k + '"' + (F.periodo === p.k ? ' selected' : '') + '>' +
+         esc(p.dinamico ? rotuloPeriodo() : p.rot) + '</option>').join('') +
        '</select></div>';
 
   DIMS.forEach(d => {
@@ -8493,7 +9011,25 @@ document.addEventListener('click', ev => {
     return;
   }
   const at = ev.target.closest('[data-ativas]');
-  if (at) { F.soAtivas = at.dataset.ativas === 'true'; redesenhar(); }
+  if (at) { F.soAtivas = at.dataset.ativas === 'true'; redesenhar(); return; }
+
+  /* Barra de periodo e conta da tela de Campanhas. O periodo e o GLOBAL:
+     mexer aqui tem de refazer o seletor de cima, senao os dois discordam. */
+  const per = ev.target.closest('[data-per]');
+  if (per) { F.periodo = per.dataset.per; F.pIni = null; F.pFim = null;
+             montarFiltros(); redesenhar(); return; }
+  const ct = ev.target.closest('[data-conta]');
+  if (ct) { F.conta = ct.dataset.conta; redesenhar(); return; }
+  if (ev.target.closest('#bpAplicar')) {
+    const de = document.getElementById('bpDe'), ate = document.getElementById('bpAte');
+    const a = de && de.value ? parseData(de.value) : null;
+    const b = ate && ate.value ? parseData(ate.value) : null;
+    /* Faixa incompleta ou invertida nao vira recorte: trocar o periodo por
+       um intervalo vazio esvaziaria a tela sem dizer por que. */
+    if (!a || !b || b < a) return;
+    F.periodo = 'faixa'; F.pIni = a; F.pFim = b;
+    montarFiltros(); redesenhar();
+  }
 });
 
 /* ==========================================================================
@@ -8683,6 +9219,18 @@ document.getElementById('sidebarOverlay').addEventListener('click', fecharSideba
 
 /* Mes inspecionado e metas da tela de KPIs. */
 document.addEventListener('change', ev => {
+  /* Seletor de mes cheio da tela de Campanhas. Voltar para "-" devolve o
+     painel ao mes corrente, que e como ele abre. */
+  if (ev.target.id === 'bpMes') {
+    if (!ev.target.value) { F.periodo = 'mes'; F.pIni = null; F.pFim = null; }
+    else {
+      F.periodo = 'mesesc';
+      F.pIni = new Date(+ev.target.value.slice(0, 4), +ev.target.value.slice(5, 7) - 1, 1);
+      F.pFim = null;
+    }
+    montarFiltros(); redesenhar();
+    return;
+  }
   if (ev.target.dataset && ev.target.dataset.selmes !== undefined) { F.mesKpi = ev.target.value; redesenhar(); }
 });
 /* Configurar metas abre a TELA de metas. Antes eram treze prompt() em

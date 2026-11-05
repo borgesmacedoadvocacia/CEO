@@ -42,6 +42,7 @@ https://docs.google.com/spreadsheets/d/ESTE_PEDACO_AQUI/edit
 | `SHEET_kommo` | Leads Kommo [DASHBOARDS] |
 | `SHEET_financeiro` | FLUXO FINANCEIRO - BM ADVOCACIA - 2026 \| 2.0 |
 | `SHEET_cerebro` | TODOS OS LEADS [CÉREBRO COMERCIAL] |
+| `SHEET_pesquisa` | Pesquisa de Satisfação \| BM Advocacia (a planilha de respostas do formulário) |
 
 > Os IDs ficam **só aqui**, nunca no repositório — é parte do ponto.
 
