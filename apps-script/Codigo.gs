@@ -27,6 +27,16 @@
  * Publicação: veja LEIA-ME.md nesta mesma pasta.
  */
 
+/* ATENÇÃO — ESTE ARQUIVO ESTA ATRAS DO QUE ESTA PUBLICADO (05/11/2026).
+   O projeto "Painel Comercial - Proxy" foi editado direto no editor do Apps
+   Script e ganhou coisas que não estão aqui: um cache de planilhas abertas
+   (_ABERTAS / _abrir), a memoização do registro de fontes (_SPEC) e uma
+   chave kpis<Mês> para cada mês do ano.
+
+   NÃO cole este arquivo por cima do projeto: isso desfaria as três. Para
+   acertar, copie do editor para cá — nunca o contrário. A implantação em uso
+   é a Versão 3, de 05/11/2026, e inclui a fonte "pesquisa". */
+
 /* ===========================================================================
    AUTENTICAÇÃO
    O navegador deriva PBKDF2-SHA256(login + "\n" + senha, sal fixo, 310 mil) e
