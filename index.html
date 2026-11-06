@@ -1237,7 +1237,7 @@ async function abrirCofre(usuario, senha) {
 const CONFIG = { SHEETS: null, perfil: null, AUTO_MIN: 10, PROXY: null };
 /* Carimbado pelo build. Serve para separar "o painel esta errado" de
    "o navegador ainda esta com a versao de antes em cache". */
-const BUILD = '05/11/2026 17:40';
+const BUILD = '06/11/2026 11:10';
 
 const K_AUTH  = 'bm_ceo_auth';
 const K_CRED  = 'bm_ceo_cred';
@@ -3582,8 +3582,9 @@ const F = {
   /* Extremos de um periodo escolhido a mao - mes do seletor ou faixa de
      datas. Ficam nulos enquanto o periodo for um dos atalhos. */
   pIni: null, pFim: null,
-  /* Mes inspecionado na tela de KPIs. */
-  mesKpi: null
+  /* Recorte das telas de indicador. Um dos dois, nunca os dois: mesKpi
+     guarda um mes do seletor, janKpi guarda uma janela de JANELAS. */
+  mesKpi: null, janKpi: null
 };
 
 const MES_ATUAL = chaveMes(new Date());
@@ -3591,6 +3592,31 @@ function mesMais(chave, delta) {
   const a = +chave.slice(0, 4), m = +chave.slice(5, 7) - 1 + delta;
   const d = new Date(a, m, 1);
   return chaveMes(d);
+}
+
+/* ===== AS JANELAS DO SELETOR DE TELA =====
+   Mes e o recorte nativo do painel: a meta e mensal, o KR e mensal e a
+   aba da planilha de Metas e mensal. A janela existe porque a pergunta
+   "como estamos" quase nunca cabe em trinta dias de calendario - e o custo
+   dela esta declarado em cada tela. Janela de MESES soma os KRs daqueles
+   meses. Janela de DIAS nao pode somar KR nenhum: um KR mensal nao se
+   corta ao meio, e ali o funil passa a vir do registro, que tem data. */
+const JANELAS = [
+  { k: 'u30', rot: 'Últimos 30 dias', dias: 30 },
+  { k: 'u3',  rot: 'Últimos 3 meses', meses: 3 },
+  { k: 'u6',  rot: 'Últimos 6 meses', meses: 6 },
+  { k: 'ano', rot: 'Este ano',          ano: true }
+];
+const achaJanela = k => JANELAS.find(j => j.k === k) || null;
+
+/* Os meses que uma janela de dias atravessa. A de 30 dias quase sempre
+   pega dois, e e por isso que ela nao pode somar KR. */
+function mesesEntre(de, ate) {
+  const out = [];
+  let k = chaveMes(de);
+  const fim = chaveMes(ate);
+  while (k <= fim) { out.push(k); k = mesMais(k, 1); }
+  return out;
 }
 
 const PERIODOS = [
@@ -4737,7 +4763,7 @@ function telaTrafego(aba) {
   h += cartao('Atingimento dos principais', 'Percentual da meta de referência &mdash; a única escala em que indicadores de unidades diferentes dividem o mesmo gráfico. A linha tracejada marca 100%.',
     vizAtingimento(KT.principais, { rotuloW: 246 }));
 
-  h += cartao('Investimento por campanha · ' + rotuloMesCurto(c.mes) + ' x ' + rotuloMesCurto(c.ant),
+  h += cartao('Investimento por campanha · ' + c.rotMesC + ' x ' + c.rotAnt,
     'Onde a verba mudou de lugar de um mês para o outro. Mesma unidade nas duas barras.',
     (() => {
       const atual = porVolume(agrupar(c.md, r => r.campanha, r => r.gasto)).slice(0, 6);
@@ -4747,17 +4773,17 @@ function telaTrafego(aba) {
       const curto = s2 => s2.length > 18 ? s2.slice(0, 17) + '…' : s2;
       return vizGrupos({ x: atual.map(g => curto(g.k)), fmt: brl0, fmtEixo: v => 'R$' + Math.round(v / 1000) + 'k',
         series: [
-          { nome: rotuloMes(c.ant), cor: 'var(--s4)', vals: atual.map(g => antPor[chaveBusca(g.k)] || 0) },
-          { nome: rotuloMes(c.mes), cor: 'var(--s2)', vals: atual.map(g => g.v) }
-        ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s2)' }]);
+          { nome: c.rotAntL, cor: 'var(--s4)', vals: atual.map(g => antPor[chaveBusca(g.k)] || 0) },
+          { nome: c.rotMes, cor: 'var(--s2)', vals: atual.map(g => g.v) }
+        ] }) + legenda([{ nome: c.rotAntL, cor: 'var(--s4)' }, { nome: c.rotMes, cor: 'var(--s2)' }]);
     })());
 
-  h += cartao('Leads por tipo de conversão · ' + rotuloMesCurto(c.mes) + ' x ' + rotuloMesCurto(c.ant),
+  h += cartao('Leads por tipo de conversão · ' + c.rotMesC + ' x ' + c.rotAnt,
     'Formulário, conversa no WhatsApp e pixel. Mesma unidade, magnitudes comparáveis.',
     vizGrupos({ x: ['Formulário', 'Conversas', 'Pixel'], fmt: n0, series: [
-      { nome: rotuloMes(c.ant), cor: 'var(--s4)', vals: [soma(c.mdAnt, r => r.leadsForm), soma(c.mdAnt, r => r.conversas), soma(c.mdAnt, r => r.leadsPixel)] },
-      { nome: rotuloMes(c.mes), cor: 'var(--s1)', vals: [soma(c.md, r => r.leadsForm), soma(c.md, r => r.conversas), soma(c.md, r => r.leadsPixel)] }
-    ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s1)' }]));
+      { nome: c.rotAntL, cor: 'var(--s4)', vals: [soma(c.mdAnt, r => r.leadsForm), soma(c.mdAnt, r => r.conversas), soma(c.mdAnt, r => r.leadsPixel)] },
+      { nome: c.rotMes, cor: 'var(--s1)', vals: [soma(c.md, r => r.leadsForm), soma(c.md, r => r.conversas), soma(c.md, r => r.leadsPixel)] }
+    ] }) + legenda([{ nome: c.rotAntL, cor: 'var(--s4)' }, { nome: c.rotMes, cor: 'var(--s1)' }]));
   h += '</div>';
 
   h += '<div class="secao-titulo">Diagnóstico do gestor de tráfego</div>';
@@ -6447,9 +6473,10 @@ function tabelaKpi(id, lista, titulo, area) {
 
   let h = tabelaExplicada(titulo,
     '<b>Realizado</b> = o que j\u00e1 entrou no m\u00eas &middot; ' +
-    '<b>Meta at\u00e9 hoje</b> = a meta mensal rateada pelos dias j\u00e1 corridos, nos indicadores que acumulam ' +
+    '<b>Meta at\u00e9 hoje</b> = a meta do recorte rateada pelos dias j\u00e1 corridos, nos indicadores que acumulam ' +
     '(em taxa, ticket e custo nada se rateia: a meta cheia vale o m\u00eas todo) &middot; ' +
-    '<b>Meta mensal</b> = a meta cheia; em indicador invertido (CAC, custo, no-show) ela \u00e9 um <b>teto</b> &middot; ' +
+    '<b>Meta ' + (F.janKpi ? 'do per\u00edodo' : 'mensal') + '</b> = a meta cheia do recorte; em indicador ' +
+    'invertido (CAC, custo, no-show) ela \u00e9 um <b>teto</b> &middot; ' +
     '<b>Proje\u00e7\u00e3o</b> = onde o m\u00eas termina se o ritmo de hoje continuar &middot; ' +
     '<b>Atingimento</b> = realizado \u00f7 meta at\u00e9 hoje; no indicador invertido a conta se inverte, ' +
     'e acima de 100% quer dizer <b>dentro do limite</b> &middot; ' +
@@ -6467,9 +6494,9 @@ function tabelaKpi(id, lista, titulo, area) {
       html: r => r.valorTxt == null
         ? '<span class="marca-sem">' + seloFalta(r.kk) + '</span>'
         : '<b style="color:var(--texto)">' + r.valorTxt + '</b>' },
-    { k: 'propOrd', rot: emCurso ? 'Meta at\u00e9 hoje' : 'Meta do m\u00eas', tipo: 'num',
+    { k: 'propOrd', rot: emCurso ? 'Meta at\u00e9 hoje' : (F.janKpi ? 'Meta do per\u00edodo' : 'Meta do m\u00eas'), tipo: 'num',
       html: r => r.propOrd == null ? '<span style="color:var(--texto-muted)">sem meta</span>' : cel(r, r.propOrd) },
-    { k: 'metaOrd', rot: 'Meta mensal', tipo: 'num',
+    { k: 'metaOrd', rot: F.janKpi ? 'Meta do período' : 'Meta mensal', tipo: 'num',
       html: r => r.metaOrd == null ? '&mdash;'
         : cel(r, r.metaOrd) + (r.kk.inverso ? ' <span style="color:var(--texto-muted)">(teto)</span>' : '') },
     { k: 'projOrd', rot: 'Proje\u00e7\u00e3o', tipo: 'num', html: r => cel(r, r.projOrd) },
@@ -6500,28 +6527,31 @@ function avisoFiltro(c) {
 function avisoPeriodoMensal(ondeVale) {
   if (F.periodo === 'mes') return '';
   const rot = (PERIODOS.find(x => x.k === F.periodo) || {}).rot || F.periodo;
-  return aviso('atencao', '<b>O per\u00edodo <i>' + esc(rot) + '</i> n\u00e3o chega nesta tela.</b> ' +
-    'Indicador se l\u00ea contra meta, e meta \u00e9 mensal &mdash; n\u00e3o existe meta de "\u00faltimos 6 meses". ' +
-    'O recorte daqui \u00e9 o <b>m\u00eas escolhido no seletor acima</b>, hoje <b>' + rotuloMes(F.mesKpi || MES_ATUAL) +
-    '</b>. Produto, closer, SDR, origem e busca, esses valem normalmente.' +
-    (ondeVale ? ' Para ler no per\u00edodo, abra ' + ondeVale + '.' : ''));
+  return aviso('atencao', '<b>O per\u00edodo <i>' + esc(rot) + '</i> do filtro geral n\u00e3o manda nesta tela.</b> ' +
+    'Quem manda aqui \u00e9 o <b>seletor da barra acima</b>, que oferece m\u00eas fechado, \u00faltimos 30 dias, ' +
+    '\u00faltimos 3 e 6 meses e este ano. Produto, closer, SDR, origem e busca valem nos dois. ' +
+    'O recorte em uso \u00e9 <b>' + esc(ctxAreaMemo().rotMes) + '</b>.' +
+    (ondeVale ? ' Para ler no per\u00edodo do filtro geral, abra ' + ondeVale + '.' : ''));
 }
 
-/* Barra da tela: o mes do recorte e os controles dele, numa linha so.
-   O estado do mes e um unico (F.mesKpi) em todas as telas de indicador -
-   dois "mes atual" diferentes na mesma cabeca nao dao certo. */
+/* Barra da tela: o recorte e os controles dele, numa linha so.
+   O estado do recorte e um unico em todas as telas de indicador - dois
+   "mes atual" diferentes na mesma cabeca nao dao certo. Um seletor, dois
+   tipos de recorte: um MES do calendario ou uma JANELA de JANELAS. */
 function barraTela(c, comMetas) {
-  const atual = F.mesKpi || MES_ATUAL;
+  const atual = F.janKpi || F.mesKpi || MES_ATUAL;
   const ms = [];
   for (let i = 0; i < 12; i++) ms.push(mesMais(MES_ATUAL, -i));
+  const op = (v, rot) => '<option value="' + v + '"' + (v === atual ? ' selected' : '') +
+    '>' + rot + '</option>';
   return '<div class="barra-tela">' +
-    '<span class="rot"><b>' + esc(c.rotMes) + '</b>' +
-      (c.emCurso ? ' &middot; mês em andamento &middot; dia ' + n0(c.dias) + ' de ' + n0(c.diasMes)
-                 : ' &middot; mês fechado') + '</span>' +
+    '<span class="rot"><b>' + esc(c.rotMes) + '</b> &middot; ' + c.rotAndamento + '</span>' +
     '<span class="dir">' +
-      '<select data-selmes aria-label="Mês do painel">' +
-      ms.filter(k => k >= '2026-01').map(k => '<option value="' + k + '"' + (k === atual ? ' selected' : '') +
-        '>' + rotuloMes(k) + '</option>').join('') + '</select>' +
+      '<select data-selmes aria-label="Período do painel">' +
+        '<optgroup label="Janela">' + JANELAS.map(j => op(j.k, j.rot)).join('') + '</optgroup>' +
+        '<optgroup label="Mês fechado">' +
+          ms.filter(k => k >= '2026-01').map(k => op(k, rotuloMes(k))).join('') + '</optgroup>' +
+      '</select>' +
       (comMetas ? '<button class="btn-acao" data-metas type="button">&#9881; Configurar metas</button>' : '') +
     '</span></div>';
 }
@@ -6540,7 +6570,7 @@ const MEMO = { chave: '', dados: {} };
 function memoAreas() {
   /* O filtro entra na chave: sem isso, trocar de closer nao recalcularia
      nada - a memoria devolveria o recorte anterior. */
-  const chave = (F.mesKpi || MES_ATUAL) + '|' + GERACAO + '|' + F.busca + '|' +
+  const chave = (F.janKpi || F.mesKpi || MES_ATUAL) + '|' + GERACAO + '|' + F.busca + '|' +
     [F.produtos, F.closers, F.sdrs, F.origens].map(x => [...x].sort().join(',')).join(';');
   if (MEMO.chave !== chave) { MEMO.chave = chave; MEMO.dados = {}; }
   return MEMO.dados;
@@ -6562,12 +6592,88 @@ function kpisArea(nome) {
 }
 
 function ctxArea() {
-  const mes = F.mesKpi || MES_ATUAL;
+  /* ===== O RECORTE: UM MES OU UMA JANELA =====
+     O recorte chega aqui em tres formas, porque o painel le de tres
+     jeitos: a LISTA DE MESES, porque o KR e a aba da planilha vivem por
+     mes; os EXTREMOS DE DATA, porque toda linha de registro tem data; e
+     quantas METAS MENSAIS a janela vale, porque a meta e mensal e numa
+     janela de tres meses ela precisa valer tres vezes.
+     Para um mes inteiro as tres dizem a mesma coisa que antes. */
+  const jan = achaJanela(F.janKpi);
+  const mes = jan ? MES_ATUAL : (F.mesKpi || MES_ATUAL);
   const ant = mesMais(mes, -1);
+  const hoje = new Date();
   const emCurso = mes === MES_ATUAL;
-  const diasMes = new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0).getDate();
-  const dias = emCurso ? Math.min(new Date().getDate(), diasMes) : diasMes;
-  const fracao = diasMes ? dias / diasMes : 1;
+  const diasDoMes = new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0).getDate();
+  const diaHoje = Math.min(hoje.getDate(), diasDoMes);
+  const fracaoDoMes = diasDoMes ? diaHoje / diasDoMes : 1;
+
+  let meses, de, ate, mesesMeta, fracao, dias, diasMes, porDia;
+  let rotMes, rotMesC, rotAndamento;
+  if (!jan) {
+    meses = [mes];
+    de  = new Date(+mes.slice(0, 4), +mes.slice(5, 7) - 1, 1);
+    ate = new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0, 23, 59, 59);
+    diasMes = diasDoMes;
+    dias = emCurso ? diaHoje : diasDoMes;
+    mesesMeta = 1;
+    fracao = diasMes ? dias / diasMes : 1;
+    porDia = false;
+    rotMes = rotuloMes(mes); rotMesC = rotuloMesCurto(mes);
+    rotAndamento = emCurso ? 'mês em andamento · dia ' + n0(dias) + ' de ' + n0(diasMes)
+                           : 'mês fechado';
+  } else if (jan.dias) {
+    /* Janela corrida de dias, fechada em hoje: nao sobra pedaco de periodo
+       para esperar, entao a fracao e 1. A meta mensal vale o tanto de mes
+       que os dias cobrem - trinta dias num mes de trinta e um valem 30/31
+       da meta, nao uma meta inteira. */
+    ate = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
+    de  = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (jan.dias - 1));
+    meses = mesesEntre(de, ate);
+    dias = diasMes = jan.dias;
+    mesesMeta = diasDoMes ? jan.dias / diasDoMes : 1;
+    fracao = 1;
+    porDia = true;
+    rotMes = jan.rot; rotMesC = 'últ. ' + jan.dias + ' dias';
+    rotAndamento = 'janela corrida, fechada em hoje';
+  } else {
+    /* Janela de meses: o ultimo e o mes em andamento, e e so dele que falta
+       pedaco. Por isso a fracao da janela nao e dias/dias - e (meses
+       fechados + fracao do ultimo) / total de meses. */
+    const n = jan.ano ? +MES_ATUAL.slice(5, 7) : jan.meses;
+    meses = [];
+    for (let i = n - 1; i >= 0; i--) meses.push(mesMais(MES_ATUAL, -i));
+    de  = new Date(+meses[0].slice(0, 4), +meses[0].slice(5, 7) - 1, 1);
+    ate = new Date(hoje.getFullYear(), hoje.getMonth(), diasDoMes, 23, 59, 59);
+    diasMes = meses.reduce((a, k) => a + new Date(+k.slice(0, 4), +k.slice(5, 7), 0).getDate(), 0);
+    dias = diasMes - diasDoMes + diaHoje;
+    mesesMeta = n;
+    fracao = (n - 1 + fracaoDoMes) / n;
+    porDia = false;
+    rotMes = jan.rot + ' · ' + rotuloMesCurto(meses[0]) + ' a ' + rotuloMesCurto(meses[n - 1]);
+    rotMesC = rotuloMesCurto(meses[0]) + '–' + rotuloMesCurto(meses[n - 1]);
+    rotAndamento = 'dia ' + n0(dias) + ' de ' + n0(diasMes) + ' do período';
+  }
+
+  /* A janela de tras, do mesmo tamanho, para os quadros de "x anterior".
+     Com um mes no seletor ela e exatamente o mes anterior, como antes. */
+  let deAnte, ateAnte, rotAnte, rotAnteC;
+  if (porDia) {
+    ateAnte = new Date(de.getTime() - 1000);
+    deAnte = new Date(ateAnte.getFullYear(), ateAnte.getMonth(), ateAnte.getDate() - (jan.dias - 1));
+    rotAnte = rotAnteC = n0(jan.dias) + ' dias antes';
+  } else {
+    const n = meses.length;
+    const a0 = mesMais(meses[0], -n), a1 = mesMais(meses[0], -1);
+    deAnte = new Date(+a0.slice(0, 4), +a0.slice(5, 7) - 1, 1);
+    ateAnte = new Date(+a1.slice(0, 4), +a1.slice(5, 7), 0, 23, 59, 59);
+    rotAnte  = n === 1 ? rotuloMes(a1)
+                       : rotuloMesCurto(a0) + ' a ' + rotuloMesCurto(a1);
+    rotAnteC = n === 1 ? rotuloMesCurto(a1)
+                       : rotuloMesCurto(a0) + '–' + rotuloMesCurto(a1);
+  }
+
+  const dentro = (d, d0, d1) => !!d && d >= d0 && d <= d1;
 
   const serie = [];
   for (let i = 5; i >= 0; i--) serie.push(mesMais(mes, -i));
@@ -6596,12 +6702,20 @@ function ctxArea() {
     passaBusca([r.lead, r.id, r.etapa, r.closer, r.sdr, r.produto, r.telefone, r.resultado]);
   const passaMd = r => passaBusca([r.campanha]);
 
+  /* A SERIE dos graficos continua mes a mes: ali o eixo X E o mes. */
   const noMes = (lista, k) => lista.filter(r => r.mes === k && passaCli(r));
   const mdMes = (lista, k) => lista.filter(r => r.mes === k && passaMd(r));
+
+  /* O RECORTE do painel corta por DATA, porque a janela de trinta dias
+     comeca no meio de um mes. Para um mes inteiro isto da exatamente o
+     mesmo conjunto que o antigo r.mes === mes: chaveMes(d) === mes e o
+     mesmo que d estar entre o dia 1 e o ultimo dia daquele mes. */
+  const janDe = (lista, dt, ok) => lista.filter(r => dentro(dt(r), de, ate) && ok(r));
+  const anteDe = (lista, dt, ok) => lista.filter(r => dentro(dt(r), deAnte, ateAnte) && ok(r));
+  const dtCli = r => r.dFecha, dtAt = r => r.dAtend || r.dAgenda, dtD = r => r.d;
   /* Reuniao REALIZADA e a que tem data de atendimento; a agendada conta pela
      data do agendamento. Sao coisas diferentes e o no-show vive na diferenca. */
   const realizadas = (lista, k) => lista.filter(r => r.dAtend && chaveMes(r.dAtend) === k && passaAt(r));
-  const agendadas  = (lista, k) => lista.filter(r => r.dAgenda && chaveMes(r.dAgenda) === k && passaAt(r));
 
   const todosCli = reg(DADOS.clientes), todosAt = reg(DADOS.atend), todosMd = reg(DADOS.metaDia);
   const todosKo = reg(DADOS.kommo);
@@ -6609,28 +6723,31 @@ function ctxArea() {
     passaBusca([r.lead, r.id, r.etapa, r.funil, r.campanha, r.produto]);
   /* Leads do CRM vindos de campanha, no mes: a base de tudo que o modulo do
      Meta Ads mede depois do clique. */
-  const koAds = k => todosKo.filter(r => r.mes === k && temCampanha(r) && passaKo(r));
-  const koCom = k => todosKo.filter(r => r.mes === k && !ehFunilSocial(r) && passaKo(r));
-  const koSoc = k => todosKo.filter(r => r.mes === k && ehFunilSocial(r) && passaKo(r));
-  const koComAnt_ = k => koCom(k);
+  const koJan  = fn => janDe(todosKo, dtD, r => fn(r) && passaKo(r));
+  const koAnte = fn => anteDe(todosKo, dtD, r => fn(r) && passaKo(r));
+  const semSocial = r => !ehFunilSocial(r);
 
   const c = {
     mes: mes, ant: ant, emCurso: emCurso, dias: dias, diasMes: diasMes, fracao: fracao,
-    rotMes: rotuloMes(mes), rotAnt: rotuloMesCurto(ant), serie: serie,
+    rotMes: rotMes, rotMesC: rotMesC, rotAndamento: rotAndamento,
+    rotAnt: rotAnteC, rotAntL: rotAnte, serie: serie,
     nomeMes: MESES_ACENTO[+mes.slice(5, 7) - 1],
-    cli: noMes(todosCli, mes), cliAnt: noMes(todosCli, ant),
-    at: todosAt.filter(r => r.mes === mes && passaAt(r)),
-    reun: realizadas(todosAt, mes), reunAnt: realizadas(todosAt, ant),
-    marc: agendadas(todosAt, mes), marcAnt: agendadas(todosAt, ant),
-    md: mdMes(todosMd, mes), mdAnt: mdMes(todosMd, ant),
-    koAds: koAds(mes), koAdsAnt: koAds(ant),
-    koCom: koCom(mes), koComAnt: koComAnt_(ant),
-    koSoc: koSoc(mes), koSocAnt: koSoc(ant),
-    koMes: todosKo.filter(r => r.mes === mes && passaKo(r)),
+    /* O recorte, para quem precisa saber do que esta lendo. */
+    janela: jan ? jan.k : null, meses: meses, nMeses: meses.length,
+    de: de, ate: ate, porDia: porDia, mesesMeta: mesesMeta,
+    cli: janDe(todosCli, dtCli, passaCli), cliAnt: anteDe(todosCli, dtCli, passaCli),
+    at: janDe(todosAt, dtAt, passaAt),
+    reun: janDe(todosAt, r => r.dAtend, passaAt), reunAnt: anteDe(todosAt, r => r.dAtend, passaAt),
+    marc: janDe(todosAt, r => r.dAgenda, passaAt), marcAnt: anteDe(todosAt, r => r.dAgenda, passaAt),
+    md: janDe(todosMd, dtD, passaMd), mdAnt: anteDe(todosMd, dtD, passaMd),
+    koAds: koJan(temCampanha), koAdsAnt: koAnte(temCampanha),
+    koCom: koJan(semSocial), koComAnt: koAnte(semSocial),
+    koSoc: koJan(ehFunilSocial), koSocAnt: koAnte(ehFunilSocial),
+    koMes: janDe(todosKo, dtD, passaKo),
     /* Quantos dos leads atribuidos tiveram a campanha deduzida pela
        integracao de origem em vez de lida do campo. Fica a vista: deducao
        nao e registro. */
-    koInfer: koAds(mes).filter(r => r.campanhaInferida).length,
+    koInfer: koJan(temCampanha).filter(r => r.campanhaInferida).length,
     temKommo: !ERROS.kommo && todosKo.length > 0,
     todosCli: todosCli, todosAt: todosAt, todosMd: todosMd,
     serieCli: k => noMes(todosCli, k),
@@ -6646,12 +6763,30 @@ function ctxArea() {
      A pontuacao do rotulo varia ("No-Show", "No Show", "Conversao em Reuniao
      [Automatico]"), entao a comparacao ignora pontuacao - senao um hifen na
      planilha faz o indicador aparecer como "sem fonte". */
-  c.kr = texto => achaKr(DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[c.nomeMes], texto);
+  /* Numa janela de DIAS o KR devolve nulo de proposito: um KR mensal nao se
+     corta ao meio, e quem desenha o funil cai para realDaJanela, que tem
+     data. Rateiar o KR pelos dias seria inventar distribuicao. */
+  c.kr = (texto, acumula) => porDia ? null
+    : krDaJanela(meses, texto, acumula, emCurso ? fracaoDoMes : 1);
   c.krAnt = texto => {
-    const nome = MESES_ACENTO[+ant.slice(5, 7) - 1];
-    const x = achaKr(DADOS.metas && DADOS.metas.meses && DADOS.metas.meses[nome], texto);
+    if (porDia) return null;
+    const n = meses.length;
+    const x = krDaJanela(meses.map(k => mesMais(k, -n)), texto, undefined, 1);
     return x ? x.resultado : null;
   };
+
+  /* Como a tela nomeia a fonte do KR. Em janela de meses sao varias abas,
+     e dizer "a aba KPIS Novembro" seria mentira pequena e confusa. */
+  const nomes = meses.map(k => MESES_ACENTO[+k.slice(5, 7) - 1]);
+  const abas = nomes.length === 1 ? 'a aba KPIS ' + nomes[0]
+    : 'as abas KPIS de ' + nomes[0] + ' a ' + nomes[nomes.length - 1];
+  /* "n" + "a aba" da "na aba"; "n" + "as abas" da "nas abas". O mesmo com
+     "d", para "da aba" e "das abas". */
+  c.abasKrEm = 'n' + abas;
+  c.abasKrDe = 'd' + abas;
+  c.semKrMsg = porDia
+    ? 'O KR é mensal e não se corta em janela de dias: escolha um mês no seletor para ler este indicador.'
+    : 'O KR correspondente não foi lido ' + c.abasKrEm + '.';
   /* A aba KPIS Marketing e opcional: so existe se o time criar. */
   c.krMkt = texto => achaKr(DADOS.metas && DADOS.metas.marketing, texto);
   c.temMkt = !!(DADOS.metas && DADOS.metas.marketing && !DADOS.metas.marketing.erro &&
@@ -6663,9 +6798,22 @@ function ctxArea() {
   c.prodAnt = p ? (emCurso ? p.anterior : null) : null;
   c.vProd = (o, kk) => (o && o.real && o.real[kk] != null && o.real[kk] !== '') ? num(o.real[kk]) : null;
 
-  /* Base do indicador: fracao do mes e rotulo do mes anterior entram em todos. */
-  c.base = o => Object.assign({ emCurso: emCurso, fracao: fracao, dias: dias, diasMes: diasMes,
-    rotAnt: c.rotAnt, tipo: 'num' }, o);
+  /* Base do indicador: fracao do recorte e rotulo do periodo anterior entram
+     em todos. A META tambem passa por aqui, e por um motivo: ela e MENSAL,
+     em Ajustes > Metas, e numa janela de tres meses precisa valer tres
+     vezes. Esticar num lugar so evita o erro de esticar em alguns.
+     Estica apenas quem DECLARA acumular - taxa, ticket, CAC e ROI nao
+     acumulam e a meta deles vale igual em qualquer janela. E nao estica o
+     que ja veio somado do KR da janela: esse chega com janelaPronta. */
+  c.base = o => {
+    const b = Object.assign({ emCurso: emCurso, fracao: fracao, dias: dias, diasMes: diasMes,
+      rotAnt: c.rotAnt, tipo: 'num' }, o);
+    if (mesesMeta !== 1 && b.acumula === true && b.janelaPronta !== true) {
+      if (b.meta != null) b.meta = b.meta * mesesMeta;
+      if (b.metaProp != null) b.metaProp = b.metaProp * mesesMeta;
+    }
+    return b;
+  };
   return c;
 }
 
@@ -6743,7 +6891,7 @@ function kpisTrafego(c) {
 
   const fonteIns = 'Insights diários do Meta Ads';
   const fonteCli = 'ORIGEM da planilha de clientes';
-  const fonteKr = 'KR da aba KPIS ' + c.nomeMes;
+  const fonteKr = 'KR ' + c.abasKrDe;
 
   const principais = [
     B({ k: 'criativos', rot: 'Criativos novos no ar', valor: temJanelas ? novos.length : null,
@@ -6827,10 +6975,10 @@ function kpisTrafego(c) {
 
   const entrega = [
     B({ k: 'ritmoVerba', rot: 'Ritmo de verba', tipo: 'pct',
-        valor: metaInv && c.fracao ? taxa(gasto, metaInv * c.fracao) : null,
+        valor: metaInv && c.fracao ? taxa(gasto, metaInv * c.mesesMeta * c.fracao) : null,
         fonte: 'Gasto acumulado ÷ orçamento proporcional ao dia',
         dica: 'Sem selo de meta de propósito: aqui passar de 100% é tão informativo quanto ficar abaixo, e um sinal verde para gasto acima do previsto enganaria.',
-        nota: brl0(gasto) + ' de ' + brl0(metaInv * c.fracao) + ' previstos até hoje' }),
+        nota: brl0(gasto) + ' de ' + brl0(metaInv * c.mesesMeta * c.fracao) + ' previstos até hoje' }),
     B({ k: 'impressoes', rot: 'Impressões', valor: impr, fonte: fonteIns }),
     B({ k: 'alcance7', rot: 'Alcance (7 dias)', valor: alc7 || null,
         falta: alc7 ? null : 'A aba <b>Janelas</b> não trouxe a janela de 7 dias.',
@@ -7234,8 +7382,8 @@ function kpisComercial(c) {
   const doKr = (k, rot, kk, calc, o) => B(Object.assign({
     k: k, rot: rot, valor: kk ? kk.resultado : null,
     meta: kk ? kk.metaMes : null, metaProp: kk ? kk.metaProp : null, acumula: true,
-    falta: kk ? null : 'O KR correspondente não foi lido na aba KPIS ' + esc(c.nomeMes) + '.',
-    fonte: 'KR da aba KPIS ' + c.nomeMes
+    falta: kk ? null : c.semKrMsg,
+    fonte: 'KR ' + c.abasKrDe, janelaPronta: !!kk
   }, o || {}));
 
   /* ----- PRE-QUALIFICACAO ----- */
@@ -7249,10 +7397,11 @@ function kpisComercial(c) {
        Agora o total e o CRM e as duas origens sao recortes dele, entao
        Meta Ads + organico fecha no total por construcao. A meta do mes
        continua vindo do KR, que e onde ela foi combinada. */
-    B({ hero: true, k: 'leadsTotal', rot: 'Leads · total (meta do mês)', valor: krLeads ? krLeads.resultado : null,
-        ant: c.krAnt('novos leads'), meta: krLeads ? krLeads.metaMes : null,
+    B({ hero: true, k: 'leadsTotal', rot: 'Leads · total (meta ' + (F.janKpi ? 'do período' : 'do mês') + ')',
+      valor: krLeads ? krLeads.resultado : null,
+        ant: c.krAnt('novos leads'), meta: krLeads ? krLeads.metaMes : null, janelaPronta: !!krLeads,
         metaProp: krLeads ? krLeads.metaProp : null, acumula: true,
-        falta: krLeads ? null : 'KR Novos Leads não lido na aba KPIS ' + esc(c.nomeMes) + '.',
+        falta: krLeads ? null : 'KR Novos Leads não lido ' + c.abasKrEm + '.',
         fonte: 'KR Novos Leads (Meta Ads + Orgânico + Parcerias)',
         nota: temCorte ? 'O CRM registrou ' + n0(koCom.length) + ' leads comerciais no mesmo mês' : null,
         dica: 'Este é o KR, anotado à mão na aba KPIS, e é ele que tem meta. O CRM conta mais, porque registra todo lead criado enquanto o KR passa por uma triagem. As duas contagens vivem lado a lado de propósito: a diferença entre elas é o que ainda não foi anotado, e some sozinha quando a anotação ficar em dia.' }),
@@ -7287,7 +7436,7 @@ function kpisComercial(c) {
     B({ k: 'txEleg', rot: 'Taxa de elegibilidade', tipo: 'pct',
         valor: (krEleg && krLeads) ? taxa(krEleg.resultado, krLeads.resultado) : null,
         meta: (krEleg && krLeads) ? taxa(krEleg.metaMes, krLeads.metaMes) : null,
-        falta: (krEleg && krLeads) ? null : 'Depende dos KRs Novos Leads e Leads Elegíveis da aba KPIS ' + esc(c.nomeMes) + '.',
+        falta: (krEleg && krLeads) ? null : 'Depende dos KRs Novos Leads e Leads Elegíveis ' + c.abasKrDe + '.',
         fonte: 'KR Leads Elegíveis ÷ KR Novos Leads',
         nota: (krEleg && krLeads) ? n0(krEleg.resultado) + ' elegíveis de ' + n0(krLeads.resultado) + ' leads' : null,
         dica: 'De cada 100 leads que entram, quantos passam da elegibilidade. Os dois números são KRs da mesma aba e da mesma data de medição — por isso dividem um pelo outro sem mistura de base.' }),
@@ -7337,7 +7486,7 @@ function kpisComercial(c) {
            Meta, que sao quase quatro vezes os do CRM: compararia bases
            diferentes e daria um atingimento inventado. */
         meta: (krCli && krLeads && krLeads.metaMes) ? taxa(krCli.metaMes, krLeads.metaMes) : metas.convLeadCli,
-        falta: krLeads ? null : 'Depende do KR Novos Leads da aba KPIS ' + esc(c.nomeMes) + '.',
+        falta: krLeads ? null : 'Depende do KR Novos Leads ' + c.abasKrDe + '.',
         fonte: 'Clientes ÷ KR Novos Leads' + ((krCli && krLeads) ? ' · meta = ' + n0(krCli.metaMes) + ' ÷ ' + n0(krLeads.metaMes) : ''),
         dica: 'Conversão de ponta a ponta: de cada 100 leads que o CRM registrou, quantos assinaram no mês.' }),
     B({ k: 'tempoReuniao', rot: 'Entrada do lead até a reunião', tipo: 'dias',
@@ -7365,6 +7514,7 @@ function kpisComercial(c) {
   const fecha = [
     B({ hero: true, k: 'reunioes', rot: 'Reuniões realizadas', valor: c.reun.length, ant: c.reunAnt.length,
         meta: krReun ? krReun.metaMes : metas.reunioes, metaProp: krReun ? krReun.metaProp : null, acumula: true,
+        janelaPronta: !!krReun,
         serie: c.serie.map(k => c.serieReun(k).length), fonte: 'Fluxo de Atendimentos (data do atendimento)' }),
     B({ hero: true, k: 'txFecha', rot: 'Taxa de fechamento', tipo: 'pct', valor: taxa(cli.length, c.reun.length),
         /* A planilha tem KR proprio para isto ("Conversao em Vendas"): usar a
@@ -7380,6 +7530,7 @@ function kpisComercial(c) {
         fonte: 'Planilha de clientes: DIAS PARA FECHAR' }),
     B({ hero: true, k: 'clientes', rot: 'Clientes · total', valor: cli.length, ant: cliAnt.length,
         meta: krCli ? krCli.metaMes : metas.clientes, metaProp: krCli ? krCli.metaProp : null, acumula: true,
+        janelaPronta: !!krCli,
         serie: c.serie.map(k => c.serieCli(k).length), fonte: 'Planilha de clientes',
         nota: krCli && krCli.resp ? 'A meta de ' + n0(krCli.metaMes) + ' é o KR de ' + esc(krCli.resp) : null }),
     B({ k: 'clientesAds', rot: 'Clientes · Meta Ads', valor: cliAds.length,
@@ -7388,6 +7539,7 @@ function kpisComercial(c) {
         ant: porNat(cliAnt, 'organico').length, fonte: 'ORIGEM = Orgânico, Site, Calculadora ou Reunião Fechada' }),
     B({ hero: true, k: 'fat', rot: 'Faturamento · total', tipo: 'moeda', valor: hon, ant: honAnt,
         meta: krHon ? krHon.metaMes : metas.faturamento, metaProp: krHon ? krHon.metaProp : null, acumula: true,
+        janelaPronta: !!krHon,
         serie: c.serie.map(k => soma(c.serieCli(k), r => r.honIni)), fonte: 'Honorários iniciais contratados' }),
     B({ k: 'fatAds', rot: 'Faturamento · Meta Ads', tipo: 'moeda', valor: soma(cliAds, r => r.honIni),
         ant: soma(porNat(cliAnt, 'ads'), r => r.honIni), fonte: 'ORIGEM = campanha' }),
@@ -7416,6 +7568,7 @@ function kpisComercial(c) {
         dica: 'A DRE é de caixa e a planilha de clientes é de competência. Os dois números não batem de propósito.' }),
     B({ k: 'projecao', rot: 'Projeção de fechamento do mês', tipo: 'moeda',
         valor: c.emCurso && c.fracao ? hon / c.fracao : hon, meta: krHon ? krHon.metaMes : metas.faturamento,
+        janelaPronta: !!krHon,
         fonte: 'Ritmo de hoje projetado até o fim do mês' }),
     B({ k: 'pjpf', rot: 'Perfil PJ × PF', falta:
         'Depende do CPF/CNPJ, que não trafega para o painel. Com o proxy publicado o servidor conta os dígitos e devolve só PJ ou PF.' })
@@ -7427,7 +7580,7 @@ function kpisComercial(c) {
   const preVenda = [
     B({ k: 'primeiraResposta', rot: 'Tempo de 1ª resposta', falta:
         'Nenhuma planilha guarda a hora da chegada do lead e a hora da primeira resposta. Precisa das duas marcas de tempo no CRM.' }),
-    doKr('ligacoes', 'Ligações', krLig, null, { fonte: 'KR Ligações da aba KPIS ' + c.nomeMes }),
+    doKr('ligacoes', 'Ligações', krLig, null, { fonte: 'KR Ligações ' + c.abasKrDe }),
     B({ k: 'contatoEfetivo', rot: 'Contato efetivo', tipo: 'pct', valor: taxa(triagem, crm),
         falta: (triagem != null && crm) ? null : 'Depende das linhas Leads (Kommo) e Responderam a Triagem.',
         fonte: 'Responderam a triagem ÷ leads do CRM' }),
@@ -7596,8 +7749,11 @@ function kdPanorama(c) {
   let h = resumoArea(todos);
   if (c.emCurso) h += aviso('info', 'Cada indicador principal traz o quadro das leituras que vivem sendo confundidas: ' +
     'o <b>realizado</b>, quanto ele representa da <b>meta proporcional</b> (com cor), a <b>meta mensal</b> cheia, ' +
-    '<b>quanto falta e por dia</b>, e a <b>projeção</b> do mês pelo ritmo de hoje. No dia ' + n0(c.dias) +
-    ' o certo é ter ' + pct(c.fracao * 100, 0) + ' da meta — é onde a marca da barra de ritmo está.');
+    '<b>quanto falta e por dia</b>, e a <b>projeção</b> pelo ritmo de hoje. Com ' + n0(c.dias) +
+    ' de ' + n0(c.diasMes) + ' dias do recorte corridos, o certo é ter ' + pct(c.fracao * 100, 0) +
+    ' da meta — é onde a marca da barra de ritmo está.' +
+    (c.janela ? ' A meta mensal de <b>Ajustes &gt; Metas</b> vale aqui <b>' + n1(c.mesesMeta) +
+      ' vez(es)</b>, uma por mês que o recorte cobre.' : ''));
 
   h += '<div class="secao-titulo">Pré-qualificação &middot; principais</div>';
   /* Os dois numeros de lead nao sao o mesmo lead, e sem dizer isso o cartao
@@ -7618,10 +7774,10 @@ function kdPanorama(c) {
 
   h += '<div class="secao-titulo">Atingimento dos principais</div>';
   h += '<div class="grid g-2">';
-  h += cartao('Metade de cima &middot; até a reunião',
+  h += cartao('Metade de cima · até a reunião',
     'Percentual da meta de referência de cada principal. A linha tracejada marca 100%.',
     vizAtingimento(K.prequal, { rotuloW: 236 }));
-  h += cartao('Metade de baixo &middot; da reunião ao contrato',
+  h += cartao('Metade de baixo · da reunião ao contrato',
     'Mesma escala, para comparar as duas metades sem trocar de tela.',
     vizAtingimento(K.fecha, { rotuloW: 236 }));
   h += '</div>';
@@ -7660,15 +7816,15 @@ function kdComparativos(c) {
   h += cartao('Este mês x mês anterior', 'Mesma unidade nas duas barras: volume de cada etapa até a reunião.',
     vizGrupos({ x: ['Reuniões marcadas', 'Reuniões realizadas'],
       fmt: n0, series: [
-        { nome: rotuloMesCurto(c.ant), vals: [c.marcAnt.length, c.reunAnt.length], cor: 'var(--s4)' },
-        { nome: rotuloMesCurto(c.mes), vals: [c.marc.length, c.reun.length], cor: 'var(--s1)' }
-      ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s1)' }]));
+        { nome: c.rotAnt, vals: [c.marcAnt.length, c.reunAnt.length], cor: 'var(--s4)' },
+        { nome: c.rotMesC, vals: [c.marc.length, c.reun.length], cor: 'var(--s1)' }
+      ] }) + legenda([{ nome: c.rotAntL, cor: 'var(--s4)' }, { nome: c.rotMes, cor: 'var(--s1)' }]));
   h += '</div>';
 
   h += '<div class="secao-titulo">Da reunião ao contrato</div>';
   h += '<div class="grid g-2">';
   h += cartao('Reuniões realizadas x clientes fechados',
-    'Seis meses até ' + rotuloMes(c.mes) + ', na mesma escala (contagem) &mdash; a distância entre as linhas é o que a reunião não converteu. Segue o mês e os filtros desta tela, como os cartões ao lado.',
+    'Seis meses até ' + c.rotMes + ', na mesma escala (contagem) &mdash; a distância entre as linhas é o que a reunião não converteu. Segue o mês e os filtros desta tela, como os cartões ao lado.',
     (() => {
       const rr = c.serie.map(k => c.serieReun(k).length);
       const cl = c.serie.map(k => c.serieCli(k).length);
@@ -7681,9 +7837,9 @@ function kdComparativos(c) {
   h += cartao('Reunião e fechamento · este mês x anterior', 'Mesma unidade nas duas barras.',
     vizGrupos({ x: ['Reuniões realizadas', 'Clientes'],
       fmt: n0, series: [
-        { nome: rotuloMesCurto(c.ant), vals: [c.reunAnt.length, c.cliAnt.length], cor: 'var(--s4)' },
-        { nome: rotuloMesCurto(c.mes), vals: [c.reun.length, c.cli.length], cor: 'var(--s1)' }
-      ] }) + legenda([{ nome: rotuloMes(c.ant), cor: 'var(--s4)' }, { nome: rotuloMes(c.mes), cor: 'var(--s1)' }]));
+        { nome: c.rotAnt, vals: [c.reunAnt.length, c.cliAnt.length], cor: 'var(--s4)' },
+        { nome: c.rotMesC, vals: [c.reun.length, c.cli.length], cor: 'var(--s1)' }
+      ] }) + legenda([{ nome: c.rotAntL, cor: 'var(--s4)' }, { nome: c.rotMes, cor: 'var(--s1)' }]));
 
   /* A barra conta CLIENTES, nao honorario: fechamento condicionado a liminar
      entra como R$ 0, e uma barra de zero esconderia que o canal trouxe
@@ -7734,28 +7890,6 @@ function kdComparativos(c) {
           extra: [{ rot: 'Do mês', val: pct(taxa(x.n, K.totEtapa), 1) }] })) }));
     h += '</div>';
   }
-  return h;
-}
-
-/* ==========================================================================
-   ABA DIAGNOSTICO  -  o detalhe que se consulta quando um principal acende
-   --------------------------------------------------------------------------
-   Os blocos de especialista das duas metades, um atras do outro. A linha que
-   explica o que e isto estava escrita duas vezes, identica, uma em cada
-   metade: agora e dita uma vez, no alto.
-   ========================================================================== */
-function kdDiagnostico(c) {
-  const K = kpisArea('comercial');
-  const preVenda = (K.grupos.find(g => g.t.indexOf('Pré-venda') === 0) || { l: [] });
-  const grupos = K.grupos.filter(g => g.t.indexOf('Pré-venda') !== 0);
-
-  let h = '<div style="font-size:0.78rem;color:var(--texto-muted);line-height:1.6;margin:1.3rem 0 1.1rem;max-width:74ch">' +
-    'Nada aqui precisa ser lido todo dia. Isto existe para o dia em que um principal acende no ' +
-    '<b>Panorama</b> e a pergunta passa a ser <i>por quê</i> — são ' +
-    n0(K.grupos.reduce((a, g) => a + g.l.length, 0)) + ' indicadores de apoio, no mês de ' + esc(c.rotMes) +
-    '. Cartão com borda tracejada não tem fonte: o pé dele diz o que falta para o número existir.</div>';
-  h += blocoEsp(preVenda.t || 'Pré-venda (SDR)', preVenda.s, preVenda.l);
-  grupos.forEach(g => { h += blocoEsp(g.t, g.s, g.l); });
   return h;
 }
 
@@ -7980,25 +8114,57 @@ function calcFunil(c) {
   const krLeads = c.kr(K_.leadsAbord), krEleg = c.kr(K_.leadsElegiveis),
         krQual = c.kr(K_.leadsQual), krDiag = c.kr(K_.diagPositivos),
         krReun = c.kr(K_.reunioes), krCli = c.kr(K_.clientes),
-        krHon = c.kr(K_.faturamento), krNoShow = c.kr(K_.noShow),
-        krConvReun = c.kr(K_.convLeadReun), krConvVenda = c.kr(K_.convReunCli),
+        krHon = c.kr(K_.faturamento), krNoShow = c.kr(K_.noShow, false),
+        krConvReun = c.kr(K_.convLeadReun, false), krConvVenda = c.kr(K_.convReunCli, false),
         krCalc = c.kr(K_.diagRealizados);
+
+  /* ===== TAXA DE JANELA NAO E MEDIA DE TAXAS =====
+     Com os degraus somados na mao, a taxa da janela inteira existe - e e
+     ela que vale. A media dos meses ficaria puxada pelo mes de pouco
+     volume, em que uma venda a mais mexe dez pontos. Num mes so nao ha o
+     que recalcular: a taxa do KR passa direto. */
+  const taxaDaJanela = (k, cima, baixo, fonte) => {
+    if (c.nMeses < 2 || !k || !cima || !baixo) return k;
+    const v = taxa(cima.resultado, baixo.resultado);
+    return v == null ? k : Object.assign({}, k,
+      { resultado: v, mediaDeMeses: false, recalculada: fonte });
+  };
+  const convReun = taxaDaJanela(krConvReun, krReun, krLeads, 'KR Reuniões ÷ KR Novos Leads, na janela');
+  const convVenda = taxaDaJanela(krConvVenda, krCli, krReun, 'KR Clientes ÷ KR Reuniões, na janela');
 
   const semKr = 'Sem KR &mdash; meta de Ajustes &gt; Metas';
   const crmNota = fn => c.temKommo
     ? n0(koCom.filter(fn).length) + ' no CRM, pela etapa de hoje de cada lead' : null;
 
-  /* Meta proporcional de quem nao tem KR: o que acumula e rateado pelo
-     quanto do mes ja passou; taxa e ticket nao acumulam - a meta deles vale
-     inteira desde o dia 1. */
-  const prop = (meta, acumula) => meta == null ? null : (acumula === false ? meta : meta * c.fracao);
   const L = o => Object.assign({ tipo: 'num', acumula: true }, o);
-  const deKr = (rot, k, o) => L(Object.assign({
-    rot: rot,
-    real: k ? k.resultado : null, meta: k ? k.metaMes : null, metaProp: k ? k.metaProp : null,
-    inverso: !!(k && k.inverso), tipo: (k && k.tipo) || 'num',
-    fonte: k ? 'KR &ldquo;' + esc(k.kr) + '&rdquo;' : semKr
-  }, o || {}));
+
+  /* ===== O DEGRAU, E DE ONDE ELE VEM EM CADA RECORTE =====
+     Em mes ou janela de meses, do KR: krDaJanela ja somou os meses, e o pe
+     do cartao diz quantos entraram e se foi soma ou media.
+     Em janela de DIAS c.kr devolve nulo de proposito - um KR mensal nao se
+     corta ao meio - e o degrau vem do REGISTRO, que tem data em toda linha.
+     Nao e a mesma contagem: o CRM situa o lead pela etapa de HOJE, nao pela
+     que ele tinha no dia. O aviso em cima da aba diz isso antes do primeiro
+     numero. A meta continua existindo, esticada para o tamanho da janela. */
+  const deKr = (rot, k, o) => {
+    const oo = o || {};
+    if (c.porDia) {
+      const v = realDaJanela(oo.chave, c);
+      return L(Object.assign({ rot: rot, real: v, meta: null, metaProp: null,
+        inverso: oo.chave === 'noShow',
+        fonte: v == null ? 'Sem fonte com data no recorte'
+                         : 'Registro, por data, na janela' }, oo));
+    }
+    return L(Object.assign({
+      rot: rot,
+      real: k ? k.resultado : null, meta: k ? k.metaMes : null, metaProp: k ? k.metaProp : null,
+      inverso: !!(k && k.inverso), tipo: (k && k.tipo) || 'num',
+      fonte: !k ? semKr
+        : (k.recalculada ? k.recalculada : 'KR &ldquo;' + esc(k.kr) + '&rdquo;') +
+          (k.nMeses > 1 ? ' &middot; ' + (k.mediaDeMeses ? 'média' : 'soma') + ' de ' +
+            n0(k.nMeses) + ' meses' : '')
+    }, oo));
+  };
 
   const diagCrm = c.temKommo ? koCom.filter(ehDiagnostico).length : null;
   /* O KR traz a meta combinada; Ajustes > Metas so entra se a aba do mes
@@ -8006,7 +8172,7 @@ function calcFunil(c) {
      porque quem le a tela precisa saber qual numero esta valendo. */
   const notaCalc = krCalc
     ? (diagCrm != null ? n0(diagCrm) + ' leads do CRM est\u00e3o em an\u00e1lise de viabilidade ou adiante.' : '')
-    : 'Sem KR de diagn\u00f3stico realizado na aba KPIS ' + esc(c.nomeMes) + '.';
+    : 'Sem KR de diagn\u00f3stico realizado ' + c.abasKrEm + '.';
   const convElegCli = (krCli && krEleg) ? taxa(krCli.resultado, krEleg.resultado) : null;
   const ticket = ticketMedio(c.cli);
 
@@ -8038,8 +8204,8 @@ function calcFunil(c) {
       nota: n0(c.cli.length) + ' na planilha de Clientes' }),
 
     /* ----- As taxas e o que elas renderam ----- */
-    deKr('Conversão Lead em Reunião', krConvReun, { tipo: 'pct', acumula: false, chave: 'convLeadReun' }),
-    deKr('Conversão Reunião em Cliente', krConvVenda, { tipo: 'pct', acumula: false, chave: 'convReunCli' }),
+    deKr('Conversão Lead em Reunião', convReun, { tipo: 'pct', acumula: false, chave: 'convLeadReun' }),
+    deKr('Conversão Reunião em Cliente', convVenda, { tipo: 'pct', acumula: false, chave: 'convReunCli' }),
     L({ rot: 'Conversão Lead Elegível em Cliente', real: convElegCli, chave: 'convElegCli',
         tipo: 'pct', acumula: false, fonte: 'KR Clientes &divide; KR Leads Elegíveis',
         nota: (krCli && krEleg) ? n0(krCli.resultado) + ' clientes de ' + n0(krEleg.resultado) + ' elegíveis' : null }),
@@ -8060,18 +8226,23 @@ function calcFunil(c) {
      para ninguem comparar os dois numeros sem saber que sao dois. Acertada a
      planilha, o aviso some sozinho. */
   linhas.forEach(l => {
+    /* A meta de Ajustes > Metas e MENSAL: numa janela de tres meses ela vale
+       tres vezes. A do KR ja vem somada na janela, por krDaJanela. Taxa e
+       ticket nao acumulam: a meta deles vale igual em qualquer recorte. */
+    const acum = l.acumula !== false;
     const mp = l.chave ? metas[l.chave] : null;
     if (mp != null) {
-      if (l.meta != null && Math.abs(l.meta - mp) > 0.001) l.metaPlanilha = l.meta;
-      l.meta = mp;
-      l.metaProp = l.acumula === false ? mp : mp * c.fracao;
+      const mj = acum ? mp * c.mesesMeta : mp;
+      if (l.meta != null && Math.abs(l.meta - mj) > 0.001) l.metaPlanilha = l.meta;
+      l.meta = mj;
+      l.metaProp = acum ? mj * c.fracao : mj;
     }
-    if (l.metaProp == null) l.metaProp = prop(l.meta, l.acumula);
+    if (l.metaProp == null && l.meta != null) l.metaProp = acum ? l.meta * c.fracao : l.meta;
     if (l.metaPlanilha != null) {
       const f = fmtPorTipo(l.tipo);
       l.nota = (l.nota ? l.nota + ' ' : '') +
-        '<b>A meta aqui \u00e9 ' + f(l.meta) + ', do painel.</b> A aba KPIS ' + esc(c.nomeMes) +
-        ' traz ' + f(l.metaPlanilha) + ' neste KR; o realizado continua vindo de l\u00e1.';
+        '<b>A meta aqui \u00e9 ' + f(l.meta) + ', do painel.</b> O mesmo KR, ' + c.abasKrEm +
+        ', traz ' + f(l.metaPlanilha) + ' de meta; o realizado continua vindo de l\u00e1.';
     }
     l.vsProp = taxa(l.real, l.metaProp);
     l.vsMes = taxa(l.real, l.meta);
@@ -8104,7 +8275,19 @@ function kdFunil(c) {
   const f = calcFunil(c);
   const linhas = f.linhas, etapas = f.etapas, leadsTot = f.leadsTot;
   let h = '';
-  h += aviso('info', '<b>O funil sai dos KRs da aba KPIS ' + esc(c.nomeMes) + '</b> &mdash; a contagem que o time ' +
+  /* Na janela de dias o funil nao sai do KR, e o aviso tem de ser outro: o
+     que o leitor tem na frente e a contagem do registro, que mede parecido
+     mas nao igual. Dizer isso depois dos numeros seria dizer tarde. */
+  if (c.porDia) h += aviso('atencao', '<b>Nesta janela o funil vem do registro, não dos KRs.</b> ' +
+    'O KR é mensal e não se corta ao meio: trinta dias atravessam dois meses, e não existe KR de meio ' +
+    'mês. Cada degrau aqui é contagem do <b>CRM</b>, da planilha de <b>atendimentos</b> e da de ' +
+    '<b>clientes</b>, cortada por data &mdash; exata no recorte, mas <b>não é a mesma medição</b>: o CRM ' +
+    'situa cada lead pela etapa de <b>hoje</b>, não pela etapa em que ele estava no dia. No-show fica ' +
+    'vazio, porque nenhuma planilha o registra com data. <b>As metas são do painel</b>, em ' +
+    '<a href="#" data-ir="metasconfig">Ajustes &gt; Metas</a>, valendo ' + n1(c.mesesMeta) + ' mês. ' +
+    'Para ler o funil dos KRs, escolha um mês, 3 ou 6 meses, ou o ano, no seletor da barra.');
+  else h += aviso('info', '<b>O funil sai dos KRs ' + c.abasKrDe +
+    (c.nMeses > 1 ? ', somados nos ' + n0(c.nMeses) + ' meses do recorte' : '') + '</b> &mdash; a contagem que o time ' +
     'anota à mão, que é a única com meta combinada e meta proporcional. Ao lado de cada degrau vai a contagem do ' +
     '<b>CRM</b>, que é completa e conta todo lead criado: as duas convivem de propósito, e a diferença entre elas é ' +
     'o que ainda não foi anotado.<br>Os quatro primeiros indicadores vêm de <b>antes do CRM</b> &mdash; o que o Meta e ' +
@@ -8132,21 +8315,32 @@ function kdFunil(c) {
       'A percentagem ao lado de cada etapa é a conversão sobre a etapa anterior. O topo é o <b>total de leads do ' +
       'CRM</b>: Meta Ads e orgânico são recortes de dentro dele, não parcelas que se somam.' +
       '<br>O funil logo abaixo conta a <b>mesma esteira</b> pelos KRs da aba KPIS. Os dois convivem: onde ' +
-      'divergirem, a diferença é o que ainda não foi anotado num dos dois lugares.');
+      'divergirem, a diferença é o que ainda não foi anotado num dos dois lugares.' +
+      /* A aba Produtos Juridicos guarda um mes por vez, e nao soma: num
+         recorte de varios meses este quadro continua falando do mes da
+         medicao, e so dele. Sem esta frase ele seria lido como do recorte. */
+      (c.janela ? '<br><b>Este quadro não acompanha o recorte:</b> a aba Produtos Jurídicos guarda ' +
+        'um mês por vez, e o que está aqui é o mês da medição acima. O funil de baixo, sim, é do ' +
+        'recorte inteiro.' : ''));
     h += cartao('Funil de pré-qualificação', 'Volume por etapa e conversão etapa a etapa.', vizFunil(FP.etapas));
   }
 
   h += '<div class="secao-titulo">Funil de vendas &middot; ' + esc(c.rotMes) +
-    (c.emCurso ? ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(mês em andamento &mdash; dia ' +
-      n0(c.dias) + ' de ' + n0(c.diasMes) + ')</span>' : '') + '</div>';
+    (!c.janela && c.emCurso
+      ? ' <span style="text-transform:none;letter-spacing:0;font-weight:500">(' + c.rotAndamento + ')</span>'
+      : '') + '</div>';
 
   if (!etapas.length) {
-    h += aviso('atencao', 'Nenhum KR do funil foi lido na aba <code>KPIS ' + esc(c.nomeMes) + '</code> da planilha de Metas. ' +
-      'Quando o time preencher a aba do mês, esta tela acende sozinha.');
+    h += c.porDia
+      ? aviso('atencao', 'Nenhum lead, atendimento ou cliente com data dentro desta janela. ' +
+          'Troque o recorte no seletor da barra, ou tire os filtros de produto, closer, SDR e origem.')
+      : aviso('atencao', 'Nenhum KR do funil foi lido ' + c.abasKrEm + ' da planilha de Metas. ' +
+          'Quando o time preencher a aba do mês, esta tela acende sozinha.');
     return h;
   }
 
-  h += cartao('Funil realizado no mês', 'Volume por etapa, do topo ao contrato.', vizFunil(etapas));
+  h += cartao('Funil realizado ' + (c.janela ? 'no recorte' : 'no mês'),
+    'Volume por etapa, do topo ao contrato.', vizFunil(etapas));
   /* ----- Avanco etapa a etapa -----
      Mesma leitura da tela de pre-qualificacao: o AVANCO e sobre a etapa
      imediatamente anterior e o ACUMULADO e sobre o topo. */
@@ -8221,14 +8415,17 @@ function kdIndicadores(c) {
   /* O aviso longo sobre KR x CRM mora na aba Funil, onde o funil e explicado
      pela primeira vez. Aqui basta o que muda a leitura DESTAS tabelas: de
      onde vem a meta. */
-  let h = aviso('info', '<b>O realizado vem dos KRs da aba KPIS ' + esc(c.nomeMes) + '</b> da planilha de Metas, ' +
+  let h = aviso('info', '<b>O realizado vem dos KRs ' + c.abasKrDe + '</b> da planilha de Metas, ' +
+    (c.nMeses > 1 ? '<b>somados no recorte</b> (taxa e no-show, que não somam, saem pela média dos meses, ' +
+      'e as duas conversões são recalculadas sobre os degraus somados), ' : '') +
     'e <b>as metas vêm do painel</b>, em <a href="#" data-ir="metasconfig">Ajustes &gt; Metas</a>. ' +
     'Onde a planilha trouxer meta diferente no mesmo KR, vale a do painel e a linha mostra as duas. ' +
     'A leitura degrau a degrau, com os dois funis lado a lado, está na aba <b>Funil</b>.');
 
-  h += '<div class="secao-titulo">Funil contra a meta do mês</div>';
+  h += '<div class="secao-titulo">Funil contra a meta ' + (c.janela ? 'do período' : 'do mês') + '</div>';
   h += cartao('Os ' + n0(linhas.length) + ' indicadores do funil',
-    'A meta cheia do mês, o ritmo esperado para hoje (meta proporcional) e o que já entrou. '
+    'A meta cheia ' + (c.janela ? 'do período' : 'do mês') + ', o ritmo esperado para hoje — '
+    + 'a meta proporcional — e o que já entrou. '
     + 'As duas últimas colunas são a mesma diferença — resultado menos meta proporcional — primeiro em '
     + 'percentual, depois em número. Em indicador que já é percentual, a diferença está em pontos percentuais.',
     '<div class="tbl-compacta">' + tabelaInterativa('funilv-proj', [
@@ -8238,7 +8435,7 @@ function kdIndicadores(c) {
       { k: 'rot', rot: 'Indicador', tipo: 'txt', cls: 'forte wrap', ord: false,
         html: r => esc(r.rot) + '<span class="cel-sub">' + r.fonte +
           (r.metaPlanilha != null ? ' &middot; meta do painel' : '') + '</span>' },
-      { k: 'meta', rot: 'Meta mensal', tipo: 'num', ord: false,
+      { k: 'meta', rot: c.janela ? 'Meta do período' : 'Meta mensal', tipo: 'num', ord: false,
         html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) },
       { k: 'metaProp', rot: 'Meta proporcional', tipo: 'num', ord: false,
         html: r => r.metaProp == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.metaProp) },
@@ -8283,12 +8480,27 @@ function kdIndicadores(c) {
      acompanha a base da media - comparar resultado de uma com media de outra
      nao diria nada. E por isso que a primeira coluna pode diferir do quadro
      de cima, que sai sempre do KR, e a tela diz isso. */
-  const comp = linhas.filter(l => l.chave).map(l => {
+  /* Esta tabela le MES A MES, pela mesma base da media. Numa janela de
+     meses o realizado e a soma dos meses do recorte, e a media do ano -
+     que e mensal - e esticada do mesmo tanto, senao as duas colunas
+     falariam de tamanhos de periodo diferentes. Na janela de DIAS ela sai
+     do ar: meio mes nao se compara com mes inteiro. */
+  if (c.porDia) h += aviso('info', '<b>A comparação com a média do ano não entra na janela de 30 dias.</b> ' +
+    'A média do ano é mensal, e meio mês não se compara com mês inteiro. ' +
+    'Escolha um mês, 3 ou 6 meses, ou o ano, no seletor da barra.');
+  const porMesesDoRec = (fn, acum) => {
+    const v = c.meses.map(fn).filter(x => x != null && isFinite(x));
+    if (!v.length) return null;
+    const s = v.reduce((a, b) => a + b, 0);
+    return acum ? s : s / v.length;
+  };
+  const comp = (c.porDia ? [] : linhas.filter(l => l.chave)).map(l => {
+    const acum = l.acumula !== false;
     const ma = mediaDoAno(l.chave, c.mes);
     const base = ma ? ma.base : 'registro';
-    const real = base === 'kr' ? krNoMes(l.chave, c.mes) : realizadoNoMes(l.chave, c.mes);
+    const real = porMesesDoRec(m => base === 'kr' ? krNoMes(l.chave, m) : realizadoNoMes(l.chave, m), acum);
     const media = ma ? ma.media : null;
-    const propMedia = media == null ? null : (l.acumula === false ? media : media * c.fracao);
+    const propMedia = media == null ? null : (acum ? media * c.mesesMeta * c.fracao : media);
     return { rot: l.rot, tipo: l.tipo, inverso: l.inverso, real: real, base: base,
       metaProp: l.metaProp, meta: l.meta, media: media, propMedia: propMedia,
       meses: ma ? ma.n : 0, vsMedia: taxa(real, propMedia) };
@@ -8318,7 +8530,7 @@ function kdIndicadores(c) {
         /* Mesma ordem do quadro de cima, e sem ordenacao pelo mesmo motivo:
            meta, media e resultado contam a historia na ordem em que se le. */
         { k: 'rot', rot: 'KPI', tipo: 'txt', cls: 'forte wrap', ord: false },
-        { k: 'meta', rot: 'Meta mensal', tipo: 'num', ord: false,
+        { k: 'meta', rot: c.janela ? 'Meta do período' : 'Meta mensal', tipo: 'num', ord: false,
           html: r => r.meta == null ? '&mdash;' : fmtPorTipo(r.tipo)(r.meta) },
         { k: 'media', rot: 'Média mensal', tipo: 'num', ord: false,
           html: r => r.media == null ? '&mdash;'
@@ -8368,18 +8580,20 @@ function kdIndicadores(c) {
      . "KPIS e Dashboards" e "Funil de Vendas Completo" eram duas telas do
        mesmo mes, dos mesmos filtros e, em boa parte, dos mesmos numeros -
        e nenhuma das duas respondia uma pergunta inteira. Viraram uma tela
-       com cinco abas, em KPIs e Funil de Vendas. Nenhum quadro foi perdido:
+       com quatro abas, em KPIs e Funil de Vendas. Nenhum quadro foi perdido:
        o que estava em dois lugares passou a ser dito uma vez.
    ========================================================================== */
 const MODULOS = {
-  /* Cinco perguntas, nao cinco origens de dado. A ordem e a do dia: o que
-     esta acontecendo, onde trava, o numero exato, o que mudou, e por que. */
+  /* Quatro perguntas, nao quatro origens de dado. A ordem e a do dia: o que
+     esta acontecendo, onde trava, o numero exato e o que mudou. Havia uma
+     quinta aba, Diagnostico, com os indicadores de apoio em cartoes: saiu
+     por pedido do gestor, que faz essa leitura por fora. Os numeros dela
+     continuam no painel, na tabela de todos os indicadores do comercial. */
   kpisdash: [
     { k: 'panorama',     rot: 'Panorama' },
     { k: 'funil',        rot: 'Funil' },
     { k: 'indicadores',  rot: 'Indicadores' },
-    { k: 'comparativos', rot: 'Comparativos' },
-    { k: 'diagnostico',  rot: 'Diagnóstico' }
+    { k: 'comparativos', rot: 'Comparativos' }
   ],
   campanhas: [
     { k: 'ind',      rot: 'Indicadores' },
@@ -8709,7 +8923,6 @@ function moduloKpisDash() {
   if (a === 'funil')             h += kdFunil(c);
   else if (a === 'indicadores')  h += kdIndicadores(c);
   else if (a === 'comparativos') h += kdComparativos(c);
-  else if (a === 'diagnostico')  h += kdDiagnostico(c);
   else                           h += kdPanorama(c);
   return h;
 }
@@ -8810,6 +9023,68 @@ function krNoMes(chave, mes) {
   const k = kr(MESES_ACENTO[+mes.slice(5, 7) - 1], txt);
   const v = k ? k.resultado : null;
   return v != null && isFinite(v) ? v : null;
+}
+
+/* ==========================================================================
+   O KR SOMADO NA JANELA
+   --------------------------------------------------------------------------
+   O KR vive por mes: uma aba KPIS por mes, uma linha por Resultado Chave.
+   Numa janela de meses, o que acumula SOMA - leads, reunioes, clientes,
+   faturamento. Taxa e no-show nao tem soma que signifique coisa alguma:
+   deles sai a MEDIA dos meses, e a linha diz isso no pe.
+   A meta proporcional segue a mesma regra do mes: mes fechado entra
+   inteiro, o mes em andamento entra pela fracao dele que ja passou.
+   ========================================================================== */
+function krDaJanela(meses, texto, acumula, fracaoUlt) {
+  /* Guarda os nulos: sem eles o indice do ultimo mes se perde, e a fracao
+     do mes em andamento acabaria aplicada a um mes fechado. */
+  const porMes = meses.map(k => kr(MESES_ACENTO[+k.slice(5, 7) - 1], texto));
+  const achados = porMes.filter(Boolean);
+  if (!achados.length) return null;
+  if (porMes.length === 1) return achados[0];
+  const base = achados[0];
+  const ac = acumula === undefined ? base.tipo !== 'pct' : !!acumula;
+  const vals = f => achados.map(f).filter(x => x != null && isFinite(x));
+  const somaDe = f => { const v = vals(f); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
+  const mediaDe = f => { const v = vals(f); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const propJan = ac
+    ? (porMes.reduce((a, x, i) => a + ((x && x.metaMes != null && isFinite(x.metaMes))
+        ? x.metaMes * (i === porMes.length - 1 ? fracaoUlt : 1) : 0), 0) || null)
+    : mediaDe(x => x.metaProp);
+  return { kr: base.kr, inverso: base.inverso, tipo: base.tipo,
+           resultado: ac ? somaDe(x => x.resultado) : mediaDe(x => x.resultado),
+           metaMes:   ac ? somaDe(x => x.metaMes)   : mediaDe(x => x.metaMes),
+           metaProp:  propJan,
+           nMeses: achados.length, janela: true, mediaDeMeses: !ac };
+}
+
+/* ==========================================================================
+   O INDICADOR TIRADO DO REGISTRO, NA JANELA INTEIRA
+   --------------------------------------------------------------------------
+   Serve a janela de DIAS, onde o KR mensal nao cabe. CRM, planilha de
+   atendimentos e planilha de clientes tem data em toda linha, e por isso
+   cabem em trinta dias. O que elas medem nao e identico ao KR - o CRM
+   conta pela etapa de HOJE de cada lead, nao pela etapa que ele tinha no
+   dia - e a tela declara isso em cima do funil.
+   ========================================================================== */
+function realDaJanela(chave, c) {
+  const ko = c.koCom || [], cli = c.cli || [], reun = c.reun || [], md = c.md || [];
+  switch (chave) {
+    case 'leadsAbord':     return ko.length || null;
+    case 'leadsElegiveis': return ko.filter(ehElegivel).length || null;
+    case 'leadsQual':      return ko.filter(ehQualificado).length || null;
+    case 'diagRealizados': return ko.filter(ehDiagnostico).length || null;
+    case 'diagPositivos':  return ko.filter(ehViavel).length || null;
+    case 'reunioes':       return reun.length || null;
+    case 'clientes':       return cli.length || null;
+    case 'faturamento':    return soma(cli, r => r.honIni) || null;
+    case 'leadsAds':       return soma(md, r => r.leadsTotal) || null;
+    case 'convLeadReun':   return taxa(reun.length, ko.length);
+    case 'convReunCli':    return taxa(cli.length, reun.length);
+    /* No-show nao tem fonte com data: a coluna "Desfecho da reuniao" esta
+       vazia na planilha de atendimentos. Fica vazio, e a linha diz. */
+    default:               return null;
+  }
 }
 
 /* Quantos meses FECHADOS do ano tem aba KPIS carregada. A tela diz isso: sem
@@ -9010,7 +9285,7 @@ const TELAS = [
   { k: 'campanhas', rot: 'Campanhas Meta Ads', sub: 'Do investimento ao honorário, campanha e criativo', fn: moduloCampanhas },
   { k: 'marketing', rot: 'Marketing',          sub: 'Audiência, conteúdo, marca e demanda sem verba', fn: moduloMarketing },
   { grupo: 'Comercial' },
-  { k: 'kpisdash',  rot: 'KPIs e Funil de Vendas', sub: 'Do anúncio ao contrato: panorama, funil, indicadores, comparativos e diagnóstico', fn: moduloKpisDash },
+  { k: 'kpisdash',  rot: 'KPIs e Funil de Vendas', sub: 'Do anúncio ao contrato: panorama, funil, indicadores e comparativos', fn: moduloKpisDash },
   /* Pre-qualificacao e Negociacao saem do MENU, nao do painel: KPIs e Funil
      de Vendas ja conta a esteira inteira. Continuam montadas porque
      outras telas linkam para elas (data-ir="prequal:kommo"), e link quebrado
@@ -9490,7 +9765,14 @@ document.addEventListener('change', ev => {
     montarFiltros(); redesenhar();
     return;
   }
-  if (ev.target.dataset && ev.target.dataset.selmes !== undefined) { F.mesKpi = ev.target.value; redesenhar(); }
+  if (ev.target.dataset && ev.target.dataset.selmes !== undefined) {
+    const v = ev.target.value;
+    /* Um recorte vivo por vez: guardar mes e janela ao mesmo tempo daria
+       dois recortes na mesma cabeca, e um deles mentiria. */
+    if (/^\d{4}-\d{2}$/.test(v)) { F.mesKpi = v; F.janKpi = null; }
+    else { F.janKpi = v; F.mesKpi = null; }
+    redesenhar();
+  }
 });
 /* Configurar metas abre a TELA de metas. Antes eram treze prompt() em
    fila: para mudar a ultima era preciso passar por todas as outras, e
