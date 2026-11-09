@@ -76,10 +76,16 @@ function _contarErro() {
 }
 
 function _autorizado(token) {
-  var esperado = PropertiesService.getScriptProperties().getProperty('SENHA_HASH');
-  if (!esperado) throw new Error('SENHA_HASH nao configurada nas Propriedades do Script');
+  var p = PropertiesService.getScriptProperties();
+  var hashes = [p.getProperty('SENHA_HASH')]
+    .concat(String(p.getProperty('SENHA_HASH_EXTRAS') || '').split(','))
+    .map(function (h) { return String(h || '').trim(); })
+    .filter(function (h) { return h; });
+  if (!hashes.length) throw new Error('SENHA_HASH nao configurada nas Propriedades do Script');
   if (!token) return false;
-  return _igual(_sha256(token), esperado);
+  var meu = _sha256(token), ok = false;
+  for (var i = 0; i < hashes.length; i++) if (_igual(meu, hashes[i])) ok = true;
+  return ok;
 }
 
 /* ===========================================================================
