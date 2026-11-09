@@ -25,6 +25,7 @@ A senha:
 | Propriedade | Valor |
 |---|---|
 | `SENHA_HASH` | o hash que eu passei no chat |
+| `SENHA_HASH_EXTRAS` | *(opcional)* hashes de outros logins aceitos, separados por vírgula — por exemplo, o login da Central usado pelo **Painel da TV** |
 
 As planilhas. O ID é o trecho do endereço entre `/d/` e `/edit`:
 
@@ -141,6 +142,12 @@ deixa de depender de uma conta Gmail avulsa.
 
 **Trocar a senha** — gere o novo hash e troque `SENHA_HASH`. Nenhuma outra
 mudança é necessária; o painel pede a senha nova na próxima entrada.
+
+**Liberar outro login** (ex.: o da TV) — gere o hash desse login com a mesma
+conta do painel (PBKDF2 do usuário + senha, sal `bm-painel-comercial-v1`,
+310 mil iterações; depois SHA-256 em base64) e acrescente em
+`SENHA_HASH_EXTRAS`. Exige a função `_autorizado` desta versão (09/11/2026)
+no editor e uma nova versão da implantação.
 
 **Bloqueou por engano** (8 tentativas erradas em 10 min) — rode
 `liberarTentativas` no editor.
